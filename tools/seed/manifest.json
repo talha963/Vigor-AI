@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-02T16:42:22.491Z",
-  "cohortSize": 900,
+  "generatedAt": "2026-11-03T15:08:38.505Z",
+  "cohortSize": 240,
   "goldenSubjects": [
     {
       "caseId": "GC01",
@@ -434,5 +434,5 @@
   ],
   "sampleShareToken": "shr_002tjjey",
   "sampleReferralPseudonymId": "psn_002kbl4n",
-  "samplePendingDecisionId": "trg_01qv4bfx"
+  "samplePendingDecisionId": null
 }
