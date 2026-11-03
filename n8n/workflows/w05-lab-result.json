@@ -1,0 +1,851 @@
+{
+  "name": "Vigor 05 · Lab Result Ingestion & Re-score",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 05 · Lab result ingestion\nFlag against WHO 2021 lower reference limits → store append-only → re-score → update the pathway.\n\n**Never auto-delivered:** azoospermia and severe oligozoospermia. The user is told the result is ready and a clinician walks them through it.\n\nOne abnormal sample asks for a repeat, it does not label anyone.",
+        "height": 280,
+        "width": 540,
+        "color": 2
+      },
+      "id": "1b543692-f9fc-4dd6-b8fc-ac43f7fcaab0",
+      "name": "Note c94704b7",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -180,
+        -380
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vigor/lab-result",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "55c9a461-4d7f-4b75-8a7f-b6bc4b7fb84f",
+      "name": "Webhook lab.result",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -180,
+        -40
+      ],
+      "webhookId": "43296b6d-e4bc-4c21-a1bc-7768e2bc78fb"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ffce96b7-55a6-40b7-96a6-024a57a603dd",
+              "name": "vigorConfig",
+              "type": "object",
+              "value": "={{ (() => { const d = { agentServiceUrl: 'http://host.docker.internal:8000', internalToken: '', notifyMode: 'DEMO', oncallEmail: 'oncall@example-clinic.ae', escalationSlaMinutes: 60, quietHoursStart: 21, quietHoursEnd: 8, webhookBase: 'http://localhost:5678', envBlocked: true }; try { return { agentServiceUrl: $env.VIGOR_AGENT_SERVICE_URL || d.agentServiceUrl, internalToken: $env.VIGOR_INTERNAL_TOKEN || '', notifyMode: $env.VIGOR_NOTIFY_MODE || 'DEMO', oncallEmail: $env.VIGOR_ONCALL_EMAIL || d.oncallEmail, escalationSlaMinutes: Number($env.VIGOR_ESCALATION_SLA_MINUTES || 60), quietHoursStart: Number($env.VIGOR_QUIET_HOURS_START || 21), quietHoursEnd: Number($env.VIGOR_QUIET_HOURS_END || 8), webhookBase: ($env.WEBHOOK_URL || 'http://localhost:5678/').replace(/\\/$/, ''), envBlocked: false }; } catch (e) { return d; } })() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "17a32b0e-87da-4f12-86da-3d7f85da3bec",
+      "name": "Vigor config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -60,
+        -176
+      ],
+      "notes": "The only node that reads $env. Needs N8N_BLOCK_ENV_ACCESS_IN_NODE=false, and falls back to defaults with envBlocked:true if that is missing.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst CFG = $('Vigor config').first().json.vigorConfig;\nconst headers = $json.headers ?? {};\nconst b = $json.body ?? $json;\n\nconst presented = headers['x-vigor-lab-key'] ?? headers['X-Vigor-Lab-Key'] ?? null;\nconst expected = CFG.internalToken || null;\nconst authenticated = Boolean(expected) && presented === expected;\n\nconst problems = [];\nif (!authenticated) problems.push('auth:lab_key_invalid');\nif (!b.pseudonymId) problems.push('missing:pseudonymId');\nif (!b.panel) problems.push('missing:panel');\nif (!b.values || typeof b.values !== 'object') problems.push('missing:values');\n\nreturn [{ json: {\n  ok: problems.length === 0,\n  authenticated,\n  problems,\n  runId: $execution.id,\n  pseudonymId: b.pseudonymId ?? null,\n  kitOrderId: b.kitOrderId ?? null,\n  assessmentId: b.assessmentId ?? null,\n  panel: b.panel ?? null,\n  values: b.values ?? {},\n  collectedAt: b.collectedAt ?? null,\n  locale: b.locale === 'ar' ? 'ar' : 'en',\n  labRef: b.labRef ?? null,\n} }];"
+      },
+      "id": "742b25d0-c2ae-48a8-85ae-ad61c4aeabce",
+      "name": "Authenticate lab & validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        -40
+      ],
+      "notes": "The lab presents a shared key. Results are rejected, never queued, without it.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "53e6ec90-10ea-4d68-93ea-b22112eab08e",
+              "leftValue": "={{ $json.ok }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "80ef6b0f-8a9e-4a2f-8b9e-3bc28c9e3d55",
+      "name": "Lab request valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        300,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Authenticate lab & validate').first().json;\nreturn [{ json: { accepted: false, error: s.authenticated ? 'invalid_result' : 'unauthorised',\n                  problems: s.problems } }];"
+      },
+      "id": "2c78f2dc-9067-45d4-9367-1a8d926718fa",
+      "name": "Build lab error response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        -210
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "57c978f6-c3e2-4b5a-82e2-59c7c1e25834",
+      "name": "Respond 401 · lab",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        780,
+        -210
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst WHO_2021_LOWER_LIMITS = {\n  volumeMl:                    1.4,\n  totalSpermMillion:          39,\n  concentrationMillionPerMl:  16,\n  totalMotilityPct:           42,\n  progressiveMotilityPct:     30,\n  normalFormsPct:              4,\n  vitalityPct:                54,\n};\n\nconst SEMEN_FLAG_CODES = {\n  volumeMl:                   'VOLUME_BELOW_REF',\n  totalSpermMillion:          'TOTAL_COUNT_BELOW_REF',\n  concentrationMillionPerMl:  'CONCENTRATION_BELOW_REF',\n  totalMotilityPct:           'TOTAL_MOTILITY_BELOW_REF',\n  progressiveMotilityPct:     'PROGRESSIVE_MOTILITY_BELOW_REF',\n  normalFormsPct:             'MORPHOLOGY_BELOW_REF',\n  vitalityPct:                'VITALITY_BELOW_REF',\n};\n\nfunction flagSemenResult(values) {\n  const v = values || {};\n  const flags = [];\n  for (const [key, limit] of Object.entries(WHO_2021_LOWER_LIMITS)) {\n    if (typeof v[key] === 'number' && v[key] < limit) flags.push(SEMEN_FLAG_CODES[key]);\n  }\n  // Azoospermia and severe oligozoospermia change the pathway, not just the score.\n  if (typeof v.concentrationMillionPerMl === 'number') {\n    if (v.concentrationMillionPerMl === 0) flags.push('AZOOSPERMIA');\n    else if (v.concentrationMillionPerMl < 5) flags.push('SEVERE_OLIGOZOOSPERMIA');\n  }\n  return flags;\n}\n\n// A single abnormal sample is not a diagnosis. WHO guidance is to repeat before\n// concluding, so the pathway asks for a confirmatory sample rather than labelling.\nfunction semenNextStep(flags) {\n  if (flags.includes('AZOOSPERMIA')) {\n    return { tier: 'ANDROLOGY_UROLOGY', requiresHumanReview: true,\n             action: 'confirmatory_sample_and_specialist_review' };\n  }\n  if (flags.includes('SEVERE_OLIGOZOOSPERMIA')) {\n    return { tier: 'ANDROLOGY_UROLOGY', requiresHumanReview: true,\n             action: 'confirmatory_sample_and_specialist_review' };\n  }\n  if (flags.length > 0) {\n    return { tier: 'ANDROLOGY_UROLOGY', requiresHumanReview: false,\n             action: 'repeat_sample_after_interval' };\n  }\n  return { tier: 'PRIMARY_CARE', requiresHumanReview: false, action: 'no_action_from_this_panel' };\n}\n\n\nconst s = $('Authenticate lab & validate').first().json;\n\nconst flags = s.panel === 'semen_analysis' ? flagSemenResult(s.values) : [];\nconst nextStep = s.panel === 'semen_analysis'\n  ? semenNextStep(flags)\n  : { tier: 'PRIMARY_CARE', requiresHumanReview: false, action: 'reviewed_with_other_results' };\n\n// Results that must not land as a notification.\nconst sensitiveFinding = flags.includes('AZOOSPERMIA') || flags.includes('SEVERE_OLIGOZOOSPERMIA');\n\nconst result = {\n  resultId: newId('lab'),\n  pseudonymId: s.pseudonymId,\n  kitOrderId: s.kitOrderId,\n  assessmentId: s.assessmentId,\n  panel: s.panel,\n  whoRefVersion: 'WHO-2021-6th',\n  values: s.values,\n  flags,\n  labRef: s.labRef,\n  collectedAt: s.collectedAt,\n  receivedAt: nowIso(),\n  supersedes: null,\n};\n\nreturn [{ json: { ...s, result, flags, nextStep, sensitiveFinding } }];"
+      },
+      "id": "51af56f2-f2ec-4fb6-b1ec-7e23f0ec7c90",
+      "name": "Flag against WHO 2021",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        -40
+      ],
+      "notes": "Pure, deterministic, and the only place reference limits are written down. Values live in n8n/src/shared.mjs under SEMEN_REFERENCE.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\nreturn [{ json: $('Flag against WHO 2021').first().json.result }];"
+      },
+      "id": "0a42d2ed-787a-4fa1-b57a-eae8767aec7b",
+      "name": "Doc · lab result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "lab_results",
+        "fields": "resultId,pseudonymId,kitOrderId,assessmentId,panel,whoRefVersion,values,flags,labRef,collectedAt,receivedAt,supersedes",
+        "options": {}
+      },
+      "id": "dcbf6386-d446-438a-9346-31f7d2463064",
+      "name": "Write lab result",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        1020,
+        -40
+      ],
+      "notes": "Append-only. A correction is a new document with `supersedes` set.",
+      "notesInFlow": false,
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Flag against WHO 2021').first().json;\n// No kit order (for example a walk-in lab result) is a normal case, not an error.\nif (!s.kitOrderId) return [{ json: { kitOrderId: null, skip: true } }];\nreturn [{ json: {\n  kitOrderId: s.kitOrderId,\n  status: 'resulted',\n  labRef: s.labRef,\n  returnedAt: nowIso(),\n  remindersStopped: true,\n} }];"
+      },
+      "id": "3070d101-8134-4815-be34-435c7f3444ef",
+      "name": "Doc · close kit order",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cf50c732-ca22-49f6-8922-0863c82206d0",
+              "leftValue": "={{ $json.kitOrderId }}",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "fee58cd7-543b-42d7-953b-346a563b35fd",
+      "name": "Has kit order?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1500,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "collection": "kit_orders",
+        "updateKey": "kitOrderId",
+        "fields": "status,labRef,returnedAt,remindersStopped",
+        "upsert": false,
+        "options": {}
+      },
+      "id": "05244fbb-ca03-427b-8b03-640ecc0365a1",
+      "name": "Update kit order · resulted",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        1740,
+        -210
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Vigor config').first().json.vigorConfig.agentServiceUrl }}/internal/v1/rescore-with-result",
+        "options": {
+          "timeout": 20000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Vigor-Signature",
+              "value": "={{ $('Vigor config').first().json.vigorConfig.internalToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ pseudonymId: $('Flag against WHO 2021').first().json.pseudonymId, assessmentId: $('Flag against WHO 2021').first().json.assessmentId, panel: $('Flag against WHO 2021').first().json.panel, values: $('Flag against WHO 2021').first().json.values, flags: $('Flag against WHO 2021').first().json.flags }) }}"
+      },
+      "id": "46cc249b-ddaa-47db-9eaa-a96edfaaab01",
+      "name": "Agent service · re-score",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1740,
+        130
+      ],
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Flag against WHO 2021').first().json;\nconst raw = $('Agent service · re-score').first().json ?? {};\nconst engine = raw && raw.triage ? raw : null;\n\nconst engineTier = engine ? engine.triage.tier : null;\nlet tier = engineTier ?? s.nextStep.tier;\ntier = escalateOnly(tier, s.nextStep.tier);\n\nconst requiresHumanReview =\n  s.nextStep.requiresHumanReview\n  || s.sensitiveFinding\n  || (engine ? Boolean(engine.triage.requiresHumanReview) : false);\n\nconst decision = {\n  decisionId: newId('trg'),\n  assessmentId: s.assessmentId,\n  pseudonymId: s.pseudonymId,\n  scoreId: engine ? (engine.scoreId ?? null) : null,\n  tier,\n  redFlags: s.flags.filter((f) => f === 'AZOOSPERMIA' || f === 'SEVERE_OLIGOZOOSPERMIA'),\n  rationale: engine\n    ? (engine.triage.rationale ?? '')\n    : 'Routed from the laboratory result against WHO 2021 reference limits.',\n  rationaleLocale: s.locale,\n  requiresHumanReview,\n  source: engine ? 'engine_with_lab_result' : 'lab_result_rules',\n  clamped: engineTier !== null && engineTier !== tier,\n  tierBeforeClamp: engineTier ?? tier,\n  triggeredByResultId: s.result.resultId,\n  reviewedBy: null,\n  reviewedAt: null,\n  reviewOutcome: null,\n  reviewNote: null,\n  status: requiresHumanReview ? 'pending_review' : 'final',\n  createdAt: nowIso(),\n};\n\nreturn [{ json: { ...s, decision, deliverResultDirectly: !s.sensitiveFinding } }];"
+      },
+      "id": "1f4658c7-d4ff-45e7-95ff-077ad6ff090d",
+      "name": "Reconcile result → tier",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        130
+      ],
+      "notes": "Same escalate-only rule as workflow 01. The lab finding can raise the tier.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\nreturn [{ json: $('Reconcile result → tier').first().json.decision }];"
+      },
+      "id": "f2e26528-fe18-4720-8118-cbd90018ca46",
+      "name": "Doc · triage from result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        130
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "triage_decisions",
+        "fields": "decisionId,assessmentId,pseudonymId,scoreId,tier,redFlags,rationale,rationaleLocale,requiresHumanReview,source,clamped,tierBeforeClamp,triggeredByResultId,reviewedBy,reviewedAt,reviewOutcome,reviewNote,status,createdAt",
+        "options": {}
+      },
+      "id": "080a6101-3dd0-4815-bad0-535c3bd054ef",
+      "name": "Write triage from result",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        2460,
+        130
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0203a1f8-8356-4ad0-8656-0f8985560df6",
+              "leftValue": "={{ $('Reconcile result → tier').first().json.decision.requiresHumanReview }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "412cb83e-b84f-4b22-b74f-398fb64f37fc",
+      "name": "Needs clinician first?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2700,
+        130
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Reconcile result → tier').first().json;\nconst severe = s.flags.includes('AZOOSPERMIA') || s.flags.includes('SEVERE_OLIGOZOOSPERMIA');\nreturn [{ json: {\n  eventId: newId('evt'),\n  eventType: 'triage.red_flag',\n  occurredAt: nowIso(),\n  pseudonymId: s.pseudonymId,\n  locale: s.locale,\n  decisionId: s.decision.decisionId,\n  assessmentId: s.assessmentId,\n  redFlags: s.decision.redFlags,\n  severity: 'ROUTINE_REVIEW',\n  slaMinutes: severe ? 1440 : 2880,\n  reasons: [{\n    code: severe ? 'RF_SEVERE_SEMEN_FINDING' : 'RF_SEMEN_BELOW_REF',\n    severity: 'ROUTINE_REVIEW',\n    reason: severe\n      ? 'Semen analysis shows no measurable or severely reduced sperm concentration. A clinician must deliver and interpret this result.'\n      : 'Semen parameters below WHO 2021 reference limits. A confirmatory sample is indicated.',\n  }],\n  sourceRunId: s.runId,\n} }];"
+      },
+      "id": "10429504-49b1-483c-8cb1-acf54bb1ab62",
+      "name": "Build escalation from result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2940,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Vigor config').first().json.vigorConfig.webhookBase }}/webhook/vigor/red-flag-escalation",
+        "options": {
+          "timeout": 20000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "98a4a93b-274f-47fb-a84f-198e294f1b21",
+      "name": "Hand off to 02 · result review",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3180,
+        -40
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Reconcile result → tier').first().json;\n\nconst TEXT = {\n  direct: {\n    en: 'Your test result is ready to view in the app.',\n    ar: 'نتيجة تحليلك جاهزة للعرض في التطبيق.',\n  },\n  withClinician: {\n    en: 'Your test result is ready. A clinician will go through it with you before you see the detail, so nothing important lands without context.',\n    ar: 'نتيجة تحليلك جاهزة. سيقوم أحد الأطباء بمراجعتها معك قبل عرض التفاصيل، حتى لا تصلك معلومة مهمة بدون شرح.',\n  },\n};\nconst kind = s.deliverResultDirectly ? 'direct' : 'withClinician';\n\nreturn [{ json: {\n  notificationId: newId('ntf'),\n  pseudonymId: s.pseudonymId,\n  template: 'result_ready',\n  locale: s.locale,\n  channel: 'in_app',\n  discreet: true,\n  subject: s.locale === 'ar' ? 'تحديث من فيجور' : 'Your Vigor update',\n  consentId: null,\n  status: 'sent',\n  attempt: 1,\n  sentAt: nowIso(),\n  createdAt: nowIso(),\n  bodyText: TEXT[kind][s.locale] ?? TEXT[kind].en,\n  withholdsDetail: !s.deliverResultDirectly,\n  relatedResultId: s.result.resultId,\n} }];"
+      },
+      "id": "f486a355-710b-4489-ae0b-8fd06f0b9163",
+      "name": "Doc · notification result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2940,
+        300
+      ],
+      "notes": "No values, no flags, no numbers in the message body. The result is read in the app, behind authentication, or with a clinician.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "notifications",
+        "fields": "notificationId,pseudonymId,template,locale,channel,discreet,subject,consentId,status,attempt,sentAt,createdAt,bodyText,withholdsDetail,relatedResultId",
+        "options": {}
+      },
+      "id": "c9a29beb-2a7f-4fcb-ab7f-515e2c7f52f1",
+      "name": "Write notification · result",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        3180,
+        300
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Reconcile result → tier').first().json;\nreturn [{ json: auditDoc({\n  actor: 'lab:ingestion',\n  action: 'LAB_RESULT_INGESTED',\n  pseudonymId: s.pseudonymId,\n  subjectRef: { collection: 'lab_results', id: s.result.resultId },\n  runId: s.runId,\n  meta: {\n    panel: s.panel,\n    whoRefVersion: 'WHO-2021-6th',\n    flagCount: s.flags.length,\n    flags: s.flags,\n    newTier: s.decision.tier,\n    requiresHumanReview: s.decision.requiresHumanReview,\n    detailWithheld: !s.deliverResultDirectly,\n  },\n}) }];"
+      },
+      "id": "89cba4f4-93c2-450c-96c2-c9c595c2c832",
+      "name": "Doc · audit lab result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3420,
+        130
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "audit_log",
+        "fields": "at,actor,action,pseudonymId,subjectRef,consentId,workflowRunId,outcome,meta",
+        "options": {}
+      },
+      "id": "ced55054-d7c4-4e6c-9ac4-d325d9c4d192",
+      "name": "Write audit · lab result",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        3660,
+        130
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Reconcile result → tier').first().json;\nreturn [{ json: {\n  accepted: true,\n  resultId: s.result.resultId,\n  flags: s.flags,\n  whoRefVersion: 'WHO-2021-6th',\n  nextStep: s.nextStep,\n  tier: s.decision.tier,\n  requiresHumanReview: s.decision.requiresHumanReview,\n  boundary: {\n    isDiagnosis: false,\n    statement: 'A single semen analysis is not a diagnosis. WHO guidance is to confirm with a repeat sample.',\n  },\n} }];"
+      },
+      "id": "ac85b6c4-22cf-4ffc-a5d0-04b524d00322",
+      "name": "Build 202 · lab",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3900,
+        130
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "id": "cb4b0115-57c3-4849-94c3-839055c38523",
+      "name": "Respond 202 · lab",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        4140,
+        130
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook lab.result": {
+      "main": [
+        [
+          {
+            "node": "Vigor config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vigor config": {
+      "main": [
+        [
+          {
+            "node": "Authenticate lab & validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Authenticate lab & validate": {
+      "main": [
+        [
+          {
+            "node": "Lab request valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lab request valid?": {
+      "main": [
+        [
+          {
+            "node": "Flag against WHO 2021",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build lab error response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build lab error response": {
+      "main": [
+        [
+          {
+            "node": "Respond 401 · lab",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flag against WHO 2021": {
+      "main": [
+        [
+          {
+            "node": "Doc · lab result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · lab result": {
+      "main": [
+        [
+          {
+            "node": "Write lab result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write lab result": {
+      "main": [
+        [
+          {
+            "node": "Doc · close kit order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · close kit order": {
+      "main": [
+        [
+          {
+            "node": "Has kit order?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has kit order?": {
+      "main": [
+        [
+          {
+            "node": "Update kit order · resulted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Agent service · re-score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update kit order · resulted": {
+      "main": [
+        [
+          {
+            "node": "Agent service · re-score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent service · re-score": {
+      "main": [
+        [
+          {
+            "node": "Reconcile result → tier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reconcile result → tier": {
+      "main": [
+        [
+          {
+            "node": "Doc · triage from result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · triage from result": {
+      "main": [
+        [
+          {
+            "node": "Write triage from result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write triage from result": {
+      "main": [
+        [
+          {
+            "node": "Needs clinician first?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs clinician first?": {
+      "main": [
+        [
+          {
+            "node": "Build escalation from result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Doc · notification result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build escalation from result": {
+      "main": [
+        [
+          {
+            "node": "Hand off to 02 · result review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hand off to 02 · result review": {
+      "main": [
+        [
+          {
+            "node": "Doc · notification result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · notification result": {
+      "main": [
+        [
+          {
+            "node": "Write notification · result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write notification · result": {
+      "main": [
+        [
+          {
+            "node": "Doc · audit lab result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · audit lab result": {
+      "main": [
+        [
+          {
+            "node": "Write audit · lab result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write audit · lab result": {
+      "main": [
+        [
+          {
+            "node": "Build 202 · lab",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build 202 · lab": {
+      "main": [
+        [
+          {
+            "node": "Respond 202 · lab",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": false,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "meta": {
+    "instanceId": "vigor-local"
+  },
+  "id": "vigor05"
+}

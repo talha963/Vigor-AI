@@ -1,0 +1,43 @@
+# deps
+node_modules/
+.pnp*
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# env & secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+
+# build
+.next/
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# n8n local state (contains credentials - never commit)
+infra/.n8n/
+infra/n8n-data/
+
+# mongo local volume
+infra/mongo-data/
+
+# logs / os
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# test / coverage
+coverage/
+.pytest_cache/
+
+# PHI must never land in the repo
+tools/seed/*.real.json
+exports/

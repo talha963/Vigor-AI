@@ -1,0 +1,775 @@
+{
+  "name": "Vigor 08 · Daily Metrics Rollup",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 08 · Daily metrics rollup\nRuns at 00:30 for the previous day. Keyed on the date, so re-running is idempotent and the demo can be replayed.\n\nReports completion, **time to appropriate evaluation**, referral completion, SLA performance, and fairness as a **gap** with the worst slice named.\n\n`degradedScoreRate` tracks assessments routed by the fallback gate.",
+        "height": 280,
+        "width": 560,
+        "color": 4
+      },
+      "id": "d4277cce-0c95-46d2-8b95-453f0a9543ac",
+      "name": "Note c13ed8fd",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -180,
+        -380
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 0 * * *"
+            }
+          ]
+        }
+      },
+      "id": "8194e6d3-9b01-4333-9c01-34c69d013659",
+      "name": "Daily 00:30 · rollup",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -180,
+        -40
+      ],
+      "notes": "Does not feed the chain directly. Two triggers converging on one node deadlocks: n8n waits for every incoming branch to deliver, and whichever trigger did not fire never does. So the schedule calls the webhook below, exactly as workflow 01 hands off to 02.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "20582ba1-dce9-44b5-99e9-affcdae9b18f",
+              "name": "vigorConfig",
+              "type": "object",
+              "value": "={{ (() => { const d = { agentServiceUrl: 'http://host.docker.internal:8000', internalToken: '', notifyMode: 'DEMO', oncallEmail: 'oncall@example-clinic.ae', escalationSlaMinutes: 60, quietHoursStart: 21, quietHoursEnd: 8, webhookBase: 'http://localhost:5678', envBlocked: true }; try { return { agentServiceUrl: $env.VIGOR_AGENT_SERVICE_URL || d.agentServiceUrl, internalToken: $env.VIGOR_INTERNAL_TOKEN || '', notifyMode: $env.VIGOR_NOTIFY_MODE || 'DEMO', oncallEmail: $env.VIGOR_ONCALL_EMAIL || d.oncallEmail, escalationSlaMinutes: Number($env.VIGOR_ESCALATION_SLA_MINUTES || 60), quietHoursStart: Number($env.VIGOR_QUIET_HOURS_START || 21), quietHoursEnd: Number($env.VIGOR_QUIET_HOURS_END || 8), webhookBase: ($env.WEBHOOK_URL || 'http://localhost:5678/').replace(/\\/$/, ''), envBlocked: false }; } catch (e) { return d; } })() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0b06612c-9afd-4cc4-9dfd-117d9cfd0fea",
+      "name": "Vigor config · schedule",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        60,
+        -40
+      ],
+      "notes": "The only node that reads $env. Needs N8N_BLOCK_ENV_ACCESS_IN_NODE=false, and falls back to defaults with envBlocked:true if that is missing.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Vigor config · schedule').first().json.vigorConfig.webhookBase }}/webhook/vigor/metrics-rollup",
+        "options": {
+          "timeout": 20000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({}) }}"
+      },
+      "id": "200aaaab-cfb4-4c8b-90b4-de1ed1b4dfb1",
+      "name": "Trigger rollup via webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        300,
+        -40
+      ],
+      "notes": "The nightly run is just a backfill request for yesterday.",
+      "notesInFlow": false,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vigor/metrics-rollup",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "9f9bd832-2106-42f6-a006-01631f05ffd0",
+      "name": "Webhook metrics.rollup",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -180,
+        334.00000000000006
+      ],
+      "notes": "Backfill. POST {\"date\":\"YYYY-MM-DD\"} to recompute one day, or {} for yesterday. Every rollup needs this: a day missed because the container was down would otherwise be a permanent hole in the evidence.",
+      "notesInFlow": false,
+      "webhookId": "b6c63f94-2a1b-4fac-ad1b-74652c1b72d2"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\n// GENERIC_TIMEZONE is set on the container, so Date here is already local.\nconst body = $json.body ?? {};\nconst viaWebhook = Boolean($json.body);\nconst requested = typeof body.date === 'string' ? body.date.trim() : null;\n\nlet start;\nif (requested) {\n  // [0-9] rather than \\d on purpose: this source lives inside a template\n  // literal, where a single backslash is swallowed before the builder sees it.\n  // Character classes avoid the hazard entirely. See build.mjs escape lint.\n  const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(requested);\n  if (!m) {\n    return [{ json: { ok: false, viaWebhook, error: 'invalid_date',\n                      hint: 'Expected YYYY-MM-DD', received: requested } }];\n  }\n  start = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));\n} else {\n  const now = new Date();\n  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());\n  start = new Date(today.getTime() - 24 * 3600 * 1000);\n}\n\n// Local midnight to local midnight. Built by arithmetic on the start date\n// rather than adding 24h, so a daylight-saving boundary cannot shift the window.\nconst end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1);\n\nconst pad = (n) => String(n).padStart(2, '0');\nconst dateKey = start.getFullYear() + '-' + pad(start.getMonth() + 1) + '-' + pad(start.getDate());\n\nreturn [{ json: {\n  ok: true,\n  viaWebhook,\n  backfill: Boolean(requested),\n  dateKey,\n  from: start.toISOString(),\n  to: end.toISOString(),\n  runId: $execution.id,\n} }];"
+      },
+      "id": "1ee95943-c60d-40c3-870d-5256c80d53e9",
+      "name": "Compute window",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        -40
+      ],
+      "notes": "Yesterday by default, or an explicit date when called for a backfill. Also the metrics document key, which is what makes a re-run idempotent.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "53e6ec90-10ea-4d68-93ea-b22112eab08e",
+              "leftValue": "={{ $json.ok }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "f01229e7-bbe2-4687-bce2-d81abde2d9ad",
+      "name": "Window valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        180,
+        113
+      ],
+      "notes": "Hard stop on a bad date. An undefined window would be dropped by JSON.stringify, so the $gte/$lt match would silently become 'everything' and roll the whole dataset up under one wrong date key.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst w = $('Compute window').first().json;\nreturn [{ json: { accepted: false, error: w.error, hint: w.hint, received: w.received } }];"
+      },
+      "id": "e31935fa-d9b2-479e-98b2-960bd7b29478",
+      "name": "Build 400 · bad date",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "9bdcfe1e-7847-4302-b747-a16f76479fdc",
+      "name": "Respond 400 · rollup",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "aggregate",
+        "collection": "assessments",
+        "query": "={{ JSON.stringify([{ $match: { startedAt: { $gte: $json.from, $lt: $json.to } } },{ $lookup: { from: 'subjects', localField: 'pseudonymId', foreignField: 'pseudonymId', as: 's' } },{ $project: { _id: 0, assessmentId: 1, locale: 1, status: 1, durationSec: 1, answeredItemCount: 1, nudgeCount: 1, ageBand: { $ifNull: [ { $arrayElemAt: ['$s.ageBand', 0] }, 'unknown' ] }, emirate: { $ifNull: [ { $arrayElemAt: ['$s.emirate', 0] }, 'unknown' ] } } },{ $limit: 5000 }]) }}"
+      },
+      "id": "60d82c82-cc30-4ae6-8b30-b953ca30b7c0",
+      "name": "Assessments + subject slices",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        300,
+        -40
+      ],
+      "notes": "The one place a join is needed: age band lives on the subject, not the assessment.",
+      "notesInFlow": false,
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "find",
+        "collection": "triage_decisions",
+        "query": "={{ JSON.stringify({ createdAt: { $gte: $('Compute window').first().json.from, $lt: $('Compute window').first().json.to } }) }}",
+        "options": {
+          "limit": 5000,
+          "projection": "{\"_id\":0,\"tier\":1,\"redFlags\":1,\"clamped\":1,\"status\":1,\"source\":1,\"requiresHumanReview\":1,\"reviewOutcome\":1}"
+        }
+      },
+      "id": "9bbc69db-3fb7-4f1b-80b7-90ae41b79241",
+      "name": "Triage decisions in window",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        540,
+        -40
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "find",
+        "collection": "risk_scores",
+        "query": "={{ JSON.stringify({ computedAt: { $gte: $('Compute window').first().json.from, $lt: $('Compute window').first().json.to } }) }}",
+        "options": {
+          "limit": 5000,
+          "projection": "{\"_id\":0,\"degraded\":1,\"overall\":1,\"missingInputs\":1}"
+        }
+      },
+      "id": "d0d2d56e-07b9-4172-86b9-dfdf05b9de4c",
+      "name": "Risk scores in window",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        780,
+        -40
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "find",
+        "collection": "escalations",
+        "query": "={{ JSON.stringify({ createdAt: { $gte: $('Compute window').first().json.from, $lt: $('Compute window').first().json.to } }) }}",
+        "options": {
+          "limit": 2000,
+          "projection": "{\"_id\":0,\"severity\":1,\"status\":1,\"createdAt\":1,\"dueAt\":1,\"acknowledgedAt\":1,\"slaMinutes\":1}"
+        }
+      },
+      "id": "08796cc2-6672-4526-a572-939364729200",
+      "name": "Escalations in window",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        1020,
+        -40
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "find",
+        "collection": "referrals",
+        "query": "={{ JSON.stringify({ dispatchedAt: { $gte: $('Compute window').first().json.from, $lt: $('Compute window').first().json.to } }) }}",
+        "options": {
+          "limit": 2000,
+          "projection": "{\"_id\":0,\"status\":1,\"serviceType\":1,\"tier\":1,\"daysToEvaluation\":1,\"dispatchedAt\":1}"
+        }
+      },
+      "id": "b50a567a-2015-4c1e-9f15-ea8b1e15e8f8",
+      "name": "Referrals in window",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        1260,
+        -40
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "find",
+        "collection": "kit_orders",
+        "query": "={{ JSON.stringify({ requestedAt: { $gte: $('Compute window').first().json.from, $lt: $('Compute window').first().json.to } }) }}",
+        "options": {
+          "limit": 2000,
+          "projection": "{\"_id\":0,\"status\":1,\"deliveryMode\":1,\"remindersSent\":1}"
+        }
+      },
+      "id": "9c2b611d-c19e-4931-be9e-8478bf9e860b",
+      "name": "Kit orders in window",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        1500,
+        -40
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "find",
+        "collection": "notifications",
+        "query": "={{ JSON.stringify({ createdAt: { $gte: $('Compute window').first().json.from, $lt: $('Compute window').first().json.to } }) }}",
+        "options": {
+          "limit": 5000,
+          "projection": "{\"_id\":0,\"template\":1,\"status\":1,\"locale\":1,\"channel\":1}"
+        }
+      },
+      "id": "0b5ea61c-5a8a-4b14-9d8a-1fcd5c8a1e3a",
+      "name": "Notifications in window",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        1740,
+        -40
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst median = (xs) => {\n  const v = xs.filter((x) => typeof x === 'number' && !Number.isNaN(x)).sort((a, b) => a - b);\n  if (v.length === 0) return null;\n  const mid = Math.floor(v.length / 2);\n  return v.length % 2 ? v[mid] : Math.round(((v[mid - 1] + v[mid]) / 2) * 10) / 10;\n};\n\nconst rate = (num, den) => (den > 0 ? Math.round((num / den) * 1000) / 1000 : null);\n\n// Completion rate per slice, plus the gap between best and worst. The gap is the\n// number that actually tells you whether the service works for everyone.\nconst sliceRates = (rows, key) => {\n  const acc = {};\n  for (const r of rows) {\n    const k = r[key] ?? 'unknown';\n    acc[k] ??= { started: 0, completed: 0 };\n    acc[k].started += 1;\n    if (r.completed) acc[k].completed += 1;\n  }\n  const out = {};\n  for (const [k, v] of Object.entries(acc)) {\n    out[k] = { started: v.started, completed: v.completed, completionRate: rate(v.completed, v.started) };\n  }\n  // Only slices with enough volume to mean anything are compared.\n  const comparable = Object.entries(out).filter(([, v]) => v.started >= 5 && v.completionRate !== null);\n  let gap = null;\n  let worst = null;\n  if (comparable.length >= 2) {\n    const sorted = comparable.sort((a, b) => a[1].completionRate - b[1].completionRate);\n    worst = sorted[0][0];\n    gap = Math.round((sorted[sorted.length - 1][1].completionRate - sorted[0][1].completionRate) * 1000) / 1000;\n  }\n  return { bySlice: out, maxCompletionGap: gap, worstSlice: worst, comparableSlices: comparable.length };\n};\n\n\nconst w = $('Compute window').first().json;\nconst rows = (name) => $(name).all().map((i) => i.json).filter((d) => d && Object.keys(d).length > 0);\n\nconst assessments = rows('Assessments + subject slices');\nconst triage = rows('Triage decisions in window');\nconst scores = rows('Risk scores in window');\nconst escalations = rows('Escalations in window');\nconst referrals = rows('Referrals in window');\nconst kits = rows('Kit orders in window');\nconst notifications = rows('Notifications in window');\n\n/* ---- assessments ---- */\nconst started = assessments.length;\nconst completedRows = assessments.filter((a) => a.status === 'completed');\nconst completed = completedRows.length;\n\nconst sliceRows = assessments.map((a) => ({\n  locale: a.locale ?? 'unknown',\n  ageBand: a.ageBand ?? 'unknown',\n  emirate: a.emirate ?? 'unknown',\n  completed: a.status === 'completed',\n}));\n\n/* ---- triage ---- */\nconst tierCounts = triage.reduce((acc, t) => {\n  acc[t.tier] = (acc[t.tier] ?? 0) + 1;\n  return acc;\n}, {});\nconst redFlagCount = triage.filter((t) => (t.redFlags ?? []).length > 0).length;\nconst clampedCount = triage.filter((t) => t.clamped === true).length;\nconst pendingReview = triage.filter((t) => t.status === 'pending_review').length;\nconst reviewOutcomes = triage.reduce((acc, t) => {\n  if (t.reviewOutcome) acc[t.reviewOutcome] = (acc[t.reviewOutcome] ?? 0) + 1;\n  return acc;\n}, {});\n\n/* ---- escalations & SLA ---- */\nconst ackMinutes = escalations\n  .filter((e) => e.acknowledgedAt)\n  .map((e) => (new Date(e.acknowledgedAt).getTime() - new Date(e.createdAt).getTime()) / 60000);\nconst withinSla = escalations.filter(\n  (e) => e.acknowledgedAt && new Date(e.acknowledgedAt).getTime() <= new Date(e.dueAt).getTime()\n).length;\nconst breached = escalations.filter((e) => e.status === 'breached').length;\n\n/* ---- referrals ---- */\nconst COMPLETED_STATES = new Set(['attended', 'completed']);\nconst referralsCompleted = referrals.filter((r) => COMPLETED_STATES.has(r.status)).length;\nconst daysToEval = referrals.map((r) => r.daysToEvaluation).filter((x) => typeof x === 'number');\n\n/* ---- degradation ---- */\nconst degraded = scores.filter((s) => s.degraded === true).length;\nconst unscoredSemen = scores.filter((s) => (s.missingInputs ?? []).includes('semen_analysis')).length;\n\n/* ---- outbound discipline ---- */\nconst nudges = notifications.filter((n) => n.template === 'reengagement_nudge');\nconst suppressed = notifications.filter((n) => String(n.status ?? '').startsWith('suppressed')).length;\n\nconst localeSlices = sliceRates(sliceRows, 'locale');\nconst ageSlices = sliceRates(sliceRows, 'ageBand');\n\nconst doc = {\n  // NOT _id. The n8n MongoDB node calls new ObjectId() on whatever updateKey\n  // names, so an _id of \"2026-10-20\" throws BSONError and the node dies before\n  // producing output - which leaves a responseNode webhook hanging with no\n  // reply at all. dateKey carries the idempotency instead, with a unique\n  // index behind it (see tools/mongo-bootstrap.js).\n  dateKey: w.dateKey,\n  windowFrom: w.from,\n  windowTo: w.to,\n\n  assessmentsStarted: started,\n  assessmentsCompleted: completed,\n  completionRate: rate(completed, started),\n  medianDurationSec: median(completedRows.map((a) => a.durationSec)),\n  medianAnsweredItems: median(completedRows.map((a) => a.answeredItemCount)),\n\n  tierCounts,\n  redFlagCount,\n  redFlagRate: rate(redFlagCount, triage.length),\n  // How often the deterministic gate had to override the model. A rising number\n  // means the model is drifting away from the safety floor.\n  safetyClampCount: clampedCount,\n  safetyClampRate: rate(clampedCount, triage.length),\n  pendingClinicianReview: pendingReview,\n  clinicianReviewOutcomes: reviewOutcomes,\n\n  escalationsRaised: escalations.length,\n  escalationsAcknowledgedWithinSla: withinSla,\n  slaBreaches: breached,\n  slaComplianceRate: rate(withinSla, escalations.length),\n  medianMinutesToClinicianAck: median(ackMinutes),\n\n  referralsDispatched: referrals.length,\n  referralsCompleted,\n  referralCompletionRate: rate(referralsCompleted, referrals.length),\n  medianDaysToAppropriateEvaluation: median(daysToEval),\n\n  kitsRequested: kits.length,\n  kitsReturned: kits.filter((k) => ['returned', 'lab_received', 'resulted'].includes(k.status)).length,\n  kitsExpired: kits.filter((k) => k.status === 'expired').length,\n  kitDeliveryModeMix: kits.reduce((acc, k) => {\n    acc[k.deliveryMode ?? 'unknown'] = (acc[k.deliveryMode ?? 'unknown'] ?? 0) + 1;\n    return acc;\n  }, {}),\n\n  degradedScoreCount: degraded,\n  degradedScoreRate: rate(degraded, scores.length),\n  assessmentsAwaitingSemenInput: unscoredSemen,\n\n  nudgesSent: nudges.length,\n  notificationsSuppressed: suppressed,\n\n  fairness: {\n    byLocale: localeSlices.bySlice,\n    localeCompletionGap: localeSlices.maxCompletionGap,\n    localeWorstSlice: localeSlices.worstSlice,\n    byAgeBand: ageSlices.bySlice,\n    ageBandCompletionGap: ageSlices.maxCompletionGap,\n    ageBandWorstSlice: ageSlices.worstSlice,\n    // A gap this wide is a product failure, not a statistical curiosity.\n    gapThreshold: 0.1,\n    gapExceeded: Math.max(localeSlices.maxCompletionGap ?? 0, ageSlices.maxCompletionGap ?? 0) > 0.1,\n  },\n\n  computedAt: nowIso(),\n  computedByRunId: w.runId,\n};\n\nreturn [{ json: doc }];"
+      },
+      "id": "74b86f95-d94e-4ac9-964e-d610d74ed7a3",
+      "name": "Assemble metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        -40
+      ],
+      "notes": "All the arithmetic in one readable place, so the numbers can be argued with.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "collection": "metrics_daily",
+        "updateKey": "dateKey",
+        "fields": "dateKey,windowFrom,windowTo,assessmentsStarted,assessmentsCompleted,completionRate,medianDurationSec,medianAnsweredItems,tierCounts,redFlagCount,redFlagRate,safetyClampCount,safetyClampRate,pendingClinicianReview,clinicianReviewOutcomes,escalationsRaised,escalationsAcknowledgedWithinSla,slaBreaches,slaComplianceRate,medianMinutesToClinicianAck,referralsDispatched,referralsCompleted,referralCompletionRate,medianDaysToAppropriateEvaluation,kitsRequested,kitsReturned,kitsExpired,kitDeliveryModeMix,degradedScoreCount,degradedScoreRate,assessmentsAwaitingSemenInput,nudgesSent,notificationsSuppressed,fairness,computedAt,computedByRunId",
+        "upsert": true,
+        "options": {}
+      },
+      "id": "6a727c49-fe13-463d-bb13-a184fc13a317",
+      "name": "Upsert metrics_daily",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        2220,
+        -40
+      ],
+      "notes": "Keyed on dateKey, so re-running a day overwrites rather than duplicates. Not _id: the Mongo node coerces updateKey through new ObjectId().",
+      "notesInFlow": false,
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst m = $('Assemble metrics').first().json;\nreturn [{ json: auditDoc({\n  actor: 'workflow:08-metrics-rollup',\n  action: 'METRICS_ROLLED_UP',\n  runId: m.computedByRunId,\n  outcome: m.fairness.gapExceeded ? 'fairness_gap_exceeded' : 'ok',\n  meta: {\n    dateKey: m.dateKey,\n    assessmentsCompleted: m.assessmentsCompleted,\n    completionRate: m.completionRate,\n    slaComplianceRate: m.slaComplianceRate,\n    referralCompletionRate: m.referralCompletionRate,\n    medianDaysToAppropriateEvaluation: m.medianDaysToAppropriateEvaluation,\n    degradedScoreRate: m.degradedScoreRate,\n    localeCompletionGap: m.fairness.localeCompletionGap,\n    ageBandCompletionGap: m.fairness.ageBandCompletionGap,\n  },\n}) }];"
+      },
+      "id": "66e9a8da-a74e-4afe-a64e-a96ba54ea7d8",
+      "name": "Doc · audit rollup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2460,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "audit_log",
+        "fields": "at,actor,action,pseudonymId,subjectRef,consentId,workflowRunId,outcome,meta",
+        "options": {}
+      },
+      "id": "19e18f2a-7ebf-49ee-bdbf-d85b7cbfd6c8",
+      "name": "Write audit · rollup",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        2700,
+        -40
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e2dff4a4-ea71-4b5c-ad71-f015ec71ee82",
+              "leftValue": "={{ $('Compute window').first().json.viaWebhook }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "9243d2ec-bee6-4484-81e6-393dc0e637aa",
+      "name": "Via webhook?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2940,
+        -40
+      ],
+      "notes": "respondToWebhook must not run on the scheduled path - there is no request to answer, and n8n fails the execution if it tries.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst m = $('Assemble metrics').first().json;\nreturn [{ json: {\n  accepted: true,\n  dateKey: m.dateKey,\n  backfill: $('Compute window').first().json.backfill,\n  headline: {\n    assessmentsStarted: m.assessmentsStarted,\n    assessmentsCompleted: m.assessmentsCompleted,\n    completionRate: m.completionRate,\n    medianDaysToAppropriateEvaluation: m.medianDaysToAppropriateEvaluation,\n    referralCompletionRate: m.referralCompletionRate,\n    slaComplianceRate: m.slaComplianceRate,\n    degradedScoreRate: m.degradedScoreRate,\n  },\n  tierCounts: m.tierCounts,\n  fairness: {\n    localeCompletionGap: m.fairness.localeCompletionGap,\n    localeWorstSlice: m.fairness.localeWorstSlice,\n    ageBandCompletionGap: m.fairness.ageBandCompletionGap,\n    ageBandWorstSlice: m.fairness.ageBandWorstSlice,\n    gapExceeded: m.fairness.gapExceeded,\n  },\n} }];"
+      },
+      "id": "4a2150ff-a2eb-4cff-a3eb-1e92a4eb2025",
+      "name": "Build rollup response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3180,
+        -210
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "2a396214-a7c5-462c-aac5-9ae5a9c59952",
+      "name": "Respond 200 · rollup",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3420,
+        -210
+      ]
+    }
+  ],
+  "connections": {
+    "Daily 00:30 · rollup": {
+      "main": [
+        [
+          {
+            "node": "Vigor config · schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vigor config · schedule": {
+      "main": [
+        [
+          {
+            "node": "Trigger rollup via webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook metrics.rollup": {
+      "main": [
+        [
+          {
+            "node": "Compute window",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute window": {
+      "main": [
+        [
+          {
+            "node": "Window valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window valid?": {
+      "main": [
+        [
+          {
+            "node": "Assessments + subject slices",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build 400 · bad date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build 400 · bad date": {
+      "main": [
+        [
+          {
+            "node": "Respond 400 · rollup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assessments + subject slices": {
+      "main": [
+        [
+          {
+            "node": "Triage decisions in window",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Triage decisions in window": {
+      "main": [
+        [
+          {
+            "node": "Risk scores in window",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Risk scores in window": {
+      "main": [
+        [
+          {
+            "node": "Escalations in window",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalations in window": {
+      "main": [
+        [
+          {
+            "node": "Referrals in window",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Referrals in window": {
+      "main": [
+        [
+          {
+            "node": "Kit orders in window",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kit orders in window": {
+      "main": [
+        [
+          {
+            "node": "Notifications in window",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notifications in window": {
+      "main": [
+        [
+          {
+            "node": "Assemble metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble metrics": {
+      "main": [
+        [
+          {
+            "node": "Upsert metrics_daily",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert metrics_daily": {
+      "main": [
+        [
+          {
+            "node": "Doc · audit rollup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · audit rollup": {
+      "main": [
+        [
+          {
+            "node": "Write audit · rollup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write audit · rollup": {
+      "main": [
+        [
+          {
+            "node": "Via webhook?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Via webhook?": {
+      "main": [
+        [
+          {
+            "node": "Build rollup response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build rollup response": {
+      "main": [
+        [
+          {
+            "node": "Respond 200 · rollup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": false,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "meta": {
+    "instanceId": "vigor-local"
+  },
+  "id": "vigor08"
+}

@@ -1,0 +1,367 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vigor.health/schemas/events.schema.json",
+  "title": "Vigor domain events",
+  "description": "Every payload that crosses a service boundary. The web app, the agent service and the n8n workflows all validate against this file, so a contract change is a single reviewable diff rather than nine silent drifts.",
+
+  "$defs": {
+    "pseudonymId": {
+      "type": "string",
+      "pattern": "^psn_[a-z0-9]{6,32}$",
+      "description": "Pseudonymous subject identifier. The only subject key permitted in any clinical payload."
+    },
+    "locale": { "enum": ["en", "ar"] },
+    "isoDateTime": { "type": "string", "format": "date-time" },
+    "tier": {
+      "enum": ["SELF_CARE", "PRIMARY_CARE", "FERTILITY_SERVICES", "ANDROLOGY_UROLOGY", "URGENT"],
+      "description": "Ordered by clinical acuity, not by service type. The escalate-only rule compares positions in this list."
+    },
+    "redFlagCode": {
+      "enum": [
+        "RF_ACUTE_SCROTAL_PAIN",
+        "RF_TESTICULAR_MASS",
+        "RF_PRIAPISM",
+        "RF_GU_TRAUMA",
+        "RF_ACUTE_URINARY_RETENTION",
+        "RF_FEBRILE_GU_INFECTION",
+        "RF_PITUITARY_SUSPICION",
+        "RF_BILATERAL_UNDESCENDED",
+        "RF_ABSENT_VAS",
+        "RF_SEVERE_SEMEN_FINDING",
+        "RF_SEMEN_BELOW_REF",
+        "AZOOSPERMIA",
+        "SEVERE_OLIGOZOOSPERMIA"
+      ]
+    },
+    "consentScope": {
+      "enum": [
+        "ASSESSMENT",
+        "STORE_RESULTS",
+        "SHARE_WITH_CLINICIAN",
+        "SHARE_WITH_FERTILITY_SERVICE",
+        "AT_HOME_TESTING",
+        "CONTACT_REMINDERS",
+        "RESEARCH_AGGREGATE"
+      ]
+    },
+    "symptom": {
+      "enum": [
+        "acute_scrotal_pain",
+        "scrotal_swelling",
+        "scrotal_ache",
+        "testicular_lump",
+        "prolonged_erection",
+        "recent_genital_trauma",
+        "cannot_pass_urine",
+        "dysuria",
+        "urethral_discharge",
+        "fever",
+        "visual_field_loss",
+        "gynaecomastia"
+      ],
+      "description": "Closed vocabulary. The red-flag gate is a pure function of these codes, so free text can never silently change a routing decision."
+    },
+
+    "answers": {
+      "type": "object",
+      "description": "Minimised intake answers. Only items that feed a risk domain or the red-flag gate are accepted; anything else is dropped at the edge rather than stored.",
+      "additionalProperties": false,
+      "properties": {
+        "bmi": { "type": "number", "minimum": 10, "maximum": 80 },
+        "waistCm": { "type": "number", "minimum": 40, "maximum": 250 },
+        "diabetes": { "enum": ["none", "prediabetes", "type1", "type2", "unknown"] },
+        "hba1c": { "type": "number", "minimum": 3, "maximum": 20 },
+        "hypertension": { "type": "boolean" },
+
+        "smoking": { "enum": ["never", "former", "current"] },
+        "packYears": { "type": "number", "minimum": 0, "maximum": 150 },
+        "alcohol": { "enum": ["none", "occasional", "weekly", "daily"] },
+        "heatExposure": { "enum": ["none", "occasional", "frequent"] },
+        "anabolicSteroids": { "enum": ["never", "past", "current"] },
+        "recreationalDrugs": { "enum": ["never", "past", "current"] },
+        "sleepHours": { "type": "number", "minimum": 0, "maximum": 24 },
+        "occupationalExposure": {
+          "type": "array",
+          "items": { "enum": ["heat", "solvents", "pesticides", "heavy_metals", "radiation", "none"] }
+        },
+
+        "stiHistory": {
+          "type": "array",
+          "items": { "enum": ["none", "chlamydia", "gonorrhoea", "syphilis", "other", "prefer_not_to_say"] }
+        },
+        "mumpsOrchitis": { "type": "boolean" },
+        "currentDischarge": { "type": "boolean" },
+
+        "varicocele": { "enum": ["none", "known", "unknown"] },
+        "undescendedTestis": {
+          "enum": ["none", "unilateral_corrected", "bilateral_corrected", "bilateral_uncorrected", "unknown"]
+        },
+        "priorHerniaRepair": { "type": "boolean" },
+        "testicularTrauma": { "type": "boolean" },
+        "absentVas": { "type": "boolean" },
+        "priorVasectomy": { "type": "boolean" },
+
+        "libidoChange": { "enum": ["none", "reduced", "absent", "increased"] },
+        "erectileDifficulty": { "enum": ["none", "occasional", "frequent"] },
+        "ejaculationDifficulty": { "enum": ["none", "occasional", "frequent"] },
+
+        "monthsTrying": { "type": "integer", "minimum": 0, "maximum": 600 },
+        "priorConception": { "type": "boolean" },
+        "partnerAssessed": { "type": "boolean" },
+
+        "symptoms": { "type": "array", "items": { "$ref": "#/$defs/symptom" } },
+        "painOnsetHours": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Hours since symptom onset. Drives the torsion window in the red-flag gate."
+        },
+        "medications": { "type": "array", "items": { "type": "string", "maxLength": 80 } },
+        "freeTextEnc": {
+          "type": "string",
+          "pattern": "^v1:gcm:",
+          "description": "Encrypted before it reaches the database. Never included in any outbound payload."
+        }
+      }
+    },
+
+    "riskDriver": {
+      "type": "object",
+      "required": ["code", "label", "weight", "modifiable"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z0-9_]+$" },
+        "label": { "type": "string", "maxLength": 120 },
+        "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+        "modifiable": { "type": "boolean" }
+      }
+    },
+
+    "riskDomain": {
+      "type": "object",
+      "required": ["domain", "score", "band", "drivers"],
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "enum": ["metabolic", "lifestyle", "infectious", "anatomical", "endocrine", "semen"]
+        },
+        "score": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "band": { "enum": ["low", "moderate", "elevated", "high", "unknown"] },
+        "drivers": { "type": "array", "items": { "$ref": "#/$defs/riskDriver" } },
+        "note": { "type": "string", "maxLength": 200 }
+      }
+    },
+
+    "semenValues": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "volumeMl": { "type": "number", "minimum": 0 },
+        "concentrationMillionPerMl": { "type": "number", "minimum": 0 },
+        "totalSpermMillion": { "type": "number", "minimum": 0 },
+        "totalMotilityPct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "progressiveMotilityPct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "normalFormsPct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "vitalityPct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "phLevel": { "type": "number", "minimum": 0, "maximum": 14 }
+      }
+    }
+  },
+
+  "oneOf": [
+    { "$ref": "#/properties/intakeCompleted" },
+    { "$ref": "#/properties/triageRedFlag" },
+    { "$ref": "#/properties/referralConsented" },
+    { "$ref": "#/properties/referralStatusUpdated" },
+    { "$ref": "#/properties/kitRequested" },
+    { "$ref": "#/properties/labResultReceived" },
+    { "$ref": "#/properties/consentRevoked" },
+    { "$ref": "#/properties/clinicianReviewSubmitted" }
+  ],
+
+  "properties": {
+    "intakeCompleted": {
+      "title": "intake.completed",
+      "description": "POST /webhook/vigor/intake-completed — consumed by workflow 01.",
+      "type": "object",
+      "required": ["eventType", "pseudonymId", "assessmentId", "consentId", "answers"],
+      "properties": {
+        "eventType": { "const": "intake.completed" },
+        "eventId": { "type": "string" },
+        "occurredAt": { "$ref": "#/$defs/isoDateTime" },
+        "idempotencyKey": { "type": "string", "maxLength": 128 },
+        "pseudonymId": { "$ref": "#/$defs/pseudonymId" },
+        "assessmentId": { "type": "string", "pattern": "^asm_" },
+        "consentId": { "type": "string", "pattern": "^cns_" },
+        "locale": { "$ref": "#/$defs/locale" },
+        "startedAt": { "$ref": "#/$defs/isoDateTime" },
+        "durationSec": { "type": "integer", "minimum": 0 },
+        "answers": { "$ref": "#/$defs/answers" },
+        "skippedSensitive": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "triageRedFlag": {
+      "title": "triage.red_flag",
+      "description": "POST /webhook/vigor/red-flag-escalation — consumed by workflow 02.",
+      "type": "object",
+      "required": ["eventType", "pseudonymId", "decisionId", "redFlags", "severity"],
+      "properties": {
+        "eventType": { "const": "triage.red_flag" },
+        "eventId": { "type": "string" },
+        "occurredAt": { "$ref": "#/$defs/isoDateTime" },
+        "pseudonymId": { "$ref": "#/$defs/pseudonymId" },
+        "locale": { "$ref": "#/$defs/locale" },
+        "decisionId": { "type": "string", "pattern": "^trg_" },
+        "assessmentId": { "type": ["string", "null"] },
+        "redFlags": { "type": "array", "items": { "$ref": "#/$defs/redFlagCode" } },
+        "severity": { "enum": ["URGENT", "SAME_DAY", "ROUTINE_REVIEW"] },
+        "slaMinutes": { "type": "integer", "minimum": 1 },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["code", "severity", "reason"],
+            "properties": {
+              "code": { "type": "string" },
+              "severity": { "enum": ["URGENT", "SAME_DAY", "ROUTINE_REVIEW"] },
+              "reason": { "type": "string", "maxLength": 400 }
+            }
+          }
+        },
+        "sourceRunId": { "type": ["string", "null"] }
+      }
+    },
+
+    "referralConsented": {
+      "title": "referral.consented",
+      "description": "POST /webhook/vigor/referral-consent — consumed by workflow 03.",
+      "type": "object",
+      "required": ["pseudonymId", "decisionId", "serviceType"],
+      "properties": {
+        "eventType": { "const": "referral.consented" },
+        "pseudonymId": { "$ref": "#/$defs/pseudonymId" },
+        "decisionId": { "type": "string", "pattern": "^trg_" },
+        "serviceType": { "enum": ["andrology", "urology", "primary_care", "fertility"] },
+        "locale": { "$ref": "#/$defs/locale" },
+        "emirate": { "type": "string", "maxLength": 60 },
+        "facilityId": { "type": ["string", "null"] },
+        "preferences": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "language": { "$ref": "#/$defs/locale" },
+            "maleClinician": { "type": "boolean" },
+            "teleconsult": { "type": "boolean" }
+          },
+          "description": "Language and the availability of a male clinician are access barriers, so they are matching criteria rather than preferences in name only."
+        }
+      }
+    },
+
+    "referralStatusUpdated": {
+      "title": "referral.status.updated",
+      "description": "POST /webhook/vigor/referral-status — consumed by workflow 03. The facility authenticates with the share token it was issued.",
+      "type": "object",
+      "required": ["shareToken", "status"],
+      "properties": {
+        "eventType": { "const": "referral.status.updated" },
+        "shareToken": { "type": "string", "pattern": "^shr_" },
+        "status": { "enum": ["accepted", "booked", "attended", "completed", "declined"] },
+        "occurredAt": { "$ref": "#/$defs/isoDateTime" },
+        "facilityId": { "type": "string" }
+      }
+    },
+
+    "kitRequested": {
+      "title": "kit.requested",
+      "description": "POST /webhook/vigor/kit-request — consumed by workflow 04.",
+      "type": "object",
+      "required": ["pseudonymId", "deliveryWindow"],
+      "properties": {
+        "eventType": { "const": "kit.requested" },
+        "pseudonymId": { "$ref": "#/$defs/pseudonymId" },
+        "assessmentId": { "type": ["string", "null"] },
+        "locale": { "$ref": "#/$defs/locale" },
+        "deliveryWindow": { "type": "string", "maxLength": 80 },
+        "deliveryMode": {
+          "enum": ["home", "locker", "pickup_point"],
+          "description": "Defaults to locker. For many users a locker is the least exposing option, so it is a first-class choice."
+        },
+        "dropPointRef": { "type": ["string", "null"] }
+      }
+    },
+
+    "labResultReceived": {
+      "title": "lab.result.received",
+      "description": "POST /webhook/vigor/lab-result — consumed by workflow 05. Requires the X-Vigor-Lab-Key header.",
+      "type": "object",
+      "required": ["pseudonymId", "panel", "values"],
+      "properties": {
+        "eventType": { "const": "lab.result.received" },
+        "pseudonymId": { "$ref": "#/$defs/pseudonymId" },
+        "kitOrderId": { "type": ["string", "null"] },
+        "assessmentId": { "type": ["string", "null"] },
+        "panel": { "enum": ["semen_analysis", "hormonal", "metabolic", "infectious"] },
+        "values": { "$ref": "#/$defs/semenValues" },
+        "collectedAt": { "$ref": "#/$defs/isoDateTime" },
+        "labRef": { "type": "string" },
+        "locale": { "$ref": "#/$defs/locale" }
+      }
+    },
+
+    "consentRevoked": {
+      "title": "consent.revoked",
+      "description": "POST /webhook/vigor/consent-revoked — consumed by workflow 07.",
+      "type": "object",
+      "required": ["pseudonymId"],
+      "properties": {
+        "eventType": { "const": "consent.revoked" },
+        "pseudonymId": { "$ref": "#/$defs/pseudonymId" },
+        "scope": {
+          "oneOf": [
+            { "const": "ALL" },
+            { "$ref": "#/$defs/consentScope" },
+            { "type": "array", "items": { "$ref": "#/$defs/consentScope" } }
+          ]
+        },
+        "eraseData": {
+          "type": "boolean",
+          "description": "Erasure is a separate explicit ask. Withdrawing consent does not silently delete results the user may still want."
+        },
+        "reason": { "type": ["string", "null"], "maxLength": 300 },
+        "locale": { "$ref": "#/$defs/locale" }
+      }
+    },
+
+    "clinicianReviewSubmitted": {
+      "title": "clinician.review.submitted",
+      "description": "POST /webhook/vigor/clinician-review — consumed by workflow 09. Requires the X-Vigor-Clinician-Key header.",
+      "type": "object",
+      "required": ["clinicianId", "decisionId", "outcome"],
+      "properties": {
+        "eventType": { "const": "clinician.review.submitted" },
+        "clinicianId": { "type": "string", "maxLength": 64 },
+        "decisionId": { "type": "string", "pattern": "^trg_" },
+        "outcome": { "enum": ["approved", "escalated", "de_escalated"] },
+        "overrideTier": { "$ref": "#/$defs/tier" },
+        "justification": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 2000,
+          "description": "Mandatory for de_escalated. A de-escalation that crosses an emergency red flag is refused by workflow 09 regardless of justification."
+        },
+        "note": { "type": ["string", "null"], "maxLength": 2000 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "outcome": { "const": "de_escalated" } }, "required": ["outcome"] },
+          "then": { "required": ["overrideTier", "justification"] }
+        },
+        {
+          "if": { "properties": { "outcome": { "const": "escalated" } }, "required": ["outcome"] },
+          "then": { "required": ["overrideTier"] }
+        }
+      ]
+    }
+  }
+}

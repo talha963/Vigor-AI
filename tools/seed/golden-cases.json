@@ -1,0 +1,406 @@
+{
+  "$comment": "Hand-written clinical scenarios used as the evaluation set. Every case states what the DETERMINISTIC gate must produce (expectedRedFlags, expectedMinimumTier) and what the full engine is expected to produce once chunk 2 lands (expectedTier). The gate assertions are the ones that must never regress: they are the safety floor. The engine assertions are allowed to be tuned. Cases are synthetic and were written to exercise the gate, not drawn from any real person.",
+  "$meta": {
+    "version": "golden-cases-v1",
+    "whoRefVersion": "WHO-2021-6th",
+    "reviewStatus": "awaiting_clinical_sign_off",
+    "note": "A clinician must sign off this file before any real-world use. Until then it documents intended behaviour, not validated behaviour."
+  },
+  "cases": [
+    {
+      "id": "GC01",
+      "label": "Acute scrotal pain, 3 hours — possible torsion",
+      "rationale": "The single most time-critical presentation in male genital medicine. If this case ever routes anywhere but emergency care, the system is unsafe.",
+      "locale": "en",
+      "ageBand": "18-24",
+      "answers": {
+        "symptoms": ["acute_scrotal_pain", "scrotal_swelling"],
+        "painOnsetHours": 3,
+        "monthsTrying": 0,
+        "smoking": "never",
+        "bmi": 23.1
+      },
+      "expectedRedFlags": ["RF_ACUTE_SCROTAL_PAIN"],
+      "expectedSeverity": "URGENT",
+      "expectedMinimumTier": "URGENT",
+      "expectedTier": "URGENT",
+      "expectEscalation": true
+    },
+    {
+      "id": "GC02",
+      "label": "Painless testicular lump",
+      "rationale": "Testicular cancer peaks in exactly this age group and is highly curable when caught early. Routing it as a fertility question would be a serious miss.",
+      "locale": "en",
+      "ageBand": "25-29",
+      "answers": {
+        "symptoms": ["testicular_lump"],
+        "monthsTrying": 8,
+        "smoking": "never",
+        "bmi": 24.6
+      },
+      "expectedRedFlags": ["RF_TESTICULAR_MASS"],
+      "expectedSeverity": "URGENT",
+      "expectedMinimumTier": "URGENT",
+      "expectedTier": "URGENT",
+      "expectEscalation": true
+    },
+    {
+      "id": "GC03",
+      "label": "Prolonged painful erection",
+      "rationale": "Priapism beyond four hours risks permanent damage. Included because it is the kind of symptom men delay reporting out of embarrassment, which is the whole problem this product addresses.",
+      "locale": "ar",
+      "ageBand": "30-34",
+      "answers": {
+        "symptoms": ["prolonged_erection"],
+        "monthsTrying": 0,
+        "bmi": 27.4
+      },
+      "expectedRedFlags": ["RF_PRIAPISM"],
+      "expectedSeverity": "URGENT",
+      "expectedMinimumTier": "URGENT",
+      "expectedTier": "URGENT",
+      "expectEscalation": true
+    },
+    {
+      "id": "GC04",
+      "label": "Unable to pass urine",
+      "rationale": "Acute retention. Emergency regardless of any reproductive context.",
+      "locale": "en",
+      "ageBand": "40+",
+      "answers": {
+        "symptoms": ["cannot_pass_urine", "dysuria"],
+        "monthsTrying": 0,
+        "bmi": 31.8,
+        "diabetes": "type2"
+      },
+      "expectedRedFlags": ["RF_ACUTE_URINARY_RETENTION"],
+      "expectedSeverity": "URGENT",
+      "expectedMinimumTier": "URGENT",
+      "expectedTier": "URGENT",
+      "expectEscalation": true
+    },
+    {
+      "id": "GC05",
+      "label": "Fever with urethral discharge",
+      "rationale": "Febrile genitourinary infection needs same-day care and is a treatable, reversible cause of impaired fertility if caught early. This is the upstream catch the brief asks for.",
+      "locale": "en",
+      "ageBand": "25-29",
+      "answers": {
+        "symptoms": ["fever", "urethral_discharge", "dysuria"],
+        "currentDischarge": true,
+        "stiHistory": ["prefer_not_to_say"],
+        "monthsTrying": 6,
+        "bmi": 25.0
+      },
+      "expectedRedFlags": ["RF_FEBRILE_GU_INFECTION"],
+      "expectedSeverity": "SAME_DAY",
+      "expectedMinimumTier": "URGENT",
+      "expectedTier": "URGENT",
+      "expectEscalation": true
+    },
+    {
+      "id": "GC06",
+      "label": "Visual field loss with gynaecomastia",
+      "rationale": "A prolactinoma can present as reduced libido and infertility long before anyone thinks of the pituitary. Catching it here is the clearest example of value from asking the right questions early.",
+      "locale": "en",
+      "ageBand": "30-34",
+      "answers": {
+        "symptoms": ["visual_field_loss", "gynaecomastia"],
+        "libidoChange": "absent",
+        "erectileDifficulty": "frequent",
+        "monthsTrying": 20,
+        "bmi": 26.2
+      },
+      "expectedRedFlags": ["RF_PITUITARY_SUSPICION"],
+      "expectedSeverity": "SAME_DAY",
+      "expectedMinimumTier": "URGENT",
+      "expectedTier": "URGENT",
+      "expectEscalation": true
+    },
+    {
+      "id": "GC07",
+      "label": "Bilateral uncorrected undescended testes",
+      "rationale": "Not urgent, but it changes the pathway completely and must not sit in a routine queue.",
+      "locale": "ar",
+      "ageBand": "25-29",
+      "answers": {
+        "undescendedTestis": "bilateral_uncorrected",
+        "monthsTrying": 14,
+        "bmi": 22.8,
+        "symptoms": []
+      },
+      "expectedRedFlags": ["RF_BILATERAL_UNDESCENDED"],
+      "expectedSeverity": "ROUTINE_REVIEW",
+      "expectedMinimumTier": "ANDROLOGY_UROLOGY",
+      "expectedTier": "ANDROLOGY_UROLOGY",
+      "expectEscalation": true
+    },
+    {
+      "id": "GC08",
+      "label": "Absent vas deferens noted previously",
+      "rationale": "Strongly associated with CFTR mutations, so this is a genetic counselling pathway rather than a lifestyle conversation.",
+      "locale": "en",
+      "ageBand": "30-34",
+      "answers": {
+        "absentVas": true,
+        "monthsTrying": 18,
+        "priorConception": false,
+        "bmi": 24.0,
+        "symptoms": []
+      },
+      "expectedRedFlags": ["RF_ABSENT_VAS"],
+      "expectedSeverity": "ROUTINE_REVIEW",
+      "expectedMinimumTier": "ANDROLOGY_UROLOGY",
+      "expectedTier": "ANDROLOGY_UROLOGY",
+      "expectEscalation": true
+    },
+    {
+      "id": "GC09",
+      "label": "18 months trying, obese, type 2 diabetes, current smoker",
+      "rationale": "The core target case. Every driver here is modifiable, and all of them are usually found late. No red flag, so this must route on risk rather than on alarm.",
+      "locale": "en",
+      "ageBand": "35-39",
+      "answers": {
+        "monthsTrying": 18,
+        "priorConception": false,
+        "partnerAssessed": true,
+        "bmi": 33.4,
+        "waistCm": 108,
+        "diabetes": "type2",
+        "hba1c": 7.8,
+        "hypertension": true,
+        "smoking": "current",
+        "packYears": 12,
+        "heatExposure": "frequent",
+        "libidoChange": "reduced",
+        "symptoms": []
+      },
+      "expectedRedFlags": [],
+      "expectedSeverity": null,
+      "expectedMinimumTier": null,
+      "expectedTier": "ANDROLOGY_UROLOGY",
+      "expectEscalation": false,
+      "expectModifiableDrivers": ["BMI_OBESE", "HBA1C_HIGH", "SMOKING_CURRENT", "HEAT_EXPOSURE"]
+    },
+    {
+      "id": "GC10",
+      "label": "14 months trying, otherwise healthy",
+      "rationale": "Twelve months of trying is the conventional threshold for assessment. This case checks the pathway opens on duration alone, without needing anything to be wrong.",
+      "locale": "ar",
+      "ageBand": "30-34",
+      "answers": {
+        "monthsTrying": 14,
+        "priorConception": false,
+        "partnerAssessed": false,
+        "bmi": 23.9,
+        "smoking": "never",
+        "alcohol": "none",
+        "symptoms": []
+      },
+      "expectedRedFlags": [],
+      "expectedSeverity": null,
+      "expectedMinimumTier": null,
+      "expectedTier": "ANDROLOGY_UROLOGY",
+      "expectEscalation": false
+    },
+    {
+      "id": "GC11",
+      "label": "4 months trying, healthy, no symptoms",
+      "rationale": "Must NOT be medicalised. Over-referral here would waste capacity and teach men the service panics. Self-care information is the right answer.",
+      "locale": "en",
+      "ageBand": "25-29",
+      "answers": {
+        "monthsTrying": 4,
+        "priorConception": false,
+        "bmi": 22.1,
+        "smoking": "never",
+        "alcohol": "occasional",
+        "sleepHours": 7,
+        "symptoms": []
+      },
+      "expectedRedFlags": [],
+      "expectedSeverity": null,
+      "expectedMinimumTier": null,
+      "expectedTier": "SELF_CARE",
+      "expectEscalation": false
+    },
+    {
+      "id": "GC12",
+      "label": "Metabolic risk, not currently trying to conceive",
+      "rationale": "The preventive case the brief is really about: reproductive risk found before anyone is trying, with no assumption that they intend to. Routes to primary care for the metabolic issue, and says nothing about family plans.",
+      "locale": "en",
+      "ageBand": "30-34",
+      "answers": {
+        "monthsTrying": 0,
+        "bmi": 32.0,
+        "waistCm": 106,
+        "diabetes": "prediabetes",
+        "hba1c": 6.2,
+        "smoking": "current",
+        "packYears": 6,
+        "symptoms": []
+      },
+      "expectedRedFlags": [],
+      "expectedSeverity": null,
+      "expectedMinimumTier": null,
+      "expectedTier": "PRIMARY_CARE",
+      "expectEscalation": false,
+      "expectNoFamilyIntentAssumption": true
+    },
+    {
+      "id": "GC13",
+      "label": "Prior vasectomy, now wants to conceive",
+      "rationale": "Nothing is wrong and nothing needs screening. The correct answer is service navigation, not a risk score. Included because a risk-first system tends to mishandle it.",
+      "locale": "en",
+      "ageBand": "40+",
+      "answers": {
+        "priorVasectomy": true,
+        "monthsTrying": 10,
+        "priorConception": true,
+        "bmi": 26.0,
+        "smoking": "former",
+        "symptoms": []
+      },
+      "expectedRedFlags": [],
+      "expectedSeverity": null,
+      "expectedMinimumTier": null,
+      "expectedTier": "FERTILITY_SERVICES",
+      "expectEscalation": false
+    },
+    {
+      "id": "GC14",
+      "label": "Mumps orchitis in adolescence, 20 months trying",
+      "rationale": "A historical infectious cause that routine intake almost never asks about, which is precisely why it belongs in the question bank.",
+      "locale": "ar",
+      "ageBand": "35-39",
+      "answers": {
+        "mumpsOrchitis": true,
+        "monthsTrying": 20,
+        "priorConception": false,
+        "bmi": 25.5,
+        "smoking": "never",
+        "symptoms": []
+      },
+      "expectedRedFlags": [],
+      "expectedSeverity": null,
+      "expectedMinimumTier": null,
+      "expectedTier": "ANDROLOGY_UROLOGY",
+      "expectEscalation": false
+    },
+    {
+      "id": "GC15",
+      "label": "Young, healthy, curious — no risk factors at all",
+      "rationale": "The negative control. A screening tool that cannot say “nothing to do here” is a tool that generates anxiety for a living.",
+      "locale": "en",
+      "ageBand": "18-24",
+      "answers": {
+        "monthsTrying": 0,
+        "bmi": 21.5,
+        "smoking": "never",
+        "alcohol": "none",
+        "sleepHours": 8,
+        "symptoms": []
+      },
+      "expectedRedFlags": [],
+      "expectedSeverity": null,
+      "expectedMinimumTier": null,
+      "expectedTier": "SELF_CARE",
+      "expectEscalation": false
+    },
+    {
+      "id": "GC16",
+      "label": "Scrotal ache with no fever, gradual onset",
+      "rationale": "The near-miss for GC01. Deliberately similar wording, deliberately not an emergency. If this escalates as torsion, the gate is over-triggering and will burn clinician trust.",
+      "locale": "en",
+      "ageBand": "25-29",
+      "answers": {
+        "symptoms": ["scrotal_ache"],
+        "painOnsetHours": 240,
+        "varicocele": "unknown",
+        "monthsTrying": 13,
+        "bmi": 24.3
+      },
+      "expectedRedFlags": [],
+      "expectedSeverity": null,
+      "expectedMinimumTier": null,
+      "expectedTier": "ANDROLOGY_UROLOGY",
+      "expectEscalation": false
+    }
+  ],
+  "labCases": [
+    {
+      "id": "LC01",
+      "label": "Azoospermia",
+      "rationale": "Must never be delivered by notification. Checks that workflow 05 withholds detail and routes to a clinician.",
+      "panel": "semen_analysis",
+      "values": {
+        "volumeMl": 2.4,
+        "concentrationMillionPerMl": 0,
+        "progressiveMotilityPct": 0,
+        "normalFormsPct": 0,
+        "phLevel": 7.4
+      },
+      "expectedFlags": ["CONCENTRATION_BELOW_REF", "PROGRESSIVE_MOTILITY_BELOW_REF", "MORPHOLOGY_BELOW_REF", "AZOOSPERMIA"],
+      "expectedTier": "ANDROLOGY_UROLOGY",
+      "expectRequiresHumanReview": true,
+      "expectDetailWithheld": true
+    },
+    {
+      "id": "LC02",
+      "label": "Severe oligozoospermia",
+      "rationale": "Same handling as azoospermia: a clinician delivers it.",
+      "panel": "semen_analysis",
+      "values": {
+        "volumeMl": 1.8,
+        "concentrationMillionPerMl": 2.1,
+        "totalMotilityPct": 28,
+        "progressiveMotilityPct": 11,
+        "normalFormsPct": 2
+      },
+      "expectedFlags": ["CONCENTRATION_BELOW_REF", "TOTAL_MOTILITY_BELOW_REF", "PROGRESSIVE_MOTILITY_BELOW_REF", "MORPHOLOGY_BELOW_REF", "SEVERE_OLIGOZOOSPERMIA"],
+      "expectedTier": "ANDROLOGY_UROLOGY",
+      "expectRequiresHumanReview": true,
+      "expectDetailWithheld": true
+    },
+    {
+      "id": "LC03",
+      "label": "Mildly below reference on two parameters",
+      "rationale": "WHO guidance is to repeat before concluding. Checks the pathway asks for a confirmatory sample instead of labelling.",
+      "panel": "semen_analysis",
+      "values": {
+        "volumeMl": 1.6,
+        "concentrationMillionPerMl": 13.5,
+        "totalMotilityPct": 38,
+        "progressiveMotilityPct": 26,
+        "normalFormsPct": 5,
+        "vitalityPct": 60
+      },
+      "expectedFlags": ["CONCENTRATION_BELOW_REF", "TOTAL_MOTILITY_BELOW_REF", "PROGRESSIVE_MOTILITY_BELOW_REF"],
+      "expectedTier": "ANDROLOGY_UROLOGY",
+      "expectRequiresHumanReview": false,
+      "expectDetailWithheld": false,
+      "expectedAction": "repeat_sample_after_interval"
+    },
+    {
+      "id": "LC04",
+      "label": "Entirely within WHO 2021 reference limits",
+      "rationale": "Checks that a normal result produces no flags, no escalation and no new specialist routing.",
+      "panel": "semen_analysis",
+      "values": {
+        "volumeMl": 3.2,
+        "concentrationMillionPerMl": 48,
+        "totalSpermMillion": 154,
+        "totalMotilityPct": 58,
+        "progressiveMotilityPct": 44,
+        "normalFormsPct": 8,
+        "vitalityPct": 72,
+        "phLevel": 7.6
+      },
+      "expectedFlags": [],
+      "expectedTier": "PRIMARY_CARE",
+      "expectRequiresHumanReview": false,
+      "expectDetailWithheld": false,
+      "expectedAction": "no_action_from_this_panel"
+    }
+  ]
+}

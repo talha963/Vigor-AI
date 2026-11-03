@@ -1,0 +1,201 @@
+import { IntakeAnswers, Tier, RedFlagCode } from '@/types/vigor';
+
+export interface GoldenCase {
+  id: string;
+  label: string;
+  rationale: string;
+  locale: 'en' | 'ar';
+  ageBand: string;
+  answers: IntakeAnswers;
+  expectedRedFlags: RedFlagCode[];
+  expectedSeverity: 'URGENT' | 'SAME_DAY' | 'ROUTINE_REVIEW' | 'NONE';
+  expectedMinimumTier: Tier;
+  expectedTier: Tier;
+}
+
+export const GOLDEN_CASES: GoldenCase[] = [
+  {
+    id: 'GC01',
+    label: 'Acute scrotal pain, 3 hours — possible torsion',
+    rationale: 'The single most time-critical presentation in male genital medicine. Testicular torsion window <=6h.',
+    locale: 'en',
+    ageBand: '18-24',
+    answers: {
+      symptoms: ['acute_scrotal_pain', 'scrotal_swelling'],
+      painOnsetHours: 3,
+      smoking: 'never',
+      bmi: 23.1,
+    },
+    expectedRedFlags: ['RF_ACUTE_SCROTAL_PAIN'],
+    expectedSeverity: 'URGENT',
+    expectedMinimumTier: 'URGENT',
+    expectedTier: 'URGENT',
+  },
+  {
+    id: 'GC02',
+    label: 'Painless testicular lump',
+    rationale: 'Testicular cancer peaks in 20-35 age group. Must never be routed as routine fertility.',
+    locale: 'en',
+    ageBand: '25-29',
+    answers: {
+      symptoms: ['testicular_lump'],
+      tryingToConceiveMonths: 8,
+      smoking: 'never',
+      bmi: 24.6,
+    },
+    expectedRedFlags: ['RF_TESTICULAR_MASS'],
+    expectedSeverity: 'URGENT',
+    expectedMinimumTier: 'URGENT',
+    expectedTier: 'URGENT',
+  },
+  {
+    id: 'GC03',
+    label: 'Prolonged painful erection (Priapism)',
+    rationale: 'Priapism beyond 4 hours risks fibrosis and permanent erectile damage.',
+    locale: 'en',
+    ageBand: '30-34',
+    answers: {
+      symptoms: ['prolonged_erection'],
+      smoking: 'never',
+      bmi: 26.0,
+    },
+    expectedRedFlags: ['RF_PRIAPISM'],
+    expectedSeverity: 'URGENT',
+    expectedMinimumTier: 'URGENT',
+    expectedTier: 'URGENT',
+  },
+  {
+    id: 'GC04',
+    label: 'Unable to pass urine (Acute Retention)',
+    rationale: 'Emergency presentation requiring prompt catheter decompression.',
+    locale: 'en',
+    ageBand: '40+',
+    answers: {
+      symptoms: ['cannot_pass_urine'],
+      smoking: 'former',
+      bmi: 28.3,
+    },
+    expectedRedFlags: ['RF_ACUTE_URINARY_RETENTION'],
+    expectedSeverity: 'URGENT',
+    expectedMinimumTier: 'URGENT',
+    expectedTier: 'URGENT',
+  },
+  {
+    id: 'GC05',
+    label: 'Fever with urethral discharge',
+    rationale: 'Acute febrile GU infection (epididymo-orchitis / prostatitis) needing same-day care.',
+    locale: 'en',
+    ageBand: '25-29',
+    answers: {
+      symptoms: ['fever', 'urethral_discharge', 'dysuria'],
+      currentDischarge: true,
+      smoking: 'never',
+      bmi: 22.8,
+    },
+    expectedRedFlags: ['RF_FEBRILE_GU_INFECTION'],
+    expectedSeverity: 'SAME_DAY',
+    expectedMinimumTier: 'URGENT',
+    expectedTier: 'URGENT',
+  },
+  {
+    id: 'GC06',
+    label: 'Visual field loss with gynaecomastia',
+    rationale: 'Suspicion of prolactinoma or pituitary lesion impacting the optic chiasm.',
+    locale: 'en',
+    ageBand: '30-34',
+    answers: {
+      symptoms: ['visual_field_loss', 'gynaecomastia'],
+      libidoChange: 'absent',
+      smoking: 'never',
+      bmi: 27.4,
+    },
+    expectedRedFlags: ['RF_PITUITARY_SUSPICION'],
+    expectedSeverity: 'SAME_DAY',
+    expectedMinimumTier: 'URGENT',
+    expectedTier: 'URGENT',
+  },
+  {
+    id: 'GC07',
+    label: 'Bilateral uncorrected undescended testes',
+    rationale: 'Cryptorchidism requires specialist andrology evaluation for germ cell preservation and malignancy risk.',
+    locale: 'en',
+    ageBand: '25-29',
+    answers: {
+      undescendedTestis: 'bilateral_uncorrected',
+      smoking: 'never',
+      bmi: 24.0,
+    },
+    expectedRedFlags: ['RF_BILATERAL_UNDESCENDED'],
+    expectedSeverity: 'ROUTINE_REVIEW',
+    expectedMinimumTier: 'ANDROLOGY_UROLOGY',
+    expectedTier: 'ANDROLOGY_UROLOGY',
+  },
+  {
+    id: 'GC08',
+    label: 'Absent vas deferens noted previously (CBAVD)',
+    rationale: 'Congenital bilateral absence of the vas deferens warrants CFTR genetics and specialist retrieval.',
+    locale: 'en',
+    ageBand: '30-34',
+    answers: {
+      absentVas: true,
+      smoking: 'never',
+      bmi: 25.1,
+    },
+    expectedRedFlags: ['RF_ABSENT_VAS'],
+    expectedSeverity: 'ROUTINE_REVIEW',
+    expectedMinimumTier: 'ANDROLOGY_UROLOGY',
+    expectedTier: 'ANDROLOGY_UROLOGY',
+  },
+  {
+    id: 'GC09',
+    label: '18 months trying, obese, type 2 diabetes, smoker',
+    rationale: 'High multi-factorial risk: prolonged subfertility + metabolic syndrome + tobacco exposure.',
+    locale: 'en',
+    ageBand: '35-39',
+    answers: {
+      tryingToConceiveMonths: 18,
+      bmi: 34.2,
+      diabetes: 'type2',
+      smoking: 'current',
+      packYears: 12,
+    },
+    expectedRedFlags: [],
+    expectedSeverity: 'NONE',
+    expectedMinimumTier: 'ANDROLOGY_UROLOGY',
+    expectedTier: 'ANDROLOGY_UROLOGY',
+  },
+  {
+    id: 'GC15',
+    label: 'Young, healthy, curious — no risk factors',
+    rationale: 'Routine baseline inquiry. Should route to self-care preventive education.',
+    locale: 'en',
+    ageBand: '18-24',
+    answers: {
+      tryingToConceiveMonths: 0,
+      smoking: 'never',
+      bmi: 21.8,
+      diabetes: 'none',
+      alcohol: 'none',
+    },
+    expectedRedFlags: [],
+    expectedSeverity: 'NONE',
+    expectedMinimumTier: 'SELF_CARE',
+    expectedTier: 'SELF_CARE',
+  },
+  {
+    id: 'GC16',
+    label: 'Scrotal ache with no fever, gradual onset',
+    rationale: 'Deliberate near-miss: gradual scrotal ache without sudden onset or fever must NOT falsely trigger torsion emergency.',
+    locale: 'en',
+    ageBand: '25-29',
+    answers: {
+      symptoms: ['scrotal_ache'],
+      smoking: 'never',
+      bmi: 23.5,
+    },
+    expectedRedFlags: [],
+    expectedSeverity: 'NONE',
+    expectedMinimumTier: 'SELF_CARE',
+    expectedTier: 'PRIMARY_CARE',
+  },
+];

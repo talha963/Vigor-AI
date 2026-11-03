@@ -1,0 +1,517 @@
+{
+  "name": "Vigor 06 · Re-engagement Nudge",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 06 · Re-engagement\nRuns every 2 hours, acts rarely.\n\nHard rules: live `CONTACT_REMINDERS` consent · quiet hours respected · max 2 nudges, 72h apart · one opt-out is permanent · the message never reveals the topic.\n\nConsent ledger, prior nudges and subject record are joined in a single aggregation.",
+        "height": 280,
+        "width": 540,
+        "color": 7
+      },
+      "id": "c93f56f6-3506-495a-b406-67c733066634",
+      "name": "Note f34eda2e",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -180,
+        -380
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "e032b1a6-4d6e-492a-8c6e-47974b6e4604",
+      "name": "Every 2 hours · nudge sweep",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -180,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ffce96b7-55a6-40b7-96a6-024a57a603dd",
+              "name": "vigorConfig",
+              "type": "object",
+              "value": "={{ (() => { const d = { agentServiceUrl: 'http://host.docker.internal:8000', internalToken: '', notifyMode: 'DEMO', oncallEmail: 'oncall@example-clinic.ae', escalationSlaMinutes: 60, quietHoursStart: 21, quietHoursEnd: 8, webhookBase: 'http://localhost:5678', envBlocked: true }; try { return { agentServiceUrl: $env.VIGOR_AGENT_SERVICE_URL || d.agentServiceUrl, internalToken: $env.VIGOR_INTERNAL_TOKEN || '', notifyMode: $env.VIGOR_NOTIFY_MODE || 'DEMO', oncallEmail: $env.VIGOR_ONCALL_EMAIL || d.oncallEmail, escalationSlaMinutes: Number($env.VIGOR_ESCALATION_SLA_MINUTES || 60), quietHoursStart: Number($env.VIGOR_QUIET_HOURS_START || 21), quietHoursEnd: Number($env.VIGOR_QUIET_HOURS_END || 8), webhookBase: ($env.WEBHOOK_URL || 'http://localhost:5678/').replace(/\\/$/, ''), envBlocked: false }; } catch (e) { return d; } })() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "17a32b0e-87da-4f12-86da-3d7f85da3bec",
+      "name": "Vigor config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -60,
+        -176
+      ],
+      "notes": "The only node that reads $env. Needs N8N_BLOCK_ENV_ACCESS_IN_NODE=false, and falls back to defaults with envBlocked:true if that is missing.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nfunction quietHoursBlock(nowDate, startHour, endHour) {\n  const h = nowDate.getHours();\n  // Window wraps midnight, e.g. 21:00 to 08:00.\n  const blocked = startHour > endHour ? (h >= startHour || h < endHour) : (h >= startHour && h < endHour);\n  return blocked;\n}\n\n// Safety-critical messages ignore quiet hours and the reminder-consent scope.\n// Everything else is suppressed rather than queued, and the suppression is logged.\nconst SAFETY_CRITICAL_TEMPLATES = new Set([\n  'urgent_care_instructions',\n  'escalation_sla_breach',\n]);\n\nfunction notificationDoc({ pseudonymId, template, locale, channel, consentId, status }) {\n  return {\n    notificationId: newId('ntf'),\n    pseudonymId,\n    template,\n    locale: locale || 'en',\n    channel: channel || 'in_app',\n    discreet: true,\n    subject: DISCREET_SUBJECT[locale] || DISCREET_SUBJECT.en,\n    consentId: consentId ?? null,\n    status,\n    attempt: 1,\n    sentAt: status === 'sent' ? nowIso() : null,\n    createdAt: nowIso(),\n  };\n}\n\n\nconst CFG = $('Vigor config').first().json.vigorConfig;\nconst start = CFG.quietHoursStart;\nconst end = CFG.quietHoursEnd;\nconst blocked = quietHoursBlock(new Date(), start, end);\n\nreturn [{ json: {\n  proceed: !blocked,\n  quietHours: { start, end, blocked },\n  // 24 hours is long enough that an interrupted session is genuinely abandoned\n  // rather than someone who stepped away to find a number.\n  abandonedBefore: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),\n  runId: $execution.id,\n} }];"
+      },
+      "id": "cbb12e95-8e5b-41c9-8b5b-2d108c5b2ea3",
+      "name": "Quiet hours check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        -40
+      ],
+      "notes": "Checked before the query, so a quiet-hours run costs nothing.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d88c897c-26d9-47f4-a9d9-ecad28d9eb1a",
+              "leftValue": "={{ $json.proceed }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "b9818107-18f1-4827-99f1-09ba1af10b4d",
+      "name": "Outside quiet hours?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        300,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Quiet hours check').first().json;\nreturn [{ json: auditDoc({\n  actor: 'workflow:06-reengagement',\n  action: 'NUDGE_SWEEP_SKIPPED_QUIET_HOURS',\n  runId: s.runId,\n  outcome: 'skipped',\n  meta: { quietHours: s.quietHours },\n}) }];"
+      },
+      "id": "fcdf1f3f-838f-453f-848f-36d2858f3865",
+      "name": "Log quiet-hours skip",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "audit_log",
+        "fields": "at,actor,action,pseudonymId,subjectRef,consentId,workflowRunId,outcome,meta",
+        "options": {}
+      },
+      "id": "6b2f4029-47f9-4e1d-84f9-b96445f9baf7",
+      "name": "Write audit · quiet skip",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        780,
+        300
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "aggregate",
+        "collection": "assessments",
+        "query": "={{ JSON.stringify([{ $match: { status: 'started', startedAt: { $lt: $json.abandonedBefore }, nudgeStopped: { $ne: true } } },{ $sort: { startedAt: 1 } },{ $limit: 200 },{ $lookup: { from: 'consents', localField: 'pseudonymId', foreignField: 'pseudonymId', as: 'consentDocs' } },{ $lookup: { from: 'subjects', localField: 'pseudonymId', foreignField: 'pseudonymId', as: 'subjectDocs' } },{ $lookup: { from: 'notifications', let: { p: '$pseudonymId' }, pipeline: [{ $match: { $expr: { $eq: ['$pseudonymId', '$$p'] }, template: { $in: ['reengagement_nudge'] } } },{ $sort: { createdAt: -1 } }, { $limit: 5 } ], as: 'priorNudges' } },{ $project: { _id: 0, assessmentId: 1, pseudonymId: 1, locale: 1, startedAt: 1, answeredItemCount: 1, nudgeCount: 1, lastNudgeAt: 1, consentDocs: 1, subjectDocs: 1, priorNudges: 1 } }]) }}"
+      },
+      "id": "ba1906f6-1c2f-495a-9b2f-97c71a2f9634",
+      "name": "Join abandoned intakes",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        540,
+        -40
+      ],
+      "notes": "One round trip: abandoned assessments joined to the consent ledger, prior nudges and the subject record.",
+      "notesInFlow": false,
+      "alwaysOutputData": true,
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nfunction evaluateConsent(consentDocs, requiredScope) {\n  const now = Date.now();\n  const superseded = new Set(\n    (consentDocs || []).map((c) => c.supersedes).filter(Boolean)\n  );\n  const live = (consentDocs || [])\n    .filter((c) => c.scope === requiredScope)\n    .filter((c) => c.granted === true)\n    .filter((c) => !c.revokedAt)\n    .filter((c) => !superseded.has(c.consentId))\n    .filter((c) => !c.expiresAt || new Date(c.expiresAt).getTime() > now)\n    .sort((x, y) => new Date(y.grantedAt) - new Date(x.grantedAt));\n\n  if (live.length === 0) {\n    const reason = (consentDocs || []).some((c) => c.scope === requiredScope)\n      ? 'consent_expired_or_revoked'\n      : 'consent_absent';\n    return { authorised: false, reason, consentId: null, version: null };\n  }\n  return {\n    authorised: true,\n    reason: 'consent_live',\n    consentId: live[0].consentId,\n    version: live[0].version,\n    expiresAt: live[0].expiresAt ?? null,\n  };\n}\n\n\n// Deliberately says nothing about what the assessment covers. Someone else\n// reading this over a shoulder learns only that an app has something saved.\nconst NUDGE_COPY = {\n  first: {\n    en: 'You have an unfinished check saved. It takes about four minutes to complete, and you can skip any question. Reply STOP to stop these messages.',\n    ar: 'لديك فحص غير مكتمل محفوظ. يستغرق إكماله نحو أربع دقائق، ويمكنك تجاوز أي سؤال. أرسل \"إيقاف\" لإيقاف هذه الرسائل.',\n  },\n  second: {\n    en: 'Your saved check is still there if you want it. We will not message you about it again. Reply STOP to stop all messages.',\n    ar: 'الفحص المحفوظ لا يزال متاحاً إن أردت إكماله. لن نرسل لك رسالة أخرى بشأنه. أرسل \"إيقاف\" لإيقاف جميع الرسائل.',\n  },\n};\n\n\nconst MAX_NUDGES = 2;\nconst MIN_HOURS_BETWEEN = 72;\n\nconst rows = $input.all().map((i) => i.json).filter((d) => d && d.assessmentId);\nconst send = [];\nconst suppressed = [];\n\nfor (const a of rows) {\n  const subject = (a.subjectDocs ?? [])[0] ?? {};\n  if (subject.erasedAt) { suppressed.push({ a, reason: 'subject_erased' }); continue; }\n\n  const verdict = evaluateConsent(a.consentDocs ?? [], 'CONTACT_REMINDERS');\n  if (!verdict.authorised) { suppressed.push({ a, reason: 'no_reminder_consent:' + verdict.reason }); continue; }\n\n  const sentCount = (a.priorNudges ?? []).length;\n  if (sentCount >= MAX_NUDGES) { suppressed.push({ a, reason: 'nudge_cap_reached' }); continue; }\n\n  const last = (a.priorNudges ?? [])[0];\n  if (last && last.createdAt) {\n    const hours = (Date.now() - new Date(last.createdAt).getTime()) / 3600000;\n    if (hours < MIN_HOURS_BETWEEN) { suppressed.push({ a, reason: 'too_soon' }); continue; }\n  }\n\n  // Someone who answered nothing at all is bounce traffic, not an abandoned\n  // assessment, and nudging them is noise.\n  if ((a.answeredItemCount ?? 0) < 3) { suppressed.push({ a, reason: 'too_few_answers' }); continue; }\n\n  send.push({\n    assessmentId: a.assessmentId,\n    pseudonymId: a.pseudonymId,\n    locale: a.locale === 'ar' ? 'ar' : 'en',\n    ageBand: subject.ageBand ?? 'unknown',\n    channel: (subject.contact && subject.contact.preferredChannel) || 'in_app',\n    consentId: verdict.consentId,\n    nudgeNumber: sentCount + 1,\n    answeredItemCount: a.answeredItemCount ?? 0,\n  });\n}\n\nreturn [{ json: {\n  sendCount: send.length,\n  send,\n  suppressedCount: suppressed.length,\n  // Reasons only, never the rows, so the audit record stays minimised.\n  suppressionReasons: suppressed.reduce((acc, s) => {\n    const key = s.reason.split(':')[0];\n    acc[key] = (acc[key] ?? 0) + 1;\n    return acc;\n  }, {}),\n  // Fairness watch: if nudges skew hard by locale, the copy or the channel is\n  // failing one group and workflow 08 surfaces it.\n  localeMix: send.reduce((acc, s) => { acc[s.locale] = (acc[s.locale] ?? 0) + 1; return acc; }, {}),\n  runId: $execution.id,\n} }];"
+      },
+      "id": "7e270167-a022-4a07-a122-3b9aa2223d2d",
+      "name": "Apply nudge policy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        -40
+      ],
+      "notes": "Every suppression reason is recorded, which is what lets workflow 08 report fairness across locale and age band instead of guessing.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "24b06061-97ba-4775-94ba-d2bc95bad44f",
+              "leftValue": "={{ $json.sendCount }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              },
+              "rightValue": 0
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "6e53a7b4-a65b-45cc-a95b-6a85a85b68f2",
+      "name": "Any nudges to send?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1020,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\n// Deliberately says nothing about what the assessment covers. Someone else\n// reading this over a shoulder learns only that an app has something saved.\nconst NUDGE_COPY = {\n  first: {\n    en: 'You have an unfinished check saved. It takes about four minutes to complete, and you can skip any question. Reply STOP to stop these messages.',\n    ar: 'لديك فحص غير مكتمل محفوظ. يستغرق إكماله نحو أربع دقائق، ويمكنك تجاوز أي سؤال. أرسل \"إيقاف\" لإيقاف هذه الرسائل.',\n  },\n  second: {\n    en: 'Your saved check is still there if you want it. We will not message you about it again. Reply STOP to stop all messages.',\n    ar: 'الفحص المحفوظ لا يزال متاحاً إن أردت إكماله. لن نرسل لك رسالة أخرى بشأنه. أرسل \"إيقاف\" لإيقاف جميع الرسائل.',\n  },\n};\n\n\nconst CFG = $('Vigor config').first().json.vigorConfig;\nreturn $('Apply nudge policy').first().json.send.map((s) => {\n  const which = s.nudgeNumber === 1 ? 'first' : 'second';\n  return { json: {\n    notificationId: newId('ntf'),\n    pseudonymId: s.pseudonymId,\n    template: 'reengagement_nudge',\n    locale: s.locale,\n    channel: s.channel,\n    discreet: true,\n    subject: s.locale === 'ar' ? 'تحديث من فيجور' : 'Your Vigor update',\n    consentId: s.consentId,\n    status: CFG.notifyMode === 'DEMO' ? 'queued' : 'sent',\n    attempt: 1,\n    sentAt: CFG.notifyMode === 'DEMO' ? null : nowIso(),\n    createdAt: nowIso(),\n    bodyText: NUDGE_COPY[which][s.locale] ?? NUDGE_COPY[which].en,\n    revealsTopic: false,\n    nudgeNumber: s.nudgeNumber,\n    relatedAssessmentId: s.assessmentId,\n  } };\n});"
+      },
+      "id": "318f76a2-d453-4c86-9353-2af3d2532960",
+      "name": "Doc · nudge notifications",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "notifications",
+        "fields": "notificationId,pseudonymId,template,locale,channel,discreet,subject,consentId,status,attempt,sentAt,createdAt,bodyText,revealsTopic,nudgeNumber,relatedAssessmentId",
+        "options": {}
+      },
+      "id": "c37ae4c8-3955-4540-bc55-99f93b559866",
+      "name": "Write notification · nudges",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        1500,
+        -40
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nreturn $('Apply nudge policy').first().json.send.map((s) => ({ json: {\n  assessmentId: s.assessmentId,\n  nudgeCount: s.nudgeNumber,\n  lastNudgeAt: nowIso(),\n  // The second nudge is the last one. Stop now rather than relying on the cap.\n  nudgeStopped: s.nudgeNumber >= 2,\n} }));"
+      },
+      "id": "cc0d248b-ff2b-4eeb-802b-d07e012bd211",
+      "name": "Doc · mark nudged",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "collection": "assessments",
+        "updateKey": "assessmentId",
+        "fields": "nudgeCount,lastNudgeAt,nudgeStopped",
+        "upsert": false,
+        "options": {}
+      },
+      "id": "7de85a2b-5444-480b-9544-d99e5644db31",
+      "name": "Update assessments · nudged",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        1980,
+        -40
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst p = $('Apply nudge policy').first().json;\nreturn [{ json: auditDoc({\n  actor: 'workflow:06-reengagement',\n  action: 'NUDGE_SWEEP_COMPLETED',\n  runId: p.runId,\n  meta: {\n    sent: p.sendCount,\n    suppressed: p.suppressedCount,\n    suppressionReasons: p.suppressionReasons,\n    localeMix: p.localeMix,\n  },\n}) }];"
+      },
+      "id": "1b17f5c1-30c5-4ad5-adc5-d61c2ec5d7af",
+      "name": "Doc · audit nudge sweep",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "audit_log",
+        "fields": "at,actor,action,pseudonymId,subjectRef,consentId,workflowRunId,outcome,meta",
+        "options": {}
+      },
+      "id": "27ded9a5-f61c-49f9-b31c-c540f41cc6d3",
+      "name": "Write audit · nudge sweep",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        2460,
+        -40
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 2 hours · nudge sweep": {
+      "main": [
+        [
+          {
+            "node": "Vigor config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vigor config": {
+      "main": [
+        [
+          {
+            "node": "Quiet hours check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quiet hours check": {
+      "main": [
+        [
+          {
+            "node": "Outside quiet hours?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outside quiet hours?": {
+      "main": [
+        [
+          {
+            "node": "Join abandoned intakes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log quiet-hours skip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log quiet-hours skip": {
+      "main": [
+        [
+          {
+            "node": "Write audit · quiet skip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Join abandoned intakes": {
+      "main": [
+        [
+          {
+            "node": "Apply nudge policy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply nudge policy": {
+      "main": [
+        [
+          {
+            "node": "Any nudges to send?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any nudges to send?": {
+      "main": [
+        [
+          {
+            "node": "Doc · nudge notifications",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Doc · audit nudge sweep",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · nudge notifications": {
+      "main": [
+        [
+          {
+            "node": "Write notification · nudges",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write notification · nudges": {
+      "main": [
+        [
+          {
+            "node": "Doc · mark nudged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · mark nudged": {
+      "main": [
+        [
+          {
+            "node": "Update assessments · nudged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update assessments · nudged": {
+      "main": [
+        [
+          {
+            "node": "Doc · audit nudge sweep",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · audit nudge sweep": {
+      "main": [
+        [
+          {
+            "node": "Write audit · nudge sweep",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": false,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "meta": {
+    "instanceId": "vigor-local"
+  },
+  "id": "vigor06"
+}

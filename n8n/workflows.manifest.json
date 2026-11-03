@@ -1,0 +1,135 @@
+{
+  "generatedAt": "2026-11-02T17:27:27.621Z",
+  "workflows": [
+    {
+      "id": "vigor01",
+      "file": "w01-intake-completed.json",
+      "name": "Vigor 01 · Intake Completed → Risk & Triage",
+      "nodes": 33,
+      "triggers": [
+        "POST /webhook/vigor/intake-completed"
+      ],
+      "tags": [
+        "vigor",
+        "core",
+        "clinical-safety"
+      ]
+    },
+    {
+      "id": "vigor02",
+      "file": "w02-red-flag-escalation.json",
+      "name": "Vigor 02 · Red-flag Escalation & SLA Sweep",
+      "nodes": 27,
+      "triggers": [
+        "POST /webhook/vigor/red-flag-escalation",
+        "cron */5 * * * *"
+      ],
+      "tags": [
+        "vigor",
+        "clinical-safety",
+        "human-oversight"
+      ]
+    },
+    {
+      "id": "vigor03",
+      "file": "w03-referral-dispatch.json",
+      "name": "Vigor 03 · Referral Dispatch & Completion",
+      "nodes": 47,
+      "triggers": [
+        "POST /webhook/vigor/referral-consent",
+        "POST /webhook/vigor/referral-status"
+      ],
+      "tags": [
+        "vigor",
+        "privacy",
+        "navigation"
+      ]
+    },
+    {
+      "id": "vigor04",
+      "file": "w04-athome-kit.json",
+      "name": "Vigor 04 · At-home Kit Logistics",
+      "nodes": 33,
+      "triggers": [
+        "POST /webhook/vigor/kit-request",
+        "cron 0 9 * * *"
+      ],
+      "tags": [
+        "vigor",
+        "access",
+        "logistics"
+      ]
+    },
+    {
+      "id": "vigor05",
+      "file": "w05-lab-result.json",
+      "name": "Vigor 05 · Lab Result Ingestion & Re-score",
+      "nodes": 26,
+      "triggers": [
+        "POST /webhook/vigor/lab-result"
+      ],
+      "tags": [
+        "vigor",
+        "clinical-safety",
+        "labs"
+      ]
+    },
+    {
+      "id": "vigor06",
+      "file": "w06-reengagement.json",
+      "name": "Vigor 06 · Re-engagement Nudge",
+      "nodes": 16,
+      "triggers": [
+        "cron 0 */2 * * *"
+      ],
+      "tags": [
+        "vigor",
+        "engagement",
+        "privacy"
+      ]
+    },
+    {
+      "id": "vigor07",
+      "file": "w07-consent-revocation.json",
+      "name": "Vigor 07 · Consent Revocation Cascade",
+      "nodes": 27,
+      "triggers": [
+        "POST /webhook/vigor/consent-revoked"
+      ],
+      "tags": [
+        "vigor",
+        "privacy",
+        "compliance"
+      ]
+    },
+    {
+      "id": "vigor08",
+      "file": "w08-metrics-rollup.json",
+      "name": "Vigor 08 · Daily Metrics Rollup",
+      "nodes": 23,
+      "triggers": [
+        "cron 30 0 * * *",
+        "POST /webhook/vigor/metrics-rollup"
+      ],
+      "tags": [
+        "vigor",
+        "evidence",
+        "fairness"
+      ]
+    },
+    {
+      "id": "vigor09",
+      "file": "w09-clinician-review.json",
+      "name": "Vigor 09 · Clinician Review (Human in the Loop)",
+      "nodes": 25,
+      "triggers": [
+        "POST /webhook/vigor/clinician-review"
+      ],
+      "tags": [
+        "vigor",
+        "human-oversight",
+        "clinical-safety"
+      ]
+    }
+  ]
+}

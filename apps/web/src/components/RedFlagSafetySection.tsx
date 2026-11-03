@@ -1,0 +1,243 @@
+'use client';
+
+import React, { useState } from 'react';
+import {
+  AlertTriangle,
+  ShieldAlert,
+  Clock,
+  ArrowUpRight,
+  CheckCircle,
+  HelpCircle,
+  Info,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
+import { Locale } from '@/types/vigor';
+
+interface RedFlagSafetySectionProps {
+  locale: Locale;
+  onSelectGoldenCase: (caseId: string) => void;
+}
+
+export default function RedFlagSafetySection({
+  locale,
+  onSelectGoldenCase,
+}: RedFlagSafetySectionProps) {
+  const isAr = locale === 'ar';
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
+
+  const RED_FLAGS = [
+    {
+      code: 'RF_ACUTE_SCROTAL_PAIN',
+      titleEn: 'Acute Scrotal Pain / Sudden Swelling',
+      titleAr: 'ألم حاد في كيس الصفن أو انتفاخ مفاجئ',
+      severity: 'URGENT',
+      slaMinutes: 60,
+      goldenCase: 'GC01',
+      descEn:
+        'Sudden onset of severe testicular pain or swelling (onset <= 6 hours). Testicular torsion involves twisting of the spermatic cord and must be surgically explored immediately to prevent testicular loss.',
+      descAr:
+        'ألم شديد ومفاجئ أو تورم في الخصية (خلال أقل من 6 ساعات). يشير لاحتمال التواء الخصية الذي يتطلب استكشافاً جراحياً طارئاً لتفادي موت النسيج.',
+    },
+    {
+      code: 'RF_TESTICULAR_MASS',
+      titleEn: 'Painless Testicular Lump or Mass',
+      titleAr: 'كتلة غير مؤلمة في الخصية',
+      severity: 'URGENT',
+      slaMinutes: 60,
+      goldenCase: 'GC02',
+      descEn:
+        'A discrete lump within the testicular parenchyma. Peak incidence in young men aged 20–35. Testicular cancer is highly treatable if identified before regional or distant spread.',
+      descAr:
+        'وجود كتلة صلبة داخل نسيج الخصية. يكثر في فئة الشباب (20-35 سنة). أورام الخصية تستجيب للعلاج بشكل كامل عند اكتشافها المبكر.',
+    },
+    {
+      code: 'RF_PRIAPISM',
+      titleEn: 'Prolonged Painful Erection (Priapism)',
+      titleAr: 'انتصاب مستمر ومؤلم لأكثر من 4 ساعات',
+      severity: 'URGENT',
+      slaMinutes: 60,
+      goldenCase: 'GC03',
+      descEn:
+        'Persistent erection unrelated to sexual stimulation lasting > 4 hours. Ischaemic priapism requires urgent emergency aspiration and sympathomimetic decompression to avoid permanent cavernosal fibrosis.',
+      descAr:
+        'انتصاب مستمر وغير مرتبط بالرغبة الجنسية يدوم لأكثر من 4 ساعات. حالة طارئة تستدعي تدخلاً لتفريغ الدم الراكد وتفادي تلف نسيج الانتصاب الدائم.',
+    },
+    {
+      code: 'RF_GU_TRAUMA',
+      titleEn: 'Recent Genital Trauma',
+      titleAr: 'إصابة أو صدمة مباشرة بالأعضاء التناسلية',
+      severity: 'URGENT',
+      slaMinutes: 60,
+      goldenCase: 'GC01',
+      descEn:
+        'Blunt or penetrating trauma with swelling, ecchymosis, or acute tenderness. Urgent scrotal ultrasound is required to exclude testicular rupture or tunica albuginea fracture.',
+      descAr:
+        'إصابة ناجمة عن حادث أو ضربة تؤدي إلى تورم أو نزيف موضعي. يلزم إجراء فحص بالموجات فوق الصوتية لاستبعاد تمزق الغلاف المحيط بالخصية.',
+    },
+    {
+      code: 'RF_ACUTE_URINARY_RETENTION',
+      titleEn: 'Inability to Pass Urine (Retention)',
+      titleAr: 'احتباس البول الحاد والعجز عن التبول',
+      severity: 'URGENT',
+      slaMinutes: 60,
+      goldenCase: 'GC04',
+      descEn:
+        'Sudden, painful inability to void despite full bladder sensation. Demands emergency catheter decompression and investigation of the outflow tract.',
+      descAr:
+        'عجز مفاجئ ومؤلم عن تفريغ المثانة بالرغم من امتلائها. يستلزم تركيب قسطرة بولية عاجلة لمنع ارتجاع البول وتلف الكلى.',
+    },
+    {
+      code: 'RF_FEBRILE_GU_INFECTION',
+      titleEn: 'Fever with Urethral Discharge or Dysuria',
+      titleAr: 'حمى مع إفرازات مجرى البول أو ألم حاد',
+      severity: 'SAME_DAY',
+      slaMinutes: 480,
+      goldenCase: 'GC05',
+      descEn:
+        'Systemic fever paired with acute urethritis, dysuria, or epididymo-orchitis. Requires same-day microbiological culture, STI screening, and targeted empiric antibiotic therapy.',
+      descAr:
+        'ارتفاع في درجة الحرارة مصحوب بحرقة بولية أو إفرازات أو ألم بربخي. يتطلب تقييماً في نفس اليوم وبدء مضادات حيوية مستهدفة.',
+    },
+    {
+      code: 'RF_PITUITARY_SUSPICION',
+      titleEn: 'Visual Field Loss with Gynaecomastia or Libido Loss',
+      titleAr: 'تغيرات في مجال الرؤية مع تثدي أو غياب الرغبة',
+      severity: 'SAME_DAY',
+      slaMinutes: 480,
+      goldenCase: 'GC06',
+      descEn:
+        'Bitemporal hemianopia combined with endocrine signs suggests a mass expanding beyond the sella turcica compressing the optic chiasm (e.g. macroprolactinoma).',
+      descAr:
+        'فقدان جزئي لمجال الرؤية مع أعراض هرمونية تشير إلى ورم محتمل في الغدة النخامية يضغط على العصب البصري.',
+    },
+    {
+      code: 'RF_BILATERAL_UNDESCENDED',
+      titleEn: 'Bilateral Uncorrected Undescended Testes',
+      titleAr: 'خصية هاجرة غير معالجة في الجانبين',
+      severity: 'ROUTINE_REVIEW',
+      slaMinutes: 2880,
+      goldenCase: 'GC07',
+      descEn:
+        'Cryptorchidism remaining uncorrected into adulthood severely impairs spermatogenesis and carries an increased malignancy risk warranting specialist imaging and biopsy.',
+      descAr:
+        'عدم نزول الخصيتين لكيس الصفن منذ الطفولة. يؤثر بشدة على الخلايا المنوية ويتطلب تقييماً تخصصياً بالموجات فوق الصوتية.',
+    },
+    {
+      code: 'RF_ABSENT_VAS',
+      titleEn: 'Congenital Absence of Vas Deferens (CBAVD)',
+      titleAr: 'غياب القناة المنوية الناقلة (CBAVD)',
+      severity: 'ROUTINE_REVIEW',
+      slaMinutes: 2880,
+      goldenCase: 'GC08',
+      descEn:
+        'Strongly associated with cystic fibrosis gene (CFTR) mutations. Obstructive azoospermia requiring CFTR screening, renal tract ultrasound, and microsurgical sperm retrieval.',
+      descAr:
+        'يرتبط بطفرات جين التليف الكيسي (CFTR). يسبب انسداداً منوياً ويستلزم فحصاً جينياً وتخطيطاً لسحب النطاف مجهرياً.',
+    },
+  ];
+
+  return (
+    <section id="red-flags" className="py-20 bg-white border-b border-blue-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Title */}
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-50 text-red-700 text-xs font-bold uppercase tracking-wider mb-4 border border-red-200">
+            <ShieldAlert className="w-4 h-4 text-red-600" />
+            <span>{isAr ? 'صمام الأمان السريري غير القابل للتراجع' : 'The Deterministic Safety Floor'}</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-blue-950 tracking-tight mb-4">
+            {isAr ? 'علامات الخطر السريرية التسع (9 Red Flags)' : 'The 9 Clinical Red-Flag Gates'}
+          </h2>
+          <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
+            {isAr
+              ? 'صيغت هذه القواعد التسع لحماية سلامة المريض فوق كل اعتبار. تعمل دوال نقية على مفردات مغلقة من الأعراض، وتفرض تصعيد الحالة الطارئة بصورة إلزامية لا يمكن للذكاء الاصطناعي خفضها.'
+              : 'These 9 deterministic gates establish the non-negotiable safety floor. AI models can elevate a tier, but can never lower it. Acute presentations bypass routine scheduling with a strict 60-minute SLA.'}
+          </p>
+        </div>
+
+        {/* Invariant Banner */}
+        <div className="mb-12 bg-gradient-to-r from-blue-900 to-blue-800 text-white rounded-3xl p-6 sm:p-8 shadow-lg">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20">
+                <AlertTriangle className="w-6 h-6 text-amber-300" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black tracking-wide uppercase text-blue-100">
+                  {isAr ? 'قاعدة التصعيد الحتمي الإلزامي' : 'The Escalate-Only Invariant'}
+                </h3>
+                <p className="text-sm text-blue-200 mt-1 max-w-2xl leading-relaxed">
+                  {isAr
+                    ? 'في حال رصد أي من العلامات الحمراء، يثبت النظام الحالة على فئة الطوارئ (URGENT). حتى لو اقترح نموذج الذكاء الاصطناعي رعاية أولية، يرفض النظام ذلك جبرياً ويسجل الواقعة في سجل التدقيق.'
+                    : 'The red-flag gate runs before any generative model. If an acute symptom is triggered, the clinical tier is clamped to URGENT. No downstream node or prompt can de-escalate it. Refused de-escalations are audited.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-400 text-blue-950 uppercase tracking-wider">
+                {isAr ? 'ضمان سلامة 100٪' : 'Zero-Drift Safety Floor'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* 9 Red Flags Accordion / List */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {RED_FLAGS.map((flag, idx) => {
+            const isUrgent = flag.severity === 'URGENT';
+            const isSameDay = flag.severity === 'SAME_DAY';
+
+            return (
+              <div
+                key={flag.code}
+                className="bg-white rounded-2xl p-5 border border-blue-100 hover:border-blue-300 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <span
+                      className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                        isUrgent
+                          ? 'bg-red-100 text-red-800 border border-red-200'
+                          : isSameDay
+                          ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                          : 'bg-blue-100 text-blue-800 border border-blue-200'
+                      }`}
+                    >
+                      {flag.severity} · {flag.slaMinutes}m SLA
+                    </span>
+                    <span className="text-[11px] font-mono text-slate-600 font-medium">
+                      {flag.code}
+                    </span>
+                  </div>
+
+                  <h4 className="text-base font-bold text-blue-950 mb-2">
+                    {isAr ? flag.titleAr : flag.titleEn}
+                  </h4>
+
+                  <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                    {isAr ? flag.descAr : flag.descEn}
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-blue-50 flex items-center justify-between">
+                  <button
+                    onClick={() => onSelectGoldenCase(flag.goldenCase)}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 hover:underline"
+                  >
+                    <span>{isAr ? `اختبر حالة ${flag.goldenCase}` : `Test Case ${flag.goldenCase}`}</span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-[10px] text-slate-600 font-medium">
+                    {isUrgent ? 'SLA: <= 60 mins' : isSameDay ? 'SLA: <= 8 hours' : 'SLA: <= 48 hours'}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}

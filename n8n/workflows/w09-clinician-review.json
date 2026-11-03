@@ -1,0 +1,766 @@
+{
+  "name": "Vigor 09 · Clinician Review (Human in the Loop)",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 09 · Clinician review\nThe gate workflow 03 waits on.\n\nEscalating is always allowed. De-escalating needs a written justification against the clinician's id — and is **refused outright** when it crosses an emergency red flag (torsion, mass, priapism, trauma, retention).\n\nRefused attempts are audited, so a pattern is visible.",
+        "height": 280,
+        "width": 540,
+        "color": 5
+      },
+      "id": "39b18335-7d73-4869-ba73-23b07b732543",
+      "name": "Note 56ef7c9b",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -180,
+        -380
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vigor/clinician-review",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b0b5e005-9cb7-4659-99b7-21a09ab72333",
+      "name": "Webhook clinician.review",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -180,
+        -40
+      ],
+      "webhookId": "d4083ff1-a270-4be5-9f70-572ca07058bf"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ffce96b7-55a6-40b7-96a6-024a57a603dd",
+              "name": "vigorConfig",
+              "type": "object",
+              "value": "={{ (() => { const d = { agentServiceUrl: 'http://host.docker.internal:8000', internalToken: '', notifyMode: 'DEMO', oncallEmail: 'oncall@example-clinic.ae', escalationSlaMinutes: 60, quietHoursStart: 21, quietHoursEnd: 8, webhookBase: 'http://localhost:5678', envBlocked: true }; try { return { agentServiceUrl: $env.VIGOR_AGENT_SERVICE_URL || d.agentServiceUrl, internalToken: $env.VIGOR_INTERNAL_TOKEN || '', notifyMode: $env.VIGOR_NOTIFY_MODE || 'DEMO', oncallEmail: $env.VIGOR_ONCALL_EMAIL || d.oncallEmail, escalationSlaMinutes: Number($env.VIGOR_ESCALATION_SLA_MINUTES || 60), quietHoursStart: Number($env.VIGOR_QUIET_HOURS_START || 21), quietHoursEnd: Number($env.VIGOR_QUIET_HOURS_END || 8), webhookBase: ($env.WEBHOOK_URL || 'http://localhost:5678/').replace(/\\/$/, ''), envBlocked: false }; } catch (e) { return d; } })() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "17a32b0e-87da-4f12-86da-3d7f85da3bec",
+      "name": "Vigor config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -60,
+        -176
+      ],
+      "notes": "The only node that reads $env. Needs N8N_BLOCK_ENV_ACCESS_IN_NODE=false, and falls back to defaults with envBlocked:true if that is missing.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\n// Red flags that a screening tool must never allow to be waved away remotely.\nconst NON_DEESCALATABLE = new Set([\n  'RF_ACUTE_SCROTAL_PAIN',\n  'RF_TESTICULAR_MASS',\n  'RF_PRIAPISM',\n  'RF_GU_TRAUMA',\n  'RF_ACUTE_URINARY_RETENTION',\n]);\n\nconst VALID_OUTCOMES = ['approved', 'escalated', 'de_escalated'];\nconst VALID_TIERS = [\n  'SELF_CARE', 'PRIMARY_CARE', 'FERTILITY_SERVICES', 'ANDROLOGY_UROLOGY', 'URGENT',\n];\n\n\nconst CFG = $('Vigor config').first().json.vigorConfig;\nconst headers = $json.headers ?? {};\nconst b = $json.body ?? $json;\n\nconst presented = headers['x-vigor-clinician-key'] ?? headers['X-Vigor-Clinician-Key'] ?? null;\nconst expected = CFG.internalToken || null;\nconst authenticated = Boolean(expected) && presented === expected;\n\nconst problems = [];\nif (!authenticated) problems.push('auth:clinician_key_invalid');\nif (!b.clinicianId) problems.push('missing:clinicianId');\nif (!b.decisionId) problems.push('missing:decisionId');\nif (!VALID_OUTCOMES.includes(b.outcome)) problems.push('invalid:outcome');\nif (b.outcome === 'de_escalated') {\n  if (!b.overrideTier || !VALID_TIERS.includes(b.overrideTier)) problems.push('invalid:overrideTier');\n  if (!b.justification || String(b.justification).trim().length < 20) {\n    problems.push('missing:justification');\n  }\n}\nif (b.outcome === 'escalated' && (!b.overrideTier || !VALID_TIERS.includes(b.overrideTier))) {\n  problems.push('invalid:overrideTier');\n}\n\nreturn [{ json: {\n  ok: problems.length === 0,\n  authenticated,\n  problems,\n  runId: $execution.id,\n  clinicianId: b.clinicianId ?? null,\n  decisionId: b.decisionId ?? null,\n  outcome: b.outcome ?? null,\n  overrideTier: b.overrideTier ?? null,\n  justification: b.justification ?? null,\n  note: b.note ?? null,\n} }];"
+      },
+      "id": "04ecb271-73b4-4265-b0b4-4dac71b44f3f",
+      "name": "Authenticate clinician",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        -40
+      ],
+      "notes": "A shared key is enough for a hackathon build; production needs the clinician's own federated identity, which is noted in docs/06-clinical-safety.md.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "53e6ec90-10ea-4d68-93ea-b22112eab08e",
+              "leftValue": "={{ $json.ok }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "b7e8d230-c7c1-4d08-8ac1-21c1c9c1202e",
+      "name": "Review request valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        300,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Authenticate clinician').first().json;\nreturn [{ json: {\n  accepted: false,\n  error: s.authenticated ? 'invalid_review' : 'unauthorised',\n  problems: s.problems,\n  hint: s.problems.includes('missing:justification')\n    ? 'De-escalation requires a written justification of at least 20 characters.'\n    : undefined,\n} }];"
+      },
+      "id": "0b2fd396-d5eb-4c7a-94eb-fae7d3ebf954",
+      "name": "Build review error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        -210
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "6b7e78bc-1699-4934-9999-8ded18998c5a",
+      "name": "Respond 400 · review",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        780,
+        -210
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "find",
+        "collection": "triage_decisions",
+        "query": "={{ JSON.stringify({ decisionId: $json.decisionId }) }}",
+        "options": {
+          "limit": 1
+        }
+      },
+      "id": "cd66a98d-4454-4cc1-8154-68084254699b",
+      "name": "Load decision",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        540,
+        -40
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\n// Red flags that a screening tool must never allow to be waved away remotely.\nconst NON_DEESCALATABLE = new Set([\n  'RF_ACUTE_SCROTAL_PAIN',\n  'RF_TESTICULAR_MASS',\n  'RF_PRIAPISM',\n  'RF_GU_TRAUMA',\n  'RF_ACUTE_URINARY_RETENTION',\n]);\n\nconst VALID_OUTCOMES = ['approved', 'escalated', 'de_escalated'];\nconst VALID_TIERS = [\n  'SELF_CARE', 'PRIMARY_CARE', 'FERTILITY_SERVICES', 'ANDROLOGY_UROLOGY', 'URGENT',\n];\n\n\nconst req = $('Authenticate clinician').first().json;\nconst d = $('Load decision').first().json;\n\nif (!d || !d.decisionId) {\n  return [{ json: { permitted: false, reason: 'decision_not_found', runId: req.runId } }];\n}\nif (d.status === 'final' && d.reviewedAt) {\n  return [{ json: { permitted: false, reason: 'already_reviewed',\n                    decisionId: d.decisionId, pseudonymId: d.pseudonymId, runId: req.runId } }];\n}\n\nconst currentTier = d.tier;\nconst redFlags = d.redFlags ?? [];\nconst blockingFlags = redFlags.filter((f) => NON_DEESCALATABLE.has(f));\n\nlet finalTier = currentTier;\nif (req.outcome === 'escalated' || req.outcome === 'de_escalated') finalTier = req.overrideTier;\n\nconst isDeEscalation =\n  ['SELF_CARE', 'PRIMARY_CARE', 'FERTILITY_SERVICES', 'ANDROLOGY_UROLOGY', 'URGENT']\n    .indexOf(finalTier) <\n  ['SELF_CARE', 'PRIMARY_CARE', 'FERTILITY_SERVICES', 'ANDROLOGY_UROLOGY', 'URGENT']\n    .indexOf(currentTier);\n\nif (isDeEscalation && blockingFlags.length > 0) {\n  return [{ json: {\n    permitted: false,\n    reason: 'deescalation_blocked_by_red_flag',\n    blockingFlags,\n    decisionId: d.decisionId,\n    pseudonymId: d.pseudonymId,\n    clinicianId: req.clinicianId,\n    attemptedTier: finalTier,\n    currentTier,\n    runId: req.runId,\n  } }];\n}\n\nreturn [{ json: {\n  permitted: true,\n  decisionId: d.decisionId,\n  pseudonymId: d.pseudonymId,\n  assessmentId: d.assessmentId ?? null,\n  locale: d.rationaleLocale === 'ar' ? 'ar' : 'en',\n  clinicianId: req.clinicianId,\n  outcome: req.outcome,\n  currentTier,\n  finalTier,\n  isDeEscalation,\n  redFlags,\n  justification: req.justification,\n  note: req.note,\n  runId: req.runId,\n} }];"
+      },
+      "id": "8931741f-7824-4a9f-b924-fc327a24fdc5",
+      "name": "Evaluate override",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        -40
+      ],
+      "notes": "The one rule a clinician cannot talk their way past, enforced in code.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "069bf92e-b9c3-4b32-b8c3-099fb7c3080c",
+              "leftValue": "={{ $json.permitted }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "8087d471-5889-4465-9589-3fac5689413f",
+      "name": "Override permitted?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1020,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst e = $('Evaluate override').first().json;\nreturn [{ json: auditDoc({\n  actor: 'clinician:' + (e.clinicianId ?? 'unknown'),\n  action: 'REVIEW_OVERRIDE_REFUSED',\n  pseudonymId: e.pseudonymId ?? null,\n  subjectRef: { collection: 'triage_decisions', id: e.decisionId ?? null },\n  runId: e.runId,\n  outcome: 'refused',\n  meta: {\n    reason: e.reason,\n    blockingFlags: e.blockingFlags ?? [],\n    attemptedTier: e.attemptedTier ?? null,\n    currentTier: e.currentTier ?? null,\n  },\n}) }];"
+      },
+      "id": "51d8c1d8-934f-4330-964f-17e9954f1656",
+      "name": "Doc · audit blocked override",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        300
+      ],
+      "notes": "A refused de-escalation is a clinical-governance signal and is never silent.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "audit_log",
+        "fields": "at,actor,action,pseudonymId,subjectRef,consentId,workflowRunId,outcome,meta",
+        "options": {}
+      },
+      "id": "e63fb6d8-6c4b-4030-af4b-94e96e4b9356",
+      "name": "Write audit · blocked",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        1500,
+        300
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst e = $('Evaluate override').first().json;\nconst MESSAGES = {\n  decision_not_found: 'No such triage decision.',\n  already_reviewed: 'This decision has already been reviewed.',\n  deescalation_blocked_by_red_flag:\n    'This decision carries an emergency red flag and cannot be de-escalated through the screening API. ' +\n    'Manage it in the clinical record with a named accountable clinician.',\n};\nreturn [{ json: {\n  accepted: false,\n  error: e.reason,\n  message: MESSAGES[e.reason] ?? 'Override refused.',\n  blockingFlags: e.blockingFlags ?? [],\n} }];"
+      },
+      "id": "fa34ae57-60a6-4057-a1a6-f1ea62a6f37d",
+      "name": "Build 422 · blocked",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "id": "f5b9d96f-4660-408f-8760-4222486043b5",
+      "name": "Respond 422",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst e = $('Evaluate override').first().json;\nreturn [{ json: {\n  decisionId: e.decisionId,\n  tier: e.finalTier,\n  source: e.outcome === 'approved' ? 'engine' : 'clinician_override',\n  reviewedBy: 'clinician:' + e.clinicianId,\n  reviewedAt: nowIso(),\n  reviewOutcome: e.outcome,\n  reviewNote: e.note,\n  reviewJustification: e.justification,\n  tierBeforeReview: e.currentTier,\n  status: 'final',\n  requiresHumanReview: false,\n} }];"
+      },
+      "id": "d68d978a-eeac-484e-adac-06bbecac0528",
+      "name": "Doc · finalise decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "collection": "triage_decisions",
+        "updateKey": "decisionId",
+        "fields": "tier,source,reviewedBy,reviewedAt,reviewOutcome,reviewNote,reviewJustification,tierBeforeReview,status,requiresHumanReview",
+        "upsert": false,
+        "options": {}
+      },
+      "id": "3af1e947-123a-4a67-933a-4bfa143a4d8d",
+      "name": "Update decision · final",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        1500,
+        -40
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "find",
+        "collection": "escalations",
+        "query": "={{ JSON.stringify({ decisionId: $('Evaluate override').first().json.decisionId, status: { $in: ['open','breached'] } }) }}",
+        "options": {
+          "limit": 5
+        }
+      },
+      "id": "15191d13-0a95-4373-8b95-f5060c95f699",
+      "name": "Find open escalation",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        1740,
+        -40
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst e = $('Evaluate override').first().json;\nconst open = $('Find open escalation').all().map((i) => i.json).filter((x) => x && x.escalationId);\n\nif (open.length === 0) {\n  return [{ json: { escalationId: '__noop__', status: null, acknowledgedBy: null,\n                    acknowledgedAt: null, closedAt: null } }];\n}\n\nreturn open.map((x) => ({ json: {\n  escalationId: x.escalationId,\n  status: 'closed',\n  wasBreached: x.status === 'breached',\n  acknowledgedBy: 'clinician:' + e.clinicianId,\n  acknowledgedAt: nowIso(),\n  closedAt: nowIso(),\n} }));"
+      },
+      "id": "ab416668-6628-4a60-a928-cf196828cd86",
+      "name": "Doc · acknowledge escalation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        -40
+      ],
+      "notes": "Acknowledgement is what stops the SLA sweep in workflow 02. A breached escalation keeps its breach record and is closed, not quietly reset.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "collection": "escalations",
+        "updateKey": "escalationId",
+        "fields": "status,wasBreached,acknowledgedBy,acknowledgedAt,closedAt",
+        "upsert": false,
+        "options": {}
+      },
+      "id": "2ef8fd8a-2d54-4e4e-ac54-dcbb2b54db28",
+      "name": "Update escalation · closed",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        2220,
+        -40
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst e = $('Evaluate override').first().json;\n\nconst TEXT = {\n  en: 'A clinician has reviewed your result. You can now see your next step in the app.',\n  ar: 'قام أحد الأطباء بمراجعة نتيجتك. يمكنك الآن الاطلاع على الخطوة التالية في التطبيق.',\n};\n\nreturn [{ json: {\n  notificationId: newId('ntf'),\n  pseudonymId: e.pseudonymId,\n  template: 'review_complete',\n  locale: e.locale,\n  channel: 'in_app',\n  discreet: true,\n  subject: e.locale === 'ar' ? 'تحديث من فيجور' : 'Your Vigor update',\n  consentId: null,\n  status: 'sent',\n  attempt: 1,\n  sentAt: nowIso(),\n  createdAt: nowIso(),\n  bodyText: TEXT[e.locale] ?? TEXT.en,\n  relatedDecisionId: e.decisionId,\n} }];"
+      },
+      "id": "cbfc5a39-6ea5-410d-aba5-3c546ca53de7",
+      "name": "Doc · notification reviewed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2460,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "notifications",
+        "fields": "notificationId,pseudonymId,template,locale,channel,discreet,subject,consentId,status,attempt,sentAt,createdAt,bodyText,relatedDecisionId",
+        "options": {}
+      },
+      "id": "bf0d0b8b-6c37-4deb-ad37-8f7e6e379111",
+      "name": "Write notification · reviewed",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        2700,
+        -40
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst e = $('Evaluate override').first().json;\nreturn [{ json: auditDoc({\n  actor: 'clinician:' + e.clinicianId,\n  action: 'TRIAGE_REVIEWED',\n  pseudonymId: e.pseudonymId,\n  subjectRef: { collection: 'triage_decisions', id: e.decisionId },\n  runId: e.runId,\n  meta: {\n    outcome: e.outcome,\n    tierBeforeReview: e.currentTier,\n    tierAfterReview: e.finalTier,\n    isDeEscalation: e.isDeEscalation,\n    redFlags: e.redFlags,\n    justificationProvided: Boolean(e.justification),\n  },\n}) }];"
+      },
+      "id": "c3cda040-4f8c-4e38-928c-12f1518c115e",
+      "name": "Doc · audit review",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2940,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "audit_log",
+        "fields": "at,actor,action,pseudonymId,subjectRef,consentId,workflowRunId,outcome,meta",
+        "options": {}
+      },
+      "id": "1d945e74-4c7d-4a8c-8f7d-df454e7dddb2",
+      "name": "Write audit · review",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        3180,
+        -40
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst e = $('Evaluate override').first().json;\nreturn [{ json: {\n  accepted: true,\n  decisionId: e.decisionId,\n  tier: e.finalTier,\n  tierBeforeReview: e.currentTier,\n  outcome: e.outcome,\n  reviewedBy: 'clinician:' + e.clinicianId,\n  referralUnblocked: true,\n} }];"
+      },
+      "id": "3bbf7900-f489-44f8-b789-79b1f689781e",
+      "name": "Build 200 · reviewed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3420,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "6e0490cf-a7c8-45ef-a8c8-3782a9c83915",
+      "name": "Respond 200 · reviewed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3660,
+        -40
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook clinician.review": {
+      "main": [
+        [
+          {
+            "node": "Vigor config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vigor config": {
+      "main": [
+        [
+          {
+            "node": "Authenticate clinician",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Authenticate clinician": {
+      "main": [
+        [
+          {
+            "node": "Review request valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Review request valid?": {
+      "main": [
+        [
+          {
+            "node": "Load decision",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build review error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build review error": {
+      "main": [
+        [
+          {
+            "node": "Respond 400 · review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load decision": {
+      "main": [
+        [
+          {
+            "node": "Evaluate override",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate override": {
+      "main": [
+        [
+          {
+            "node": "Override permitted?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Override permitted?": {
+      "main": [
+        [
+          {
+            "node": "Doc · finalise decision",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Doc · audit blocked override",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · audit blocked override": {
+      "main": [
+        [
+          {
+            "node": "Write audit · blocked",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write audit · blocked": {
+      "main": [
+        [
+          {
+            "node": "Build 422 · blocked",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build 422 · blocked": {
+      "main": [
+        [
+          {
+            "node": "Respond 422",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · finalise decision": {
+      "main": [
+        [
+          {
+            "node": "Update decision · final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update decision · final": {
+      "main": [
+        [
+          {
+            "node": "Find open escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find open escalation": {
+      "main": [
+        [
+          {
+            "node": "Doc · acknowledge escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · acknowledge escalation": {
+      "main": [
+        [
+          {
+            "node": "Update escalation · closed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update escalation · closed": {
+      "main": [
+        [
+          {
+            "node": "Doc · notification reviewed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · notification reviewed": {
+      "main": [
+        [
+          {
+            "node": "Write notification · reviewed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write notification · reviewed": {
+      "main": [
+        [
+          {
+            "node": "Doc · audit review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · audit review": {
+      "main": [
+        [
+          {
+            "node": "Write audit · review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write audit · review": {
+      "main": [
+        [
+          {
+            "node": "Build 200 · reviewed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build 200 · reviewed": {
+      "main": [
+        [
+          {
+            "node": "Respond 200 · reviewed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": false,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "meta": {
+    "instanceId": "vigor-local"
+  },
+  "id": "vigor09"
+}

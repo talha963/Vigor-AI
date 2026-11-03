@@ -1,0 +1,175 @@
+# ---------------------------------------------------------------------------
+# Vigor stack.  Run from the repo root:
+#
+#   docker compose --env-file .env -f infra/docker-compose.yml up -d
+#   npm run stack:up          (the same thing)
+#
+# STORAGE NOTES — this stack is built to add as close to zero new disk as
+# possible on a machine that is short of space:
+#
+#  * Every service reuses ONE image, ${N8N_IMAGE}, which also happens to be an
+#    image you are likely to already have. Three services, one image, no extra
+#    bytes. The image ships Node 24, so it runs the repo tooling too; there is
+#    no second Node image and no Dockerfile, which also means no build cache.
+#  * MongoDB defaults to Atlas, i.e. zero local bytes. The local `mongo`
+#    service exists only behind the `local-db` profile for offline demos, and
+#    costs ~1.3GB when enabled.
+#  * n8n execution history is pruned aggressively (see EXECUTIONS_DATA_*).
+#    Without this the SQLite file grows without limit, which on an instance
+#    saving full execution data is the single biggest disk risk here.
+#
+# Pin ${N8N_IMAGE} to a digest before you rely on this for anything real;
+# `latest` is chosen here specifically because it is already on disk.
+# ---------------------------------------------------------------------------
+name: vigor
+
+x-n8n-image: &n8n-image ${N8N_IMAGE:-n8nio/n8n:latest}
+
+x-n8n-env: &n8n-env
+  # --- addressing -----------------------------------------------------------
+  N8N_HOST: ${N8N_HOST:-localhost}
+  N8N_PORT: "5678"
+  N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
+  WEBHOOK_URL: ${WEBHOOK_URL:-http://localhost:5678/}
+  N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+  GENERIC_TIMEZONE: ${GENERIC_TIMEZONE:-Asia/Dubai}
+  TZ: ${TZ:-Asia/Dubai}
+
+  # --- THE ONE THAT BREAKS EVERYTHING IF MISSING ----------------------------
+  # n8n 2.x computes:  isEnvAccessBlocked = N8N_BLOCK_ENV_ACCESS_IN_NODE !== 'false'
+  # so env access is BLOCKED unless this is the literal string "false". It
+  # backs ordinary expressions as well as Code nodes, and it no longer appears
+  # in n8n's typed config schema, so nothing warns you. Without it, the
+  # "Vigor config" node falls back to defaults and reports envBlocked: true.
+  N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+  # Pin the Code-node execution mode rather than inheriting a default that
+  # changes between releases.
+  N8N_RUNNERS_MODE: internal
+
+  # --- storage guards -------------------------------------------------------
+  EXECUTIONS_DATA_PRUNE: "true"
+  EXECUTIONS_DATA_MAX_AGE: ${EXECUTIONS_DATA_MAX_AGE:-72}
+  EXECUTIONS_DATA_PRUNE_MAX_COUNT: ${EXECUTIONS_DATA_PRUNE_MAX_COUNT:-250}
+  # Keep binary payloads in memory; Vigor never moves files through n8n, and
+  # filesystem mode would write them into the volume.
+  N8N_DEFAULT_BINARY_DATA_MODE: default
+
+  # --- quieter, smaller -----------------------------------------------------
+  N8N_DIAGNOSTICS_ENABLED: "false"
+  N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+  N8N_PERSONALIZATION_ENABLED: "false"
+  N8N_HIRING_BANNER_ENABLED: "false"
+  DB_SQLITE_VACUUM_ON_STARTUP: "true"
+
+  # --- read by the "Vigor config" node, which is the only $env consumer -----
+  VIGOR_AGENT_SERVICE_URL: ${AGENT_SERVICE_URL:-http://host.docker.internal:8000}
+  VIGOR_INTERNAL_TOKEN: ${VIGOR_INTERNAL_TOKEN}
+  VIGOR_NOTIFY_MODE: ${NOTIFY_MODE:-DEMO}
+  VIGOR_ONCALL_EMAIL: ${ONCALL_CLINICIAN_EMAIL:-oncall@example-clinic.ae}
+  VIGOR_ESCALATION_SLA_MINUTES: ${ESCALATION_SLA_MINUTES:-60}
+  VIGOR_QUIET_HOURS_START: ${QUIET_HOURS_START:-21}
+  VIGOR_QUIET_HOURS_END: ${QUIET_HOURS_END:-8}
+
+services:
+  # -------------------------------------------------------------------------
+  # Runs once, before n8n starts: creates the "Vigor Atlas" MongoDB credential
+  # from MONGODB_URI, imports the nine workflows, and activates them. Replaces
+  # the two manual setup steps in the n8n UI that are the usual reason a demo
+  # returns 404 from every endpoint.
+  # -------------------------------------------------------------------------
+  n8n-init:
+    image: *n8n-image
+    container_name: vigor-n8n-init
+    restart: "no"
+    user: node
+    environment:
+      <<: *n8n-env
+      MONGODB_URI: ${MONGODB_URI}
+      MONGODB_DB: ${MONGODB_DB:-vigor}
+    entrypoint: ["/bin/sh", "/init/bootstrap-n8n.sh"]
+    volumes:
+      - n8n-data:/home/node/.n8n
+      - ../n8n/workflows:/workflows:ro
+      - ../n8n/workflows.manifest.json:/workflows.manifest.json:ro
+      - ./init:/init:ro
+
+  n8n:
+    image: *n8n-image
+    container_name: vigor-n8n
+    restart: unless-stopped
+    depends_on:
+      n8n-init:
+        condition: service_completed_successfully
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    environment: *n8n-env
+    volumes:
+      - n8n-data:/home/node/.n8n
+      - ../n8n/workflows:/workflows:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5678/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # -------------------------------------------------------------------------
+  # The repo tooling, in the same image, so nothing has to be installed on the
+  # host. On demand only:
+  #
+  #   docker compose ... run --rm tools npm run db:bootstrap
+  #   docker compose ... run --rm tools npm run db:seed
+  #   docker compose ... run --rm tools npm run verify
+  #   docker compose ... run --rm tools npm run smoke
+  #
+  # The repo is bind-mounted, including its 8.6MB node_modules, so there is no
+  # image build and no duplicated dependency tree.
+  # -------------------------------------------------------------------------
+  tools:
+    image: *n8n-image
+    container_name: vigor-tools
+    profiles: ["tools"]
+    user: node
+    working_dir: /repo
+    # The image entrypoint is tini -> /docker-entrypoint.sh -> n8n, so it has to
+    # be replaced. With npm as the entrypoint, an invocation reads:
+    #   docker compose ... run --rm tools run db:seed
+    entrypoint: ["npm"]
+    command: ["run", "verify"]
+    environment:
+      MONGODB_URI: ${MONGODB_URI}
+      MONGODB_DB: ${MONGODB_DB:-vigor}
+      VIGOR_INTERNAL_TOKEN: ${VIGOR_INTERNAL_TOKEN}
+      # Inside the compose network n8n is reachable by service name, so the
+      # smoke test does not depend on the host port mapping.
+      WEBHOOK_URL: http://n8n:5678/
+    volumes:
+      - ..:/repo
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # -------------------------------------------------------------------------
+  # Offline-only MongoDB. Costs ~1.3GB, so it is opt-in:
+  #   docker compose ... --profile local-db up -d
+  # With Atlas (the default) local storage for the database is zero.
+  # -------------------------------------------------------------------------
+  mongo:
+    image: ${MONGO_IMAGE:-mongo:latest}
+    container_name: vigor-mongo
+    restart: unless-stopped
+    profiles: ["local-db"]
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: vigor
+      MONGO_INITDB_ROOT_PASSWORD: vigor
+      MONGO_INITDB_DATABASE: ${MONGODB_DB:-vigor}
+    volumes:
+      - mongo-data:/data/db
+    command: ["--wiredTigerCacheSizeGB", "0.25"]
+
+volumes:
+  n8n-data:
+  mongo-data:

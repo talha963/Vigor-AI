@@ -1,0 +1,19 @@
+# Normalise line endings. Default: let git decide per platform.
+* text=auto
+
+# Shell scripts MUST stay LF. `infra/init/bootstrap-n8n.sh` runs inside a Linux
+# container via /bin/sh; checked out with CRLF on Windows it fails to execute,
+# which would break `docker compose up` with a confusing interpreter error.
+*.sh text eol=lf
+
+# Generated n8n workflow JSON is compared byte-for-byte by
+# `node n8n/build.mjs --check`, so it must not be rewritten on checkout.
+n8n/workflows/*.json text eol=lf
+n8n/workflows.manifest.json text eol=lf
+packages/contracts/*.json text eol=lf
+tools/seed/*.json text eol=lf
+
+# Docker and env files are read by Linux containers.
+Dockerfile* text eol=lf
+*.yml text eol=lf
+.env.example text eol=lf

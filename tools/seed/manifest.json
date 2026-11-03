@@ -1,0 +1,438 @@
+{
+  "generatedAt": "2026-11-02T16:42:22.491Z",
+  "cohortSize": 900,
+  "goldenSubjects": [
+    {
+      "caseId": "GC01",
+      "label": "Acute scrotal pain, 3 hours — possible torsion",
+      "pseudonymId": "psn_goldengc01",
+      "assessmentId": "asm_goldengc01",
+      "consentId": "cns_00011ok5",
+      "locale": "en",
+      "answers": {
+        "symptoms": [
+          "acute_scrotal_pain",
+          "scrotal_swelling"
+        ],
+        "painOnsetHours": 3,
+        "monthsTrying": 0,
+        "smoking": "never",
+        "bmi": 23.1
+      },
+      "expectedRedFlags": [
+        "RF_ACUTE_SCROTAL_PAIN"
+      ],
+      "expectedMinimumTier": "URGENT",
+      "expectedTier": "URGENT"
+    },
+    {
+      "caseId": "GC02",
+      "label": "Painless testicular lump",
+      "pseudonymId": "psn_goldengc02",
+      "assessmentId": "asm_goldengc02",
+      "consentId": "cns_0006djcs",
+      "locale": "en",
+      "answers": {
+        "symptoms": [
+          "testicular_lump"
+        ],
+        "monthsTrying": 8,
+        "smoking": "never",
+        "bmi": 24.6
+      },
+      "expectedRedFlags": [
+        "RF_TESTICULAR_MASS"
+      ],
+      "expectedMinimumTier": "URGENT",
+      "expectedTier": "URGENT"
+    },
+    {
+      "caseId": "GC03",
+      "label": "Prolonged painful erection",
+      "pseudonymId": "psn_goldengc03",
+      "assessmentId": "asm_goldengc03",
+      "consentId": "cns_000b2hxv",
+      "locale": "ar",
+      "answers": {
+        "symptoms": [
+          "prolonged_erection"
+        ],
+        "monthsTrying": 0,
+        "bmi": 27.4
+      },
+      "expectedRedFlags": [
+        "RF_PRIAPISM"
+      ],
+      "expectedMinimumTier": "URGENT",
+      "expectedTier": "URGENT"
+    },
+    {
+      "caseId": "GC04",
+      "label": "Unable to pass urine",
+      "pseudonymId": "psn_goldengc04",
+      "assessmentId": "asm_goldengc04",
+      "consentId": "cns_000g7ib5",
+      "locale": "en",
+      "answers": {
+        "symptoms": [
+          "cannot_pass_urine",
+          "dysuria"
+        ],
+        "monthsTrying": 0,
+        "bmi": 31.8,
+        "diabetes": "type2"
+      },
+      "expectedRedFlags": [
+        "RF_ACUTE_URINARY_RETENTION"
+      ],
+      "expectedMinimumTier": "URGENT",
+      "expectedTier": "URGENT"
+    },
+    {
+      "caseId": "GC05",
+      "label": "Fever with urethral discharge",
+      "pseudonymId": "psn_goldengc05",
+      "assessmentId": "asm_goldengc05",
+      "consentId": "cns_000llawh",
+      "locale": "en",
+      "answers": {
+        "symptoms": [
+          "fever",
+          "urethral_discharge",
+          "dysuria"
+        ],
+        "currentDischarge": true,
+        "stiHistory": [
+          "prefer_not_to_say"
+        ],
+        "monthsTrying": 6,
+        "bmi": 25
+      },
+      "expectedRedFlags": [
+        "RF_FEBRILE_GU_INFECTION"
+      ],
+      "expectedMinimumTier": "URGENT",
+      "expectedTier": "URGENT"
+    },
+    {
+      "caseId": "GC06",
+      "label": "Visual field loss with gynaecomastia",
+      "pseudonymId": "psn_goldengc06",
+      "assessmentId": "asm_goldengc06",
+      "consentId": "cns_000qi5sk",
+      "locale": "en",
+      "answers": {
+        "symptoms": [
+          "visual_field_loss",
+          "gynaecomastia"
+        ],
+        "libidoChange": "absent",
+        "erectileDifficulty": "frequent",
+        "monthsTrying": 20,
+        "bmi": 26.2
+      },
+      "expectedRedFlags": [
+        "RF_PITUITARY_SUSPICION"
+      ],
+      "expectedMinimumTier": "URGENT",
+      "expectedTier": "URGENT"
+    },
+    {
+      "caseId": "GC07",
+      "label": "Bilateral uncorrected undescended testes",
+      "pseudonymId": "psn_goldengc07",
+      "assessmentId": "asm_goldengc07",
+      "consentId": "cns_000vytn",
+      "locale": "ar",
+      "answers": {
+        "undescendedTestis": "bilateral_uncorrected",
+        "monthsTrying": 14,
+        "bmi": 22.8,
+        "symptoms": []
+      },
+      "expectedRedFlags": [
+        "RF_BILATERAL_UNDESCENDED"
+      ],
+      "expectedMinimumTier": "ANDROLOGY_UROLOGY",
+      "expectedTier": "ANDROLOGY_UROLOGY"
+    },
+    {
+      "caseId": "GC08",
+      "label": "Absent vas deferens noted previously",
+      "pseudonymId": "psn_goldengc08",
+      "assessmentId": "asm_goldengc08",
+      "consentId": "cns_001018zx",
+      "locale": "en",
+      "answers": {
+        "absentVas": true,
+        "monthsTrying": 18,
+        "priorConception": false,
+        "bmi": 24,
+        "symptoms": []
+      },
+      "expectedRedFlags": [
+        "RF_ABSENT_VAS"
+      ],
+      "expectedMinimumTier": "ANDROLOGY_UROLOGY",
+      "expectedTier": "ANDROLOGY_UROLOGY"
+    },
+    {
+      "caseId": "GC09",
+      "label": "18 months trying, obese, type 2 diabetes, current smoker",
+      "pseudonymId": "psn_goldengc09",
+      "assessmentId": "asm_goldengc09",
+      "consentId": "cns_0015c3w5",
+      "locale": "en",
+      "answers": {
+        "monthsTrying": 18,
+        "priorConception": false,
+        "partnerAssessed": true,
+        "bmi": 33.4,
+        "waistCm": 108,
+        "diabetes": "type2",
+        "hba1c": 7.8,
+        "hypertension": true,
+        "smoking": "current",
+        "packYears": 12,
+        "heatExposure": "frequent",
+        "libidoChange": "reduced",
+        "symptoms": []
+      },
+      "expectedRedFlags": [],
+      "expectedMinimumTier": null,
+      "expectedTier": "ANDROLOGY_UROLOGY"
+    },
+    {
+      "caseId": "GC10",
+      "label": "14 months trying, otherwise healthy",
+      "pseudonymId": "psn_goldengc10",
+      "assessmentId": "asm_goldengc10",
+      "consentId": "cns_001a25rd",
+      "locale": "ar",
+      "answers": {
+        "monthsTrying": 14,
+        "priorConception": false,
+        "partnerAssessed": false,
+        "bmi": 23.9,
+        "smoking": "never",
+        "alcohol": "none",
+        "symptoms": []
+      },
+      "expectedRedFlags": [],
+      "expectedMinimumTier": null,
+      "expectedTier": "ANDROLOGY_UROLOGY"
+    },
+    {
+      "caseId": "GC11",
+      "label": "4 months trying, healthy, no symptoms",
+      "pseudonymId": "psn_goldengc11",
+      "assessmentId": "asm_goldengc11",
+      "consentId": "cns_001f7vxs",
+      "locale": "en",
+      "answers": {
+        "monthsTrying": 4,
+        "priorConception": false,
+        "bmi": 22.1,
+        "smoking": "never",
+        "alcohol": "occasional",
+        "sleepHours": 7,
+        "symptoms": []
+      },
+      "expectedRedFlags": [],
+      "expectedMinimumTier": null,
+      "expectedTier": "SELF_CARE"
+    },
+    {
+      "caseId": "GC12",
+      "label": "Metabolic risk, not currently trying to conceive",
+      "pseudonymId": "psn_goldengc12",
+      "assessmentId": "asm_goldengc12",
+      "consentId": "cns_001k4okk",
+      "locale": "en",
+      "answers": {
+        "monthsTrying": 0,
+        "bmi": 32,
+        "waistCm": 106,
+        "diabetes": "prediabetes",
+        "hba1c": 6.2,
+        "smoking": "current",
+        "packYears": 6,
+        "symptoms": []
+      },
+      "expectedRedFlags": [],
+      "expectedMinimumTier": null,
+      "expectedTier": "PRIMARY_CARE"
+    },
+    {
+      "caseId": "GC13",
+      "label": "Prior vasectomy, now wants to conceive",
+      "pseudonymId": "psn_goldengc13",
+      "assessmentId": "asm_goldengc13",
+      "consentId": "cns_001pc2fz",
+      "locale": "en",
+      "answers": {
+        "priorVasectomy": true,
+        "monthsTrying": 10,
+        "priorConception": true,
+        "bmi": 26,
+        "smoking": "former",
+        "symptoms": []
+      },
+      "expectedRedFlags": [],
+      "expectedMinimumTier": null,
+      "expectedTier": "FERTILITY_SERVICES"
+    },
+    {
+      "caseId": "GC14",
+      "label": "Mumps orchitis in adolescence, 20 months trying",
+      "pseudonymId": "psn_goldengc14",
+      "assessmentId": "asm_goldengc14",
+      "consentId": "cns_001v5ic1",
+      "locale": "ar",
+      "answers": {
+        "mumpsOrchitis": true,
+        "monthsTrying": 20,
+        "priorConception": false,
+        "bmi": 25.5,
+        "smoking": "never",
+        "symptoms": []
+      },
+      "expectedRedFlags": [],
+      "expectedMinimumTier": null,
+      "expectedTier": "ANDROLOGY_UROLOGY"
+    },
+    {
+      "caseId": "GC15",
+      "label": "Young, healthy, curious — no risk factors at all",
+      "pseudonymId": "psn_goldengc15",
+      "assessmentId": "asm_goldengc15",
+      "consentId": "cns_0020i8k0",
+      "locale": "en",
+      "answers": {
+        "monthsTrying": 0,
+        "bmi": 21.5,
+        "smoking": "never",
+        "alcohol": "none",
+        "sleepHours": 8,
+        "symptoms": []
+      },
+      "expectedRedFlags": [],
+      "expectedMinimumTier": null,
+      "expectedTier": "SELF_CARE"
+    },
+    {
+      "caseId": "GC16",
+      "label": "Scrotal ache with no fever, gradual onset",
+      "pseudonymId": "psn_goldengc16",
+      "assessmentId": "asm_goldengc16",
+      "consentId": "cns_0025iff5",
+      "locale": "en",
+      "answers": {
+        "symptoms": [
+          "scrotal_ache"
+        ],
+        "painOnsetHours": 240,
+        "varicocele": "unknown",
+        "monthsTrying": 13,
+        "bmi": 24.3
+      },
+      "expectedRedFlags": [],
+      "expectedMinimumTier": null,
+      "expectedTier": "ANDROLOGY_UROLOGY"
+    }
+  ],
+  "labCases": [
+    {
+      "id": "LC01",
+      "label": "Azoospermia",
+      "rationale": "Must never be delivered by notification. Checks that workflow 05 withholds detail and routes to a clinician.",
+      "panel": "semen_analysis",
+      "values": {
+        "volumeMl": 2.4,
+        "concentrationMillionPerMl": 0,
+        "progressiveMotilityPct": 0,
+        "normalFormsPct": 0,
+        "phLevel": 7.4
+      },
+      "expectedFlags": [
+        "CONCENTRATION_BELOW_REF",
+        "PROGRESSIVE_MOTILITY_BELOW_REF",
+        "MORPHOLOGY_BELOW_REF",
+        "AZOOSPERMIA"
+      ],
+      "expectedTier": "ANDROLOGY_UROLOGY",
+      "expectRequiresHumanReview": true,
+      "expectDetailWithheld": true
+    },
+    {
+      "id": "LC02",
+      "label": "Severe oligozoospermia",
+      "rationale": "Same handling as azoospermia: a clinician delivers it.",
+      "panel": "semen_analysis",
+      "values": {
+        "volumeMl": 1.8,
+        "concentrationMillionPerMl": 2.1,
+        "totalMotilityPct": 28,
+        "progressiveMotilityPct": 11,
+        "normalFormsPct": 2
+      },
+      "expectedFlags": [
+        "CONCENTRATION_BELOW_REF",
+        "TOTAL_MOTILITY_BELOW_REF",
+        "PROGRESSIVE_MOTILITY_BELOW_REF",
+        "MORPHOLOGY_BELOW_REF",
+        "SEVERE_OLIGOZOOSPERMIA"
+      ],
+      "expectedTier": "ANDROLOGY_UROLOGY",
+      "expectRequiresHumanReview": true,
+      "expectDetailWithheld": true
+    },
+    {
+      "id": "LC03",
+      "label": "Mildly below reference on two parameters",
+      "rationale": "WHO guidance is to repeat before concluding. Checks the pathway asks for a confirmatory sample instead of labelling.",
+      "panel": "semen_analysis",
+      "values": {
+        "volumeMl": 1.6,
+        "concentrationMillionPerMl": 13.5,
+        "totalMotilityPct": 38,
+        "progressiveMotilityPct": 26,
+        "normalFormsPct": 5,
+        "vitalityPct": 60
+      },
+      "expectedFlags": [
+        "CONCENTRATION_BELOW_REF",
+        "TOTAL_MOTILITY_BELOW_REF",
+        "PROGRESSIVE_MOTILITY_BELOW_REF"
+      ],
+      "expectedTier": "ANDROLOGY_UROLOGY",
+      "expectRequiresHumanReview": false,
+      "expectDetailWithheld": false,
+      "expectedAction": "repeat_sample_after_interval"
+    },
+    {
+      "id": "LC04",
+      "label": "Entirely within WHO 2021 reference limits",
+      "rationale": "Checks that a normal result produces no flags, no escalation and no new specialist routing.",
+      "panel": "semen_analysis",
+      "values": {
+        "volumeMl": 3.2,
+        "concentrationMillionPerMl": 48,
+        "totalSpermMillion": 154,
+        "totalMotilityPct": 58,
+        "progressiveMotilityPct": 44,
+        "normalFormsPct": 8,
+        "vitalityPct": 72,
+        "phLevel": 7.6
+      },
+      "expectedFlags": [],
+      "expectedTier": "PRIMARY_CARE",
+      "expectRequiresHumanReview": false,
+      "expectDetailWithheld": false,
+      "expectedAction": "no_action_from_this_panel"
+    }
+  ],
+  "sampleShareToken": "shr_002tjjey",
+  "sampleReferralPseudonymId": "psn_002kbl4n",
+  "samplePendingDecisionId": "trg_01qv4bfx"
+}

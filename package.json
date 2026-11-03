@@ -1,0 +1,46 @@
+{
+  "name": "vigor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A confidential front door for male reproductive health: early explainable risk identification and safe routing to care.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "npm --prefix apps/web run dev",
+    "web": "npm --prefix apps/web run dev",
+    "web:build": "npm --prefix apps/web run build",
+    "web:start": "npm --prefix apps/web run start",
+    "workflows:build": "node n8n/build.mjs",
+    "workflows:check": "node n8n/build.mjs --check",
+    "db:bootstrap": "node tools/mongo-bootstrap.js",
+    "db:seed": "node tools/seed-cohort.js",
+    "db:reset": "node tools/seed-cohort.js --reset",
+    "smoke": "node tools/smoke/run-smoke.js",
+    "metrics:backfill": "node tools/backfill-metrics.js",
+    "verify": "npm run workflows:check && node tools/verify-contracts.js",
+    "stack:up": "docker compose --env-file .env -f infra/docker-compose.yml up -d",
+    "stack:down": "docker compose --env-file .env -f infra/docker-compose.yml down",
+    "stack:logs": "docker compose --env-file .env -f infra/docker-compose.yml logs -f n8n",
+    "stack:ps": "docker compose --env-file .env -f infra/docker-compose.yml ps",
+    "stack:status": "node tools/stack-status.js",
+    "_comment_reload": "Re-import and re-activate after editing workflows. n8n must restart to pick up activation changes.",
+    "stack:reload": "npm run workflows:build && docker compose --env-file .env -f infra/docker-compose.yml run --rm n8n-init && docker compose --env-file .env -f infra/docker-compose.yml restart n8n",
+    "_comment_docker": "Run the tooling inside the stack's image, so nothing is needed on the host. npm is the entrypoint, hence 'run <script>'.",
+    "docker:bootstrap": "docker compose --env-file .env -f infra/docker-compose.yml --profile tools run --rm tools run db:bootstrap",
+    "docker:seed": "docker compose --env-file .env -f infra/docker-compose.yml --profile tools run --rm tools run db:seed",
+    "docker:verify": "docker compose --env-file .env -f infra/docker-compose.yml --profile tools run --rm tools run verify",
+    "docker:smoke": "docker compose --env-file .env -f infra/docker-compose.yml --profile tools run --rm tools run smoke",
+    "_comment_disk": "Vigor's own footprint, and what is safe to reclaim. See docs/07-docker-and-storage.md before pruning.",
+    "disk:report": "node tools/disk-report.js",
+    "docker:backfill": "docker compose --env-file .env -f infra/docker-compose.yml --profile tools run --rm tools run metrics:backfill"
+  },
+  "dependencies": {
+    "mongodb": "6.12.0"
+  },
+  "devDependencies": {
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1"
+  }
+}
