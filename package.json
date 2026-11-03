@@ -21,6 +21,7 @@
     "metrics:backfill": "node tools/backfill-metrics.js",
     "verify": "npm run workflows:check && node tools/verify-contracts.js",
     "stack:up": "docker compose --env-file .env -f infra/docker-compose.yml up -d",
+    "stack:local": "docker compose --env-file .env -f infra/docker-compose.yml --profile local-db up -d",
     "stack:down": "docker compose --env-file .env -f infra/docker-compose.yml down",
     "stack:logs": "docker compose --env-file .env -f infra/docker-compose.yml logs -f n8n",
     "stack:ps": "docker compose --env-file .env -f infra/docker-compose.yml ps",

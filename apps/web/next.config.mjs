@@ -5,7 +5,7 @@ const nextConfig = {
     return [
       {
         source: '/api/n8n/:path*',
-        destination: 'http://localhost:5678/webhook/:path*',
+        destination: process.env.N8N_INTERNAL_URL || 'http://localhost:5678/webhook/:path*',
       },
       {
         source: '/api/agent/:path*',

@@ -116,6 +116,28 @@ services:
       start_period: 40s
 
   # -------------------------------------------------------------------------
+  # Next.js 15 Web Portal. Reuses the SAME image (*n8n-image) to add ZERO new
+  # bytes to disk. Node 24 in the image runs the web app seamlessly.
+  # -------------------------------------------------------------------------
+  web:
+    image: *n8n-image
+    container_name: vigor-web
+    restart: unless-stopped
+    user: node
+    working_dir: /repo/apps/web
+    entrypoint: ["npm", "run", "start"]
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      NODE_ENV: production
+      N8N_INTERNAL_URL: "http://n8n:5678/webhook/:path*"
+    volumes:
+      - ..:/repo
+    depends_on:
+      - n8n
+
+  # -------------------------------------------------------------------------
   # The repo tooling, in the same image, so nothing has to be installed on the
   # host. On demand only:
   #
@@ -133,17 +155,12 @@ services:
     profiles: ["tools"]
     user: node
     working_dir: /repo
-    # The image entrypoint is tini -> /docker-entrypoint.sh -> n8n, so it has to
-    # be replaced. With npm as the entrypoint, an invocation reads:
-    #   docker compose ... run --rm tools run db:seed
     entrypoint: ["npm"]
     command: ["run", "verify"]
     environment:
       MONGODB_URI: ${MONGODB_URI}
       MONGODB_DB: ${MONGODB_DB:-vigor}
       VIGOR_INTERNAL_TOKEN: ${VIGOR_INTERNAL_TOKEN}
-      # Inside the compose network n8n is reachable by service name, so the
-      # smoke test does not depend on the host port mapping.
       WEBHOOK_URL: http://n8n:5678/
     volumes:
       - ..:/repo
