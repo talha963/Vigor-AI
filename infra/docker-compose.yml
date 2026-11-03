@@ -120,20 +120,21 @@ services:
   # bytes to disk. Node 24 in the image runs the web app seamlessly.
   # -------------------------------------------------------------------------
   web:
-    image: *n8n-image
+    image: vigor-web:latest
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        BASE_IMAGE: *n8n-image
     container_name: vigor-web
     restart: unless-stopped
-    user: node
-    working_dir: /repo/apps/web
-    entrypoint: ["npm", "run", "start"]
+    entrypoint: ["node", "server.js"]
     ports:
       - "3000:3000"
     environment:
       PORT: "3000"
       NODE_ENV: production
       N8N_INTERNAL_URL: "http://n8n:5678/webhook/:path*"
-    volumes:
-      - ..:/repo
     depends_on:
       - n8n
 

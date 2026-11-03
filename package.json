@@ -31,6 +31,7 @@
     "_comment_docker": "Run the tooling inside the stack's image, so nothing is needed on the host. npm is the entrypoint, hence 'run <script>'.",
     "docker:bootstrap": "docker compose --env-file .env -f infra/docker-compose.yml --profile tools run --rm tools run db:bootstrap",
     "docker:seed": "docker compose --env-file .env -f infra/docker-compose.yml --profile tools run --rm tools run db:seed",
+    "docker:reset": "docker compose --env-file .env -f infra/docker-compose.yml --profile tools run --rm tools run db:reset",
     "docker:verify": "docker compose --env-file .env -f infra/docker-compose.yml --profile tools run --rm tools run verify",
     "docker:smoke": "docker compose --env-file .env -f infra/docker-compose.yml --profile tools run --rm tools run smoke",
     "_comment_disk": "Vigor's own footprint, and what is safe to reclaim. See docs/07-docker-and-storage.md before pruning.",

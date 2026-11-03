@@ -1,0 +1,10 @@
+node_modules
+apps/web/node_modules
+.next
+apps/web/.next
+.git
+.vscode
+infra/n8n-data
+infra/mongo-data
+.env
+*.log
