@@ -57,6 +57,7 @@ export default function Home() {
         onOpenConsent={() => setIsConsentOpen(true)}
         onOpenClinician={() => setIsClinicianOpen(true)}
         onOpenArchitecture={() => setIsArchitectureOpen(true)}
+        onOpenAtHomeKit={() => setIsAtHomeKitOpen(true)}
       />
 
       {/* Main Page Surfaces */}

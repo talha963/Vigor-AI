@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-02T17:27:27.621Z",
+  "generatedAt": "2026-11-03T15:59:24.479Z",
   "workflows": [
     {
       "id": "vigor01",
@@ -129,6 +129,20 @@
         "vigor",
         "human-oversight",
         "clinical-safety"
+      ]
+    },
+    {
+      "id": "vigor10",
+      "file": "w10-consent-granted.json",
+      "name": "Vigor 10 · Consent Granted",
+      "nodes": 22,
+      "triggers": [
+        "POST /webhook/vigor/consent-granted"
+      ],
+      "tags": [
+        "vigor",
+        "privacy",
+        "consent"
       ]
     }
   ]

@@ -15,6 +15,9 @@ import {
   Stethoscope,
   Sparkles,
   Users,
+  FlaskConical,
+  Package,
+  Microscope,
 } from 'lucide-react';
 import { Locale } from '@/types/vigor';
 
@@ -121,6 +124,127 @@ export default function AboutSection({ locale }: AboutSectionProps) {
             <div className="text-xs font-semibold text-blue-600 flex items-center gap-1.5 mt-auto pt-2 border-t border-blue-50">
               <Stethoscope className="w-4 h-4" />
               <span>{isAr ? 'مراكز معتمدة في أبوظبي' : 'Abu Dhabi Accredited Facilities'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Visual Healthcare Gallery: Clinical Infrastructure & Care Delivery in Abu Dhabi */}
+        <div id="clinical-lab" className="mb-20">
+          <div className="text-center max-w-2xl mx-auto mb-10">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-blue-700 mb-2 block">
+              {isAr ? 'البنية التحتية الطبية' : 'Clinical Infrastructure'}
+            </span>
+            <h3 className="text-2xl sm:text-3xl font-black text-blue-950">
+              {isAr
+                ? 'البيئة السريرية والمخبرية المعتمدة في أبوظبي'
+                : 'Accredited Clinical & Diagnostic Environment'}
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-500 mt-2">
+              {isAr
+                ? 'فحوصات معيارية تواكب أحدث المعايير العالمية لمنظمة الصحة العالمية لعام 2021 والرقابة الطبية المباشرة'
+                : 'Strict alignment with WHO 2021 6th Edition laboratory protocols and licensed medical facilities'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Photo Card 1: Andrology Lab */}
+            <div className="bg-white rounded-2xl overflow-hidden border border-blue-100 shadow-sm hover:shadow-lg transition-all group">
+              <div className="relative h-48 overflow-hidden bg-slate-100">
+                <img
+                  src="/images/andrology-lab.jpg"
+                  alt="Modern Andrology Laboratory"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-bold text-blue-950 border border-blue-100 shadow-xs flex items-center gap-1.5">
+                  <FlaskConical className="w-3 h-3 text-blue-600" />
+                  <span>{isAr ? 'مختبر أندورلوجيا' : 'Andrology Laboratory'}</span>
+                </div>
+              </div>
+              <div className="p-4">
+                <h4 className="text-sm font-bold text-blue-950 mb-1">
+                  {isAr ? 'مختبرات الفحص المجهري المتقدم' : 'High-Precision Diagnostics'}
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {isAr
+                    ? 'أجهزة مجهرية متطورة لتحليل السائل المنوي ومراقبة حركة وتشوهات الحيوانات المنوية بدقة عالية.'
+                    : 'Phase-contrast microscopy and automated CASA workstations ensuring strict compliance with WHO standards.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Photo Card 2: Clinical Consultation */}
+            <div className="bg-white rounded-2xl overflow-hidden border border-blue-100 shadow-sm hover:shadow-lg transition-all group">
+              <div className="relative h-48 overflow-hidden bg-slate-100">
+                <img
+                  src="/images/clinical-consult.jpg"
+                  alt="Doctor Clinical Consultation"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-bold text-blue-950 border border-blue-100 shadow-xs flex items-center gap-1.5">
+                  <Stethoscope className="w-3 h-3 text-blue-600" />
+                  <span>{isAr ? 'استشارة استشاري' : 'Consultant Review'}</span>
+                </div>
+              </div>
+              <div className="p-4">
+                <h4 className="text-sm font-bold text-blue-950 mb-1">
+                  {isAr ? 'استشارة طبية خاصة وسرية' : 'Private Clinical Consult'}
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {isAr
+                    ? 'جلسات مراجعة خاصة وسرية مع استشاريي طب الذكورة والمسالك البولية المرخصين في أبوظبي.'
+                    : 'Dedicated private consultation environments with licensed urologists and andrologists across Abu Dhabi.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Photo Card 3: At-Home Testing Kit */}
+            <div className="bg-white rounded-2xl overflow-hidden border border-blue-100 shadow-sm hover:shadow-lg transition-all group">
+              <div className="relative h-48 overflow-hidden bg-slate-100">
+                <img
+                  src="/images/athome-kit.jpg"
+                  alt="At-Home Sample Collection Kit"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-bold text-blue-950 border border-blue-100 shadow-xs flex items-center gap-1.5">
+                  <Package className="w-3 h-3 text-blue-600" />
+                  <span>{isAr ? 'فحص منزلي سري' : 'At-Home Testing Kit'}</span>
+                </div>
+              </div>
+              <div className="p-4">
+                <h4 className="text-sm font-bold text-blue-950 mb-1">
+                  {isAr ? 'طرد العينات المعزول حرارياً' : 'Discreet Thermal Collection'}
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {isAr
+                    ? 'طقم جمع عينات معقم مزود بحفظ حراري مبرد، ورمز باركود مشفر يضمن عدم كشف الهوية عند التسليم.'
+                    : 'Sterile thermal-sleeved collection vials with tamper-evident barcoded seals for discreet locker collection.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Photo Card 4: Semen Microscopy */}
+            <div className="bg-white rounded-2xl overflow-hidden border border-blue-100 shadow-sm hover:shadow-lg transition-all group">
+              <div className="relative h-48 overflow-hidden bg-slate-100">
+                <img
+                  src="/images/semen-microscopy.jpg"
+                  alt="WHO 2021 Semen Analysis Microscopy"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-bold text-blue-950 border border-blue-100 shadow-xs flex items-center gap-1.5">
+                  <Microscope className="w-3 h-3 text-blue-600" />
+                  <span>{isAr ? 'معايير WHO 2021' : 'WHO 2021 Standard'}</span>
+                </div>
+              </div>
+              <div className="p-4">
+                <h4 className="text-sm font-bold text-blue-950 mb-1">
+                  {isAr ? 'تحليل الحركة والتركيز الحقيقي' : 'CASA Motility & Viability'}
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {isAr
+                    ? 'تتبع حركي متقدم وحساب النسبة المئوية للحركة التقدمية (30٪) والأشكال الطبيعية (4٪) طبياً.'
+                    : 'Algorithmic path tracking measuring 30% progressive motility, 4% normal forms, and viability thresholds.'}
+                </p>
+              </div>
             </div>
           </div>
         </div>

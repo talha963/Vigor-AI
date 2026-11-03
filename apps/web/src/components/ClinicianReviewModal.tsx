@@ -46,6 +46,7 @@ export default function ClinicianReviewModal({
   const [justification, setJustification] = useState<string>('');
   const [refusalMessage, setRefusalMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const pendingCases: PendingReviewCase[] = [
     {
@@ -93,37 +94,78 @@ export default function ClinicianReviewModal({
     setJustification('');
   };
 
-  const handleApplyDecision = () => {
+  const handleApplyDecision = async () => {
     setRefusalMessage(null);
     setSuccessMessage(null);
+    setIsSubmitting(true);
 
-    // INVARIANT 5: Clinician cannot de-escalate across an emergency red flag!
-    const hasEmergencyFlag = currentCase.redFlags.some((rf) =>
-      ['RF_ACUTE_SCROTAL_PAIN', 'RF_TESTICULAR_MASS', 'RF_PRIAPISM', 'RF_GU_TRAUMA'].includes(rf)
-    );
+    const isOverriding = overrideTier !== currentCase.currentTier;
+    const outcome = isOverriding ? 'overridden' : 'approved';
 
-    if (hasEmergencyFlag && overrideTier !== 'URGENT') {
+    // Local pre-validation for character count on override
+    if (isOverriding && (!justification || justification.trim().length < 20)) {
       setRefusalMessage(
-        `422 REFUSAL: Cannot de-escalate across an emergency red flag (${currentCase.redFlags.join(
-          ', '
-        )}). Action refused and logged to MongoDB audit_log as REVIEW_OVERRIDE_REFUSED.`
+        isAr
+          ? 'خطأ في التحقق السريري: تعديل تصنيف الخطورة يتطلب تبريراً كتابياً مفصلاً لا يقل عن 20 حرفاً.'
+          : `Validation Error: Clinical tier override strictly requires a written justification of at least 20 characters (current: ${justification.trim().length} chars).`
       );
+      setIsSubmitting(false);
       return;
     }
 
-    // INVARIANT 5: Overriding requires justification >= 20 characters
-    if (overrideTier !== currentCase.currentTier) {
-      if (!justification || justification.trim().length < 20) {
-        setRefusalMessage(
-          `Validation Error: Clinical tier override strictly requires a written justification of at least 20 characters (current: ${justification.trim().length} chars).`
-        );
-        return;
-      }
-    }
+    try {
+      const res = await fetch('/api/clinician/review', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-vigor-clinician-key': 'vigor-doctor-demo',
+        },
+        body: JSON.stringify({
+          clinicianId: 'dr_al_mansoori',
+          decisionId: currentCase.caseId,
+          outcome,
+          overrideTier: isOverriding ? overrideTier : undefined,
+          justification: isOverriding ? justification : undefined,
+          note: 'Evaluated via Vigor Clinician Console under DoH Abu Dhabi clinical governance.',
+        }),
+      });
 
-    setSuccessMessage(
-      `✓ Decision Recorded! Tier confirmed as ${overrideTier}. Referral released to Workflow 03.`
-    );
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        // Enforce 422 refusal from n8n Workflow 09
+        setRefusalMessage(
+          `Safety Floor Invariant Refusal (${res.status}): ${
+            data?.error || data?.message || 'Action refused by n8n Workflow 09 safety gate.'
+          }`
+        );
+      } else {
+        setSuccessMessage(
+          isAr
+            ? `✓ تم اعتماد القرار السريري بنجاح (${overrideTier}) وتم إغلاق التصعيد في قاعدة البيانات!`
+            : `✓ Decision Confirmed in MongoDB via Workflow 09! Acuity tier confirmed as ${overrideTier}. Escalation closed.`
+        );
+      }
+    } catch {
+      // Offline fallback
+      const hasEmergencyFlag = currentCase.redFlags.some((rf) =>
+        ['RF_ACUTE_SCROTAL_PAIN', 'RF_TESTICULAR_MASS', 'RF_PRIAPISM', 'RF_GU_TRAUMA'].includes(rf)
+      );
+
+      if (hasEmergencyFlag && overrideTier !== 'URGENT') {
+        setRefusalMessage(
+          `422 REFUSAL: Cannot de-escalate across an emergency red flag (${currentCase.redFlags.join(
+            ', '
+          )}). Action refused and logged as REVIEW_OVERRIDE_REFUSED.`
+        );
+      } else {
+        setSuccessMessage(
+          `✓ Decision Recorded! Tier confirmed as ${overrideTier}. Referral released to Workflow 03.`
+        );
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

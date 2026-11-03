@@ -260,6 +260,21 @@ export default function WhoStandardsSection({ locale }: WhoStandardsSectionProps
                 </h3>
               </div>
 
+              {/* Microscopic Visualization Banner */}
+              <div className="relative rounded-2xl overflow-hidden border border-blue-100 mb-5 shadow-xs group">
+                <img
+                  src="/images/semen-microscopy.jpg"
+                  alt="Microscopic Semen Analysis under WHO 2021 Reference Criteria"
+                  className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-blue-950/80 via-transparent to-transparent flex items-end p-3">
+                  <div className="text-white text-[11px] font-semibold flex items-center justify-between w-full">
+                    <span>{isAr ? 'المجهر الضوئي المرجعي (CASA)' : 'High-Power Microscopy (CASA Motility)'}</span>
+                    <span className="text-[10px] bg-blue-600/90 px-2 py-0.5 rounded">WHO 2021 6th Ed.</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Status Outcome Banner */}
               {isAzoospermia ? (
                 <div className="p-4 rounded-2xl bg-red-50 border border-red-200 mb-6">

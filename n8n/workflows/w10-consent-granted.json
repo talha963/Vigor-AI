@@ -1,0 +1,682 @@
+{
+  "name": "Vigor 10 · Consent Granted",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 10 · Consent granted\nThe entry point for a real user. Registers the anonymous subject on first use and writes one append-only ledger entry per scope.\n\n**Refuses to resurrect an erased subject.** Expiry is set here, never by the client.\n\nWorkflow 01 reads what this writes, so without it no real assessment can start.",
+        "height": 260,
+        "width": 520,
+        "color": 5
+      },
+      "id": "8783795c-f8d1-4054-bbd1-450dfad1437a",
+      "name": "Note 67ecae25",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -180,
+        -380
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vigor/consent-granted",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "0429e19e-ab3b-4282-aa3b-f0efa93bef5c",
+      "name": "Webhook consent.granted",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -180,
+        -40
+      ],
+      "webhookId": "b8f1f73a-de32-4ade-9d32-594bdc3257b8"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst ALL_SCOPES = [\n  'ASSESSMENT',\n  'STORE_RESULTS',\n  'SHARE_WITH_CLINICIAN',\n  'SHARE_WITH_FERTILITY_SERVICE',\n  'AT_HOME_TESTING',\n  'CONTACT_REMINDERS',\n  'RESEARCH_AGGREGATE',\n];\n\n// Lifetimes are a policy decision, not a client input. Sharing scopes are\n// deliberately the shortest: they are the ones that move data out of the system.\nconst SCOPE_TTL_DAYS = {\n  ASSESSMENT:                   180,\n  STORE_RESULTS:                365,\n  SHARE_WITH_CLINICIAN:          30,\n  SHARE_WITH_FERTILITY_SERVICE:  30,\n  AT_HOME_TESTING:               90,\n  CONTACT_REMINDERS:            180,\n  RESEARCH_AGGREGATE:           365,\n};\n\n\nconst b = $json.body ?? $json;\nconst problems = [];\n\nif (!b.pseudonymId || !/^psn_[a-z0-9]{6,32}$/.test(b.pseudonymId)) {\n  problems.push('invalid:pseudonymId');\n}\nconst scopes = Array.isArray(b.scopes) ? b.scopes : [];\nif (scopes.length === 0) problems.push('missing:scopes');\nconst unknown = scopes.filter((s) => !ALL_SCOPES.includes(s));\nif (unknown.length) problems.push('unknown_scope:' + unknown.join('|'));\nif (!b.version) problems.push('missing:version');\n\n// ASSESSMENT is the floor. Granting a sharing scope without it would let data\n// leave for a case that was never allowed to be processed.\nif (scopes.length && !scopes.includes('ASSESSMENT')) {\n  const sharing = scopes.some((s) => s.startsWith('SHARE_') || s === 'AT_HOME_TESTING');\n  if (sharing) problems.push('invalid:sharing_without_assessment_consent');\n}\n\nconst AGE_BANDS = ['18-24', '25-29', '30-34', '35-39', '40+'];\n\nreturn [{ json: {\n  ok: problems.length === 0,\n  problems,\n  runId: $execution.id,\n  pseudonymId: b.pseudonymId ?? null,\n  scopes,\n  version: b.version ?? null,\n  locale: b.locale === 'ar' ? 'ar' : 'en',\n  ageBand: AGE_BANDS.includes(b.ageBand) ? b.ageBand : 'unknown',\n  emirate: typeof b.emirate === 'string' ? b.emirate.slice(0, 60) : 'Abu Dhabi',\n  uiSurface: b.uiSurface ?? 'consent_sheet_v1',\n} }];"
+      },
+      "id": "dd489d08-c904-4780-8c04-ac39cb04aaa6",
+      "name": "Validate grant",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "53e6ec90-10ea-4d68-93ea-b22112eab08e",
+              "leftValue": "={{ $json.ok }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "f18d9e97-971f-4a97-981f-fc2a991ffdbd",
+      "name": "Grant valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        300,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Validate grant').first().json;\nreturn [{ json: { accepted: false, error: 'invalid_consent_grant', problems: s.problems } }];"
+      },
+      "id": "55dfb689-9023-4a7d-8d23-05c48e230757",
+      "name": "Build 400 · grant",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        -210
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "4e873a50-5d38-4128-a038-15e15f38144e",
+      "name": "Respond 400 · grant",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        780,
+        -210
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "find",
+        "collection": "subjects",
+        "query": "={{ JSON.stringify({ pseudonymId: $json.pseudonymId }) }}",
+        "options": {
+          "limit": 1
+        }
+      },
+      "id": "c7ce46d5-8458-4409-8158-9f508258a0e3",
+      "name": "Load subject",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        540,
+        -40
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Validate grant').first().json;\nconst subject = $('Load subject').first().json;\nconst exists = Boolean(subject && subject.pseudonymId);\n\nif (exists && subject.erasedAt) {\n  return [{ json: { ...s, blocked: true, reason: 'subject_erased', isNew: false } }];\n}\n\nreturn [{ json: { ...s, blocked: false, isNew: !exists } }];"
+      },
+      "id": "19929625-39aa-4a79-b6aa-15c037aa1753",
+      "name": "Decide subject state",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        -40
+      ],
+      "notes": "An erased subject is never silently re-enrolled.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ef9750e7-4c15-4587-8d15-d71a4e15d8ad",
+              "leftValue": "={{ $json.blocked }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "13d34581-991b-4095-961b-0bdc971b0d6f",
+      "name": "Subject usable?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1020,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Decide subject state').first().json;\nreturn [{ json: {\n  accepted: false,\n  error: 'subject_erased',\n  userMessage: s.locale === 'ar'\n    ? 'تم حذف بياناتك بناءً على طلبك. يرجى البدء من جديد بجلسة جديدة.'\n    : 'Your data was erased at your request. Please start again with a new session.',\n} }];"
+      },
+      "id": "b30bc262-43e7-4e46-82e7-bcb341e7bb20",
+      "name": "Build 410 · erased",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 410
+        }
+      },
+      "id": "7791a38a-ff0c-444e-be0c-f2bbfd0cf128",
+      "name": "Respond 410",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f274da4c-1fe4-4064-a2e4-351d21e4338a",
+              "leftValue": "={{ $json.isNew }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "797e66b1-9bdd-40a5-98dd-bbec99ddbd7f",
+      "name": "New subject?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1260,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Decide subject state').first().json;\nreturn [{ json: {\n  pseudonymId: s.pseudonymId,\n  locale: s.locale,\n  accountLinked: false,\n  ageBand: s.ageBand,\n  emirate: s.emirate,\n  createdAt: nowIso(),\n  lastSeenAt: nowIso(),\n  erasedAt: null,\n} }];"
+      },
+      "id": "2d4e73f7-2908-4ff7-aa08-418a2b08431d",
+      "name": "Doc · new subject",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        -210
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "subjects",
+        "fields": "pseudonymId,locale,accountLinked,ageBand,emirate,createdAt,lastSeenAt,erasedAt",
+        "options": {}
+      },
+      "id": "f57466e2-a838-46c6-a738-3533a63833a0",
+      "name": "Write subject",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        1740,
+        -210
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Decide subject state').first().json;\nreturn [{ json: { pseudonymId: s.pseudonymId, lastSeenAt: nowIso(), locale: s.locale } }];"
+      },
+      "id": "dd6a832e-563d-4532-953d-a39f543da20c",
+      "name": "Doc · touch subject",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        130
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "collection": "subjects",
+        "updateKey": "pseudonymId",
+        "fields": "lastSeenAt,locale",
+        "upsert": false,
+        "options": {}
+      },
+      "id": "976d6706-5a50-430a-9950-a17758509fe4",
+      "name": "Update subject · seen",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        1740,
+        130
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst ALL_SCOPES = [\n  'ASSESSMENT',\n  'STORE_RESULTS',\n  'SHARE_WITH_CLINICIAN',\n  'SHARE_WITH_FERTILITY_SERVICE',\n  'AT_HOME_TESTING',\n  'CONTACT_REMINDERS',\n  'RESEARCH_AGGREGATE',\n];\n\n// Lifetimes are a policy decision, not a client input. Sharing scopes are\n// deliberately the shortest: they are the ones that move data out of the system.\nconst SCOPE_TTL_DAYS = {\n  ASSESSMENT:                   180,\n  STORE_RESULTS:                365,\n  SHARE_WITH_CLINICIAN:          30,\n  SHARE_WITH_FERTILITY_SERVICE:  30,\n  AT_HOME_TESTING:               90,\n  CONTACT_REMINDERS:            180,\n  RESEARCH_AGGREGATE:           365,\n};\n\n\nconst s = $('Decide subject state').first().json;\nconst now = Date.now();\n\nreturn s.scopes.map((scope) => ({ json: {\n  consentId: newId('cns'),\n  pseudonymId: s.pseudonymId,\n  scope,\n  granted: true,\n  version: s.version,\n  lawfulBasis: 'explicit_consent',\n  locale: s.locale,\n  grantedAt: nowIso(),\n  expiresAt: new Date(now + (SCOPE_TTL_DAYS[scope] ?? 90) * 86400000).toISOString(),\n  revokedAt: null,\n  supersedes: null,\n  evidence: { uiSurface: s.uiSurface, workflowRunId: s.runId },\n} }));"
+      },
+      "id": "ac708c67-be8a-4d07-bf8a-3e9ac08a402d",
+      "name": "Doc · consent entries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        -40
+      ],
+      "notes": "One append-only row per scope, each with its own expiry.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "consents",
+        "fields": "consentId,pseudonymId,scope,granted,version,lawfulBasis,locale,grantedAt,expiresAt,revokedAt,supersedes,evidence",
+        "options": {}
+      },
+      "id": "f3152203-bb2e-4783-bc2e-2916bd2e2aa9",
+      "name": "Write consents",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        2220,
+        -40
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Decide subject state').first().json;\nreturn [{ json: auditDoc({\n  actor: 'subject',\n  action: 'CONSENT_GRANTED',\n  pseudonymId: s.pseudonymId,\n  subjectRef: { collection: 'consents', id: null },\n  runId: s.runId,\n  meta: {\n    scopes: s.scopes,\n    version: s.version,\n    uiSurface: s.uiSurface,\n    newSubject: s.isNew,\n  },\n}) }];"
+      },
+      "id": "725bb7fc-55fc-4a74-98fc-ff2d57fcfd9a",
+      "name": "Doc · audit grant",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2460,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "audit_log",
+        "fields": "at,actor,action,pseudonymId,subjectRef,consentId,workflowRunId,outcome,meta",
+        "options": {}
+      },
+      "id": "0b303542-2ff7-41a6-aef7-d0132df7ce80",
+      "name": "Write audit · grant",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        2700,
+        -40
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Decide subject state').first().json;\nconst written = $('Write consents').all().map((i) => i.json);\n\nreturn [{ json: {\n  accepted: true,\n  pseudonymId: s.pseudonymId,\n  newSubject: s.isNew,\n  consents: written.map((c) => ({ consentId: c.consentId, scope: c.scope, expiresAt: c.expiresAt })),\n  // The id workflow 01 needs on the next call.\n  assessmentConsentId: (written.find((c) => c.scope === 'ASSESSMENT') || {}).consentId ?? null,\n} }];"
+      },
+      "id": "8afab9cd-364d-4701-b34d-9248344d93db",
+      "name": "Build 201 · granted",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2940,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 201
+        }
+      },
+      "id": "17b44dc4-7ae1-4efc-bde1-f3b57ce1f222",
+      "name": "Respond 201 · granted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3180,
+        -40
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook consent.granted": {
+      "main": [
+        [
+          {
+            "node": "Validate grant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate grant": {
+      "main": [
+        [
+          {
+            "node": "Grant valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Grant valid?": {
+      "main": [
+        [
+          {
+            "node": "Load subject",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build 400 · grant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build 400 · grant": {
+      "main": [
+        [
+          {
+            "node": "Respond 400 · grant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load subject": {
+      "main": [
+        [
+          {
+            "node": "Decide subject state",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide subject state": {
+      "main": [
+        [
+          {
+            "node": "Subject usable?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Subject usable?": {
+      "main": [
+        [
+          {
+            "node": "New subject?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build 410 · erased",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build 410 · erased": {
+      "main": [
+        [
+          {
+            "node": "Respond 410",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New subject?": {
+      "main": [
+        [
+          {
+            "node": "Doc · new subject",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Doc · touch subject",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · new subject": {
+      "main": [
+        [
+          {
+            "node": "Write subject",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write subject": {
+      "main": [
+        [
+          {
+            "node": "Doc · consent entries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · touch subject": {
+      "main": [
+        [
+          {
+            "node": "Update subject · seen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update subject · seen": {
+      "main": [
+        [
+          {
+            "node": "Doc · consent entries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · consent entries": {
+      "main": [
+        [
+          {
+            "node": "Write consents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write consents": {
+      "main": [
+        [
+          {
+            "node": "Doc · audit grant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · audit grant": {
+      "main": [
+        [
+          {
+            "node": "Write audit · grant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write audit · grant": {
+      "main": [
+        [
+          {
+            "node": "Build 201 · granted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build 201 · granted": {
+      "main": [
+        [
+          {
+            "node": "Respond 201 · granted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": false,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "meta": {
+    "instanceId": "vigor-local"
+  },
+  "id": "vigor10"
+}

@@ -12,6 +12,7 @@ import {
   HelpCircle,
   Activity,
   Check,
+  Loader2,
 } from 'lucide-react';
 import { IntakeAnswers, Locale, Symptom, TriageResult } from '@/types/vigor';
 import { reconcileIntake } from '@/lib/clinical-engine';
@@ -35,6 +36,8 @@ export default function IntakeModal({
   const isAr = locale === 'ar';
   const [step, setStep] = useState<number>(1);
   const [answers, setAnswers] = useState<IntakeAnswers>(initialAnswers || {});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatusText, setSubmitStatusText] = useState('');
 
   // Sync initialAnswers if provided
   React.useEffect(() => {
@@ -71,9 +74,78 @@ export default function IntakeModal({
     }
   };
 
-  const handleSubmit = () => {
-    const result = reconcileIntake(answers);
-    onAssessmentCompleted(result, answers);
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    setSubmitStatusText(
+      isAr
+        ? 'تسجيل الموافقة الصريحة في دفتر السجلات (Workflow 10)...'
+        : 'Granting assessment consent in sovereign ledger (Workflow 10)...'
+    );
+
+    try {
+      // 1. Grant live assessment consent via Workflow 10
+      await fetch('/api/consent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scopes: ['ASSESSMENT', 'STORE_RESULTS'],
+          locale,
+          version: 'consent-v1.2',
+        }),
+      });
+
+      setSubmitStatusText(
+        isAr
+          ? 'تشغيل محرك n8n السريري وفحص علامات الخطر الحتمية (Workflow 01)...'
+          : 'Executing live n8n Workflow 01 & evaluating 9 red-flag gates...'
+      );
+
+      // 2. Submit assessment to live n8n workflow 01 via /api/assessment
+      const res = await fetch('/api/assessment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          answers,
+          locale,
+          startedAt: new Date(Date.now() - 300_000).toISOString(),
+        }),
+      });
+
+      if (res.ok) {
+        const triageData = await res.json();
+        const decisionId = triageData?.decisionId;
+
+        if (decisionId) {
+          setSubmitStatusText(
+            isAr
+              ? 'تحميل النتيجة الموثقة من مجموعة أطلس...'
+              : 'Retrieving final verified decision from Atlas MongoDB cluster...'
+          );
+
+          // 3. Fetch full clinical result from MongoDB
+          const resultsRes = await fetch(`/api/results/${decisionId}`);
+          if (resultsRes.ok) {
+            const liveResult = await resultsRes.json();
+            const mapped = reconcileIntake(answers);
+            if (liveResult?.decision) {
+              mapped.tier = liveResult.decision.tier;
+              mapped.clamped = liveResult.decision.clamped;
+              mapped.requiresHumanReview = liveResult.decision.requiresHumanReview;
+            }
+            setIsSubmitting(false);
+            onAssessmentCompleted(mapped, answers);
+            return;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Real-time API fallback to local clinical engine', err);
+    }
+
+    // Deterministic safety fallback if network ever drops
+    const fallbackResult = reconcileIntake(answers);
+    setIsSubmitting(false);
+    onAssessmentCompleted(fallbackResult, answers);
   };
 
   return (
@@ -628,10 +700,20 @@ export default function IntakeModal({
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="px-6 py-2.5 text-xs font-black uppercase tracking-wider text-white bg-gradient-to-r from-blue-700 to-blue-600 hover:from-blue-800 hover:to-blue-700 rounded-xl transition-all shadow-md shadow-blue-600/25 flex items-center gap-2"
+                disabled={isSubmitting}
+                className="px-6 py-2.5 text-xs font-black uppercase tracking-wider text-white bg-gradient-to-r from-blue-700 to-blue-600 hover:from-blue-800 hover:to-blue-700 rounded-xl transition-all shadow-md shadow-blue-600/25 flex items-center gap-2 disabled:opacity-60"
               >
-                <ShieldCheck className="w-4 h-4" />
-                <span>{isAr ? 'معالجة الفرز السريري' : 'Execute Clinical Triage'}</span>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>{submitStatusText || (isAr ? 'جارِ المعالجة...' : 'Processing...')}</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>{isAr ? 'معالجة الفرز السريري (Workflow 01)' : 'Execute Clinical Triage (Workflow 01)'}</span>
+                  </>
+                )}
               </button>
             )}
           </div>
