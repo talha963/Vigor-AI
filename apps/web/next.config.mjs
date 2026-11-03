@@ -9,6 +9,19 @@ const nextConfig = {
   output: 'standalone',
   outputFileTracingRoot: path.resolve(__dirname),
   reactStrictMode: true,
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     return [
       {
