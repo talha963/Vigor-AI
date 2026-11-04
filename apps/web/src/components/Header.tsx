@@ -51,28 +51,33 @@ export default function Header({
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const [activeTab, setActiveTab] = useState<string>('check');
 
-  // Track page scroll for elevation & blur
+  // Track page scroll for elevation & real-time progress bar
   useEffect(() => {
     const handleScroll = () => {
+      const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = totalHeight > 0 ? (window.scrollY / totalHeight) * 100 : 0;
+      setScrollProgress(Math.min(100, Math.max(0, progress)));
       setScrolled(window.scrollY > 15);
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full transition-all duration-300">
+    <header className="fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300">
       {/* Top Precision Medical Cyan-to-Blue Ambient Laser Line */}
       <div className="h-[2px] w-full bg-gradient-to-r from-blue-700 via-sky-400 to-indigo-600 opacity-90 shadow-sm" />
 
-      {/* Main Bar Container */}
+      {/* Main Bar Container - Off-white Glassmorphism */}
       <div
         className={`w-full transition-all duration-200 ${
           scrolled
-            ? 'bg-white/95 dark:bg-[#070d1a]/95 backdrop-blur-xl shadow-sm border-b border-blue-100/70 dark:border-slate-800'
-            : 'bg-white/90 dark:bg-[#070d1a]/90 backdrop-blur-md border-b border-slate-100 dark:border-slate-800/60'
+            ? 'bg-[#FAF9F6]/95 dark:bg-[#090E1A]/95 backdrop-blur-xl shadow-sm border-b border-slate-200/80 dark:border-slate-800'
+            : 'bg-[#FAF9F6]/90 dark:bg-[#090E1A]/90 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -325,6 +330,14 @@ export default function Header({
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Real-time Scroll Progress Bar */}
+        <div className="h-[2.5px] w-full bg-slate-200/50 dark:bg-slate-800 overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-blue-600 via-sky-500 to-indigo-600 transition-all duration-150 shadow-xs"
+            style={{ width: `${scrollProgress}%` }}
+          />
         </div>
       </div>
 

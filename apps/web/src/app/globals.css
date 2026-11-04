@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
+  --background: #faf9f6;
   --foreground: #0f172a;
   --primary-blue: #1e40af;
   --primary-blue-light: #3b82f6;
@@ -11,7 +11,7 @@
 }
 
 .dark {
-  --background: #080d1a;
+  --background: #090e1a;
   --foreground: #f8fafc;
   --primary-blue: #3b82f6;
   --primary-blue-light: #60a5fa;
@@ -206,4 +206,18 @@ body {
 }
 .hover-lift:hover {
   transform: translateY(-4px);
+}
+
+/* 10. Progressive Ladder Spine Glow & Connector Pulse */
+@keyframes spineGlowPulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
+  }
+}
+
+.spine-active-node {
+  animation: spineGlowPulse 2.5s infinite ease-in-out;
 }

@@ -3,9 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import HeroSection from '@/components/HeroSection';
-import AboutSection from '@/components/AboutSection';
-import RedFlagSafetySection from '@/components/RedFlagSafetySection';
-import WhoStandardsSection from '@/components/WhoStandardsSection';
+import ClinicalJourney from '@/components/ClinicalJourney';
 import Footer from '@/components/Footer';
 import IntakeModal from '@/components/IntakeModal';
 import ResultsModal from '@/components/ResultsModal';
@@ -76,8 +74,8 @@ export default function Home() {
   };
 
   return (
-    <div dir={locale === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen flex flex-col bg-white dark:bg-[#080d1a] transition-colors duration-200">
-      {/* Top Header */}
+    <div dir={locale === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen flex flex-col bg-[#FAF9F6] dark:bg-[#090E1A] transition-colors duration-200">
+      {/* Top Header - Fixed & Always Visible */}
       <Header
         locale={locale}
         setLocale={setLocale}
@@ -90,8 +88,8 @@ export default function Home() {
         onOpenAtHomeKit={() => setIsAtHomeKitOpen(true)}
       />
 
-      {/* Main Page Surfaces */}
-      <main className="flex-1">
+      {/* Main Page Surfaces with pt-16 offset for fixed header */}
+      <main className="flex-1 pt-16">
         {/* Front Hero with Animated Healthcare Illustration */}
         <HeroSection
           locale={locale}
@@ -100,17 +98,16 @@ export default function Home() {
           onSelectGoldenCase={handleSelectGoldenCase}
         />
 
-        {/* Detailed Explanation of Vigor (The Problem, The 4-Step Pathway, Clinical Invariants) */}
-        <AboutSection locale={locale} />
-
-        {/* 9 Clinical Red Flags & Safety Floor Invariant */}
-        <RedFlagSafetySection
+        {/* Unique Zigzag / Ladder-Style Clinical Journey with Scroll-Based Progressive Reveal */}
+        <ClinicalJourney
           locale={locale}
+          onOpenIntake={handleOpenNewIntake}
+          onOpenConsent={() => setIsConsentOpen(true)}
+          onOpenClinician={() => setIsClinicianOpen(true)}
+          onOpenArchitecture={() => setIsArchitectureOpen(true)}
+          onOpenAtHomeKit={() => setIsAtHomeKitOpen(true)}
           onSelectGoldenCase={handleSelectGoldenCase}
         />
-
-        {/* WHO 2021 Semen Analysis Reference Guide & Interactive Simulator */}
-        <WhoStandardsSection locale={locale} />
       </main>
 
       {/* Footer */}

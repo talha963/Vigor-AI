@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Stethoscope,
   ChevronRight,
+  ChevronDown,
   CheckCircle,
   FileBadge,
   Activity,
@@ -34,10 +35,10 @@ export default function HeroSection({
   const isAr = locale === 'ar';
 
   return (
-    <section className="relative overflow-hidden bg-white dark:bg-[#080d1a] pt-10 pb-16 lg:pt-16 lg:pb-24 border-b border-blue-100/70 dark:border-slate-800 transition-colors duration-200">
+    <section className="relative overflow-hidden bg-[#FAF9F6] dark:bg-[#090E1A] pt-12 pb-16 lg:pt-20 lg:pb-24 border-b border-slate-200/80 dark:border-slate-800 transition-colors duration-200">
       {/* Background Animated Ambient Light Glow Orbs */}
-      <div className="absolute top-10 left-1/4 w-96 h-96 bg-blue-400/15 dark:bg-blue-600/10 rounded-full blur-3xl animate-ambient-glow pointer-events-none -z-10" />
-      <div className="absolute top-28 right-1/4 w-80 h-80 bg-sky-300/15 dark:bg-sky-500/10 rounded-full blur-3xl animate-ambient-glow pointer-events-none -z-10 [animation-delay:3s]" />
+      <div className="absolute top-10 left-1/4 w-96 h-96 bg-blue-400/10 dark:bg-blue-600/10 rounded-full blur-3xl animate-ambient-glow pointer-events-none -z-10" />
+      <div className="absolute top-28 right-1/4 w-80 h-80 bg-sky-300/10 dark:bg-sky-500/10 rounded-full blur-3xl animate-ambient-glow pointer-events-none -z-10 [animation-delay:3s]" />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-gradient-to-b from-blue-50/70 via-sky-50/20 to-transparent dark:from-blue-950/20 dark:via-transparent dark:to-transparent pointer-events-none -z-10" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -175,6 +176,21 @@ export default function HeroSection({
           <div className="lg:col-span-5 flex items-center justify-center">
             <AnimatedHealthcareHero />
           </div>
+        </div>
+
+        {/* Scroll Down Pathway Entry Indicator */}
+        <div className="mt-14 pt-8 border-t border-slate-200/60 dark:border-slate-800 flex flex-col items-center justify-center text-center">
+          <a
+            href="#journey-intake"
+            className="group inline-flex flex-col items-center gap-2 text-xs font-bold text-slate-500 hover:text-blue-600 dark:hover:text-sky-400 transition-colors"
+          >
+            <span className="tracking-widest uppercase text-[11px] font-black text-slate-400 dark:text-slate-500 group-hover:text-blue-600 transition-colors">
+              {isAr ? 'اكتشف المسار السريري التفاعلي' : 'Discover the Progressive Clinical Journey'}
+            </span>
+            <div className="w-9 h-9 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center group-hover:border-blue-400 group-hover:scale-110 transition-all">
+              <ChevronDown className="w-4 h-4 text-blue-600 dark:text-sky-400 animate-bounce" />
+            </div>
+          </a>
         </div>
       </div>
     </section>
