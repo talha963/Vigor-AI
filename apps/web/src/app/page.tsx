@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import HeroSection from '@/components/HeroSection';
 import AboutSection from '@/components/AboutSection';
@@ -28,6 +28,34 @@ export default function Home() {
   const [triageResult, setTriageResult] = useState<TriageResult | null>(null);
   const [selectedInitialAnswers, setSelectedInitialAnswers] = useState<IntakeAnswers | undefined>(undefined);
 
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  useEffect(() => {
+    const isDark =
+      document.documentElement.classList.contains('dark') ||
+      localStorage.getItem('vigor-theme') === 'dark' ||
+      (!localStorage.getItem('vigor-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (isDark) {
+      setTheme('dark');
+      document.documentElement.classList.add('dark');
+    } else {
+      setTheme('light');
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const handleToggleTheme = () => {
+    const nextTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(nextTheme);
+    if (nextTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('vigor-theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('vigor-theme', 'light');
+    }
+  };
+
   const handleAssessmentCompleted = (result: TriageResult) => {
     setTriageResult(result);
     setIsIntakeOpen(false);
@@ -48,11 +76,13 @@ export default function Home() {
   };
 
   return (
-    <div dir={locale === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen flex flex-col bg-white">
+    <div dir={locale === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen flex flex-col bg-white dark:bg-[#080d1a] transition-colors duration-200">
       {/* Top Header */}
       <Header
         locale={locale}
         setLocale={setLocale}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
         onOpenIntake={handleOpenNewIntake}
         onOpenConsent={() => setIsConsentOpen(true)}
         onOpenClinician={() => setIsClinicianOpen(true)}
@@ -90,6 +120,7 @@ export default function Home() {
         onOpenConsent={() => setIsConsentOpen(true)}
         onOpenClinician={() => setIsClinicianOpen(true)}
         onOpenArchitecture={() => setIsArchitectureOpen(true)}
+        onOpenAtHomeKit={() => setIsAtHomeKitOpen(true)}
       />
 
       {/* Modals */}

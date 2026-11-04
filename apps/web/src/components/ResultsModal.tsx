@@ -45,10 +45,10 @@ export default function ResultsModal({
   const isPrimary = result.tier === 'PRIMARY_CARE';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-3xl border border-blue-100 shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in text-left rtl:text-right">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-blue-100 dark:border-slate-800 shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden transition-colors">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-blue-50 flex items-center justify-between bg-blue-50/40">
+        <div className="px-6 py-4 border-b border-blue-50 dark:border-slate-800 flex items-center justify-between bg-blue-50/40 dark:bg-slate-800/50">
           <div className="flex items-center gap-3">
             <div
               className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white ${

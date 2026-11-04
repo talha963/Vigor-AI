@@ -1,16 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   AlertTriangle,
   ShieldAlert,
-  Clock,
   ArrowUpRight,
-  CheckCircle,
-  HelpCircle,
-  Info,
-  ChevronDown,
-  ChevronUp,
+  Activity,
+  CheckCircle2,
 } from 'lucide-react';
 import { Locale } from '@/types/vigor';
 
@@ -24,7 +20,6 @@ export default function RedFlagSafetySection({
   onSelectGoldenCase,
 }: RedFlagSafetySectionProps) {
   const isAr = locale === 'ar';
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
 
   const RED_FLAGS = [
     {
@@ -138,18 +133,18 @@ export default function RedFlagSafetySection({
   ];
 
   return (
-    <section id="red-flags" className="py-20 bg-white border-b border-blue-50">
+    <section id="red-flags" className="py-20 bg-white dark:bg-[#080d1a] border-b border-blue-50 dark:border-slate-800 transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Title */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-50 text-red-700 text-xs font-bold uppercase tracking-wider mb-4 border border-red-200">
-            <ShieldAlert className="w-4 h-4 text-red-600" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 text-xs font-bold uppercase tracking-wider mb-4 border border-red-200 dark:border-red-900">
+            <ShieldAlert className="w-4 h-4 text-red-600 dark:text-red-400" />
             <span>{isAr ? 'صمام الأمان السريري غير القابل للتراجع' : 'The Deterministic Safety Floor'}</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-blue-950 tracking-tight mb-4">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-blue-950 dark:text-white tracking-tight mb-4">
             {isAr ? 'علامات الخطر السريرية التسع (9 Red Flags)' : 'The 9 Clinical Red-Flag Gates'}
           </h2>
-          <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
+          <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
             {isAr
               ? 'صيغت هذه القواعد التسع لحماية سلامة المريض فوق كل اعتبار. تعمل دوال نقية على مفردات مغلقة من الأعراض، وتفرض تصعيد الحالة الطارئة بصورة إلزامية لا يمكن للذكاء الاصطناعي خفضها.'
               : 'These 9 deterministic gates establish the non-negotiable safety floor. AI models can elevate a tier, but can never lower it. Acute presentations bypass routine scheduling with a strict 60-minute SLA.'}
@@ -157,9 +152,9 @@ export default function RedFlagSafetySection({
         </div>
 
         {/* Invariant Banner */}
-        <div className="mb-12 bg-gradient-to-r from-blue-900 to-blue-800 text-white rounded-3xl p-6 sm:p-8 shadow-lg">
+        <div className="mb-12 bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 dark:from-blue-950 dark:via-blue-900 dark:to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-lg border border-blue-700/50 dark:border-slate-700">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-4 text-left rtl:text-right">
               <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20">
                 <AlertTriangle className="w-6 h-6 text-amber-300" />
               </div>
@@ -176,7 +171,7 @@ export default function RedFlagSafetySection({
             </div>
 
             <div className="flex items-center gap-3 shrink-0">
-              <span className="text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-400 text-blue-950 uppercase tracking-wider">
+              <span className="text-xs font-bold px-3.5 py-2 rounded-xl bg-amber-400 text-blue-950 uppercase tracking-wider shadow-sm">
                 {isAr ? 'ضمان سلامة 100٪' : 'Zero-Drift Safety Floor'}
               </span>
             </div>
@@ -184,52 +179,52 @@ export default function RedFlagSafetySection({
         </div>
 
         {/* 9 Red Flags Accordion / List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {RED_FLAGS.map((flag, idx) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 items-stretch">
+          {RED_FLAGS.map((flag) => {
             const isUrgent = flag.severity === 'URGENT';
             const isSameDay = flag.severity === 'SAME_DAY';
 
             return (
               <div
                 key={flag.code}
-                className="bg-white rounded-2xl p-5 border border-blue-100 hover:border-blue-300 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-blue-100 dark:border-slate-800 hover:border-blue-300 dark:hover:border-slate-700 shadow-xs hover:shadow-md transition-all flex flex-col justify-between text-left rtl:text-right"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <span
                       className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
                         isUrgent
-                          ? 'bg-red-100 text-red-800 border border-red-200'
+                          ? 'bg-red-100 dark:bg-red-950/80 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-900'
                           : isSameDay
-                          ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                          : 'bg-blue-100 text-blue-800 border border-blue-200'
+                          ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900'
+                          : 'bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-sky-300 border border-blue-200 dark:border-blue-900'
                       }`}
                     >
                       {flag.severity} · {flag.slaMinutes}m SLA
                     </span>
-                    <span className="text-[11px] font-mono text-slate-600 font-medium">
+                    <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 font-medium">
                       {flag.code}
                     </span>
                   </div>
 
-                  <h4 className="text-base font-bold text-blue-950 mb-2">
+                  <h4 className="text-base font-bold text-blue-950 dark:text-white mb-2">
                     {isAr ? flag.titleAr : flag.titleEn}
                   </h4>
 
-                  <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
                     {isAr ? flag.descAr : flag.descEn}
                   </p>
                 </div>
 
-                <div className="pt-3 border-t border-blue-50 flex items-center justify-between">
+                <div className="pt-3 border-t border-blue-50 dark:border-slate-800 flex items-center justify-between mt-auto">
                   <button
                     onClick={() => onSelectGoldenCase(flag.goldenCase)}
-                    className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 hover:underline"
+                    className="text-xs font-bold text-blue-600 dark:text-sky-400 hover:text-blue-800 dark:hover:text-sky-300 flex items-center gap-1 hover:underline"
                   >
                     <span>{isAr ? `اختبر حالة ${flag.goldenCase}` : `Test Case ${flag.goldenCase}`}</span>
-                    <ArrowUpRight className="w-3.5 h-3.5" />
+                    <ArrowUpRight className="w-3.5 h-3.5 rtl:rotate-90" />
                   </button>
-                  <span className="text-[10px] text-slate-600 font-medium">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                     {isUrgent ? 'SLA: <= 60 mins' : isSameDay ? 'SLA: <= 8 hours' : 'SLA: <= 48 hours'}
                   </span>
                 </div>
