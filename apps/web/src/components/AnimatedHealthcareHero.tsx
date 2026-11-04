@@ -46,19 +46,19 @@ export default function AnimatedHealthcareHero() {
         />
 
         {/* Top Header Telemetry Bar */}
-        <div className="flex items-center justify-between z-10 border-b border-[#E8E3D7] dark:border-stone-800/80 pb-3.5">
+        <div className="flex items-center justify-between z-10 border-b border-[#E8E3D7] dark:border-[#2E2A24] pb-3.5">
           <div className="flex items-center gap-2.5">
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8C8375] opacity-75" />
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#4A4337] dark:bg-[#D1C9BC]" />
             </span>
-            <span className="text-[11px] font-bold tracking-[0.22em] text-[#3D372E] dark:text-[#EFEAE0] uppercase">
+            <span className="text-[11px] font-bold tracking-[0.22em] text-[#3D372E] dark:text-[#FAF7F2] uppercase">
               Andrology Telemetry
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#544E43] dark:text-[#C5BEB2] bg-[#EFECE3]/80 dark:bg-stone-850 px-3 py-1 rounded-full border border-[#DDD7C8] dark:border-stone-800">
-            <Lock className="w-3 h-3 text-[#7A7163] dark:text-[#A8A092]" />
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#544E43] dark:text-[#E8E4DB] bg-[#EFECE3]/80 dark:bg-[#28241F] px-3 py-1 rounded-full border border-[#DDD7C8] dark:border-[#3E382F]">
+            <Lock className="w-3 h-3 text-[#7A7163] dark:text-[#C5BEB2]" />
             <span>Zero-Knowledge Mode</span>
           </div>
         </div>
@@ -136,45 +136,45 @@ export default function AnimatedHealthcareHero() {
           </div>
 
           {/* Floating Telemetry Node 1: WHO 2021 Standards (Top-Left) */}
-          <div className="absolute top-1 left-2 z-20 animate-float-card bg-[#FAF8F5] dark:bg-stone-850 px-3.5 py-2.5 rounded-2xl border border-[#DDD7C8] dark:border-stone-800 shadow-md flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-xl bg-[#EFECE3] dark:bg-stone-800 flex items-center justify-center text-[#4A4337] dark:text-[#EFEAE0]">
+          <div className="absolute top-1 left-2 z-20 animate-float-card bg-[#FAF8F5] dark:bg-[#221F1C] px-3.5 py-2.5 rounded-2xl border border-[#DDD7C8] dark:border-[#3E382F] shadow-md dark:shadow-black/50 flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-xl bg-[#EFECE3] dark:bg-[#322D26] flex items-center justify-center text-[#4A4337] dark:text-[#EFEAE0]">
               <FlaskConical className="w-3.5 h-3.5" />
             </div>
             <div>
-              <p className="text-[9px] text-[#7A7163] dark:text-[#A8A092] font-semibold uppercase tracking-wider">
+              <p className="text-[9px] text-[#7A7163] dark:text-[#B5ADA0] font-semibold uppercase tracking-wider">
                 WHO Benchmark
               </p>
-              <p className="text-[11px] font-bold text-[#2E2922] dark:text-[#F7F4EB]">
+              <p className="text-[11px] font-bold text-[#2E2922] dark:text-[#FAF7F2]">
                 5th Centile Ref
               </p>
             </div>
           </div>
 
           {/* Floating Telemetry Node 2: Red-Flag Floor (Bottom-Right) */}
-          <div className="absolute bottom-2 right-2 z-20 animate-float-card-delayed bg-[#FAF8F5] dark:bg-stone-850 px-3.5 py-2.5 rounded-2xl border border-[#DDD7C8] dark:border-stone-800 shadow-md flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-xl bg-[#EFECE3] dark:bg-stone-800 flex items-center justify-center text-[#4A4337] dark:text-[#EFEAE0]">
+          <div className="absolute bottom-2 right-2 z-20 animate-float-card-delayed bg-[#FAF8F5] dark:bg-[#221F1C] px-3.5 py-2.5 rounded-2xl border border-[#DDD7C8] dark:border-[#3E382F] shadow-md dark:shadow-black/50 flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-xl bg-[#EFECE3] dark:bg-[#322D26] flex items-center justify-center text-[#4A4337] dark:text-[#EFEAE0]">
               <ShieldAlert className="w-3.5 h-3.5" />
             </div>
             <div>
-              <p className="text-[9px] text-[#7A7163] dark:text-[#A8A092] font-semibold uppercase tracking-wider">
+              <p className="text-[9px] text-[#7A7163] dark:text-[#B5ADA0] font-semibold uppercase tracking-wider">
                 Safety Floor
               </p>
-              <p className="text-[11px] font-bold text-[#2E2922] dark:text-[#F7F4EB]">
+              <p className="text-[11px] font-bold text-[#2E2922] dark:text-[#FAF7F2]">
                 9 Invariants Active
               </p>
             </div>
           </div>
 
           {/* Floating Telemetry Node 3: Specialist Routing (Top-Right) */}
-          <div className="absolute top-4 right-1 z-20 animate-float-card bg-[#FAF8F5] dark:bg-stone-850 px-3.5 py-2.5 rounded-2xl border border-[#DDD7C8] dark:border-stone-800 shadow-md flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-xl bg-[#EFECE3] dark:bg-stone-800 flex items-center justify-center text-[#4A4337] dark:text-[#EFEAE0]">
+          <div className="absolute top-4 right-1 z-20 animate-float-card bg-[#FAF8F5] dark:bg-[#221F1C] px-3.5 py-2.5 rounded-2xl border border-[#DDD7C8] dark:border-[#3E382F] shadow-md dark:shadow-black/50 flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-xl bg-[#EFECE3] dark:bg-[#322D26] flex items-center justify-center text-[#4A4337] dark:text-[#EFEAE0]">
               <Stethoscope className="w-3.5 h-3.5" />
             </div>
             <div>
-              <p className="text-[9px] text-[#7A7163] dark:text-[#A8A092] font-semibold uppercase tracking-wider">
+              <p className="text-[9px] text-[#7A7163] dark:text-[#B5ADA0] font-semibold uppercase tracking-wider">
                 Abu Dhabi Care
               </p>
-              <p className="text-[11px] font-bold text-[#2E2922] dark:text-[#F7F4EB]">
+              <p className="text-[11px] font-bold text-[#2E2922] dark:text-[#FAF7F2]">
                 Specialist Triage
               </p>
             </div>
@@ -182,13 +182,13 @@ export default function AnimatedHealthcareHero() {
         </div>
 
         {/* Live CASA Motility & Spermatozoa Velocity Waveform */}
-        <div className="relative z-10 bg-[#FAF8F5] dark:bg-stone-850/80 rounded-2xl p-3.5 border border-[#DDD7C8] dark:border-stone-800">
+        <div className="relative z-10 bg-[#FAF8F5] dark:bg-[#221F1C] rounded-2xl p-3.5 border border-[#DDD7C8] dark:border-[#3E382F] shadow-sm">
           <div className="flex items-center justify-between text-xs mb-1.5">
-            <div className="flex items-center gap-1.5 text-[#3D372E] dark:text-[#EFEAE0] font-semibold">
-              <Activity className="w-3.5 h-3.5 text-[#7A7163] dark:text-[#C5BEB2] animate-pulse" />
+            <div className="flex items-center gap-1.5 text-[#3D372E] dark:text-[#FAF7F2] font-semibold">
+              <Activity className="w-3.5 h-3.5 text-[#7A7163] dark:text-[#DDD7C8] animate-pulse" />
               <span className="text-[11px] font-medium tracking-wide">CASA Motility Radar</span>
             </div>
-            <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full flex items-center gap-1">
+            <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/80 border border-emerald-300/40 dark:border-emerald-700/50 px-2 py-0.5 rounded-full flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
               Safety Floor Governed
             </span>
@@ -197,7 +197,7 @@ export default function AnimatedHealthcareHero() {
           {/* Animated CASA Velocity Harmonic Waveform */}
           <div className="h-9 w-full overflow-hidden flex items-center">
             <svg
-              className="w-full h-8 stroke-[#6E6556] dark:stroke-[#C9C2B4] fill-none"
+              className="w-full h-8 stroke-[#6E6556] dark:stroke-[#DDD7C8] fill-none"
               viewBox="0 0 500 50"
               preserveAspectRatio="none"
             >
@@ -212,28 +212,28 @@ export default function AnimatedHealthcareHero() {
           </div>
 
           {/* 3 Real-time WHO 2021 Reference Metrics */}
-          <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-[#E8E3D7] dark:border-stone-800 text-center">
-            <div className={`p-1 rounded-lg transition-colors duration-500 ${activeMetric === 'concentration' ? 'bg-[#E8E2D5]/60 dark:bg-stone-800/80 ring-1 ring-[#8C8375]/40' : ''}`}>
-              <p className="text-[9px] text-[#7A7163] dark:text-[#A8A092] uppercase tracking-wider font-semibold">
+          <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-[#E8E3D7] dark:border-[#3E382F] text-center">
+            <div className={`p-1 rounded-lg transition-colors duration-500 ${activeMetric === 'concentration' ? 'bg-[#E8E2D5]/60 dark:bg-[#322D26] ring-1 ring-[#8C8375]/40 dark:ring-[#DDD7C8]/40' : ''}`}>
+              <p className="text-[9px] text-[#7A7163] dark:text-[#B5ADA0] uppercase tracking-wider font-semibold">
                 Sperm Conc.
               </p>
-              <p className="text-[11px] font-bold text-[#2E2922] dark:text-[#F7F4EB] font-mono">
+              <p className="text-[11px] font-bold text-[#2E2922] dark:text-[#FAF7F2] font-mono">
                 25M / mL
               </p>
             </div>
-            <div className={`p-1 rounded-lg transition-colors duration-500 ${activeMetric === 'motility' ? 'bg-[#E8E2D5]/60 dark:bg-stone-800/80 ring-1 ring-[#8C8375]/40' : ''}`}>
-              <p className="text-[9px] text-[#7A7163] dark:text-[#A8A092] uppercase tracking-wider font-semibold">
+            <div className={`p-1 rounded-lg transition-colors duration-500 ${activeMetric === 'motility' ? 'bg-[#E8E2D5]/60 dark:bg-[#322D26] ring-1 ring-[#8C8375]/40 dark:ring-[#DDD7C8]/40' : ''}`}>
+              <p className="text-[9px] text-[#7A7163] dark:text-[#B5ADA0] uppercase tracking-wider font-semibold">
                 Prog. Motility
               </p>
-              <p className="text-[11px] font-bold text-[#2E2922] dark:text-[#F7F4EB] font-mono">
+              <p className="text-[11px] font-bold text-[#2E2922] dark:text-[#FAF7F2] font-mono">
                 42% PR
               </p>
             </div>
-            <div className={`p-1 rounded-lg transition-colors duration-500 ${activeMetric === 'vitality' ? 'bg-[#E8E2D5]/60 dark:bg-stone-800/80 ring-1 ring-[#8C8375]/40' : ''}`}>
-              <p className="text-[9px] text-[#7A7163] dark:text-[#A8A092] uppercase tracking-wider font-semibold">
+            <div className={`p-1 rounded-lg transition-colors duration-500 ${activeMetric === 'vitality' ? 'bg-[#E8E2D5]/60 dark:bg-[#322D26] ring-1 ring-[#8C8375]/40 dark:ring-[#DDD7C8]/40' : ''}`}>
+              <p className="text-[9px] text-[#7A7163] dark:text-[#B5ADA0] uppercase tracking-wider font-semibold">
                 Vitality Ref
               </p>
-              <p className="text-[11px] font-bold text-[#2E2922] dark:text-[#F7F4EB] font-mono">
+              <p className="text-[11px] font-bold text-[#2E2922] dark:text-[#FAF7F2] font-mono">
                 58% Living
               </p>
             </div>

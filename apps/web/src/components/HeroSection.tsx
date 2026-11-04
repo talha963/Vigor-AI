@@ -32,7 +32,7 @@ export default function HeroSection({
   const isAr = locale === 'ar';
 
   return (
-    <section className="relative overflow-hidden bg-transparent pt-10 pb-14 lg:pt-16 lg:pb-20 border-b border-[#DDD7C8]/70 dark:border-stone-850 transition-colors duration-200">
+    <section className="relative overflow-hidden bg-transparent pt-10 pb-14 lg:pt-16 lg:pb-20 border-b border-[#DDD7C8]/70 dark:border-[#2E2A24] transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
           
@@ -40,7 +40,7 @@ export default function HeroSection({
           <div className="lg:col-span-7 flex flex-col justify-center text-left rtl:text-right">
             
             {/* Top Category Tracker */}
-            <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-sm bg-[#EFECE3]/70 dark:bg-stone-850 border border-[#DDD7C8] dark:border-stone-800 text-[#5A544A] dark:text-[#C5BEB2] text-[11px] font-semibold tracking-[0.22em] uppercase mb-6 w-fit">
+            <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-sm bg-[#EFECE3]/70 dark:bg-[#221F1C] border border-[#DDD7C8] dark:border-[#3E382F] text-[#5A544A] dark:text-[#DDD7C8] text-[11px] font-semibold tracking-[0.22em] uppercase mb-6 w-fit shadow-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-[#7A7163] dark:bg-[#C2BBB0] animate-pulse" />
               <span>
                 {isAr

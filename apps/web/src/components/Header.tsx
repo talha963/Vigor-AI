@@ -17,6 +17,7 @@ import {
   Layers,
   ArrowRight,
 } from 'lucide-react';
+import VigorLogo from './VigorLogo';
 import { Locale } from '@/types/vigor';
 
 interface HeaderProps {
@@ -71,8 +72,8 @@ export default function Header({
       <div
         className={`w-full transition-all duration-200 ${
           scrolled
-            ? 'bg-[#F5F3EA]/96 dark:bg-[#141311]/96 backdrop-blur-md shadow-xs border-b border-[#DDD7C8]/80 dark:border-stone-850'
-            : 'bg-[#F5F3EA]/90 dark:bg-[#141311]/90 backdrop-blur-xs border-b border-[#E3DEC3]/60 dark:border-stone-850/50'
+            ? 'bg-[#F5F3EA]/96 dark:bg-[#141311]/96 backdrop-blur-md shadow-xs border-b border-[#DDD7C8]/80 dark:border-[#2E2A24]'
+            : 'bg-[#F5F3EA]/90 dark:bg-[#141311]/90 backdrop-blur-xs border-b border-[#E3DEC3]/60 dark:border-[#2E2A24]/60'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -84,17 +85,17 @@ export default function Header({
             <div className="flex items-center gap-3 shrink-0">
               <a
                 href="#"
-                className="flex items-center gap-2 group focus:outline-none"
+                className="flex items-center gap-2.5 group focus:outline-none"
                 aria-label="Vigor AI Home"
               >
-                <div className="w-7 h-7 rounded-sm bg-[#2E2922] dark:bg-[#EFEAE0] flex items-center justify-center text-[#F7F4EB] dark:text-[#22201D] transition-transform group-hover:scale-105">
-                  <Shield className="w-3.5 h-3.5" />
+                <div className="w-8 h-8 rounded-lg bg-[#2E2922] dark:bg-[#FAF8F5] flex items-center justify-center text-[#FAF8F5] dark:text-[#181614] shadow-sm transition-transform group-hover:scale-105 border border-[#4A4337]/30 dark:border-stone-300">
+                  <VigorLogo className="w-5 h-5 text-current" size={20} />
                 </div>
                 <div className="flex items-baseline gap-1.5">
-                  <span className="font-editorial-serif text-lg tracking-[0.22em] font-medium text-[#22201D] dark:text-[#F2EEE6] uppercase">
+                  <span className="font-editorial-serif text-lg tracking-[0.22em] font-medium text-[#22201D] dark:text-[#FAF7F2] uppercase">
                     Vigor
                   </span>
-                  <span className="text-[10px] tracking-[0.2em] font-bold text-[#7A7163] dark:text-[#A8A092] uppercase">
+                  <span className="text-[10px] tracking-[0.22em] font-bold text-[#7A7163] dark:text-[#C5BEB2] uppercase">
                     AI
                   </span>
                 </div>
@@ -215,7 +216,7 @@ export default function Header({
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#F5F3EA] dark:bg-[#141311] border-b border-[#DDD7C8] dark:border-stone-850 px-6 py-6 space-y-4 shadow-lg animate-in slide-in-from-top-2">
+        <div className="lg:hidden bg-[#F5F3EA] dark:bg-[#141311] border-b border-[#DDD7C8] dark:border-[#2E2A24] px-6 py-6 space-y-4 shadow-lg animate-in slide-in-from-top-2">
           <div className="flex flex-col space-y-3 font-editorial-sans text-xs uppercase tracking-[0.2em] text-[#6B6355] dark:text-[#A8A092]">
             <a
               href="#"
@@ -278,7 +279,7 @@ export default function Header({
             </button>
           </div>
 
-          <div className="pt-4 border-t border-[#DDD7C8]/70 dark:border-stone-850 flex flex-col gap-2">
+          <div className="pt-4 border-t border-[#DDD7C8]/70 dark:border-[#2E2A24] flex flex-col gap-2">
             <button
               type="button"
               onClick={() => {

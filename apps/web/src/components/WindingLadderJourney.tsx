@@ -27,6 +27,7 @@ import {
   ShieldAlert,
   Compass,
 } from 'lucide-react';
+import VigorLogo from './VigorLogo';
 import { Locale } from '@/types/vigor';
 import { WHO_2021_REFERENCE_LIMITS } from '@/lib/clinical-engine';
 
@@ -785,7 +786,7 @@ export default function WindingLadderJourney({
                 </div>
 
                 {/* Selected Flag Diagnostic Card */}
-                <div className="p-3.5 rounded-lg bg-white/90 dark:bg-stone-850 border border-[#DDD7C8]/70 dark:border-stone-800">
+                <div className="p-3.5 rounded-lg bg-white/90 dark:bg-[#1C1A17] border border-[#DDD7C8]/70 dark:border-[#38332B] shadow-sm">
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <span className="font-serif font-bold text-sm text-[#22201D] dark:text-[#F5F2EB]">
                       {isAr ? redFlagsList[selectedFlagIndex].titleAr : redFlagsList[selectedFlagIndex].titleEn}
@@ -1080,7 +1081,7 @@ export default function WindingLadderJourney({
                 </div>
 
                 {/* Computed Total Sperm Result Bar */}
-                <div className="p-3 rounded-lg bg-white/90 dark:bg-stone-850 border border-[#DDD7C8]/70 dark:border-stone-800 flex items-center justify-between">
+                <div className="p-3 rounded-lg bg-white/90 dark:bg-[#1C1A17] border border-[#DDD7C8]/70 dark:border-[#38332B] shadow-sm flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Microscope className="w-4 h-4 text-[#7A7163] dark:text-stone-400" />
                     <span className="text-xs font-semibold text-[#403B33] dark:text-stone-200">
@@ -1346,8 +1347,8 @@ export default function WindingLadderJourney({
             }`}
           >
             {/* Subtle Circular Radial Glow behind Beacon */}
-            <div className="w-20 h-20 rounded-full bg-[#EFEAE0] dark:bg-stone-900 border-2 border-[#8C8375] dark:border-stone-700 shadow-lg flex items-center justify-center mb-6">
-              <Shield className="w-9 h-9 text-[#2E2922] dark:text-[#F5F2EB]" />
+            <div className="w-20 h-20 rounded-full bg-[#EFEAE0] dark:bg-[#221F1C] border-2 border-[#8C8375] dark:border-[#52493D] shadow-lg flex items-center justify-center mb-6 text-[#2E2922] dark:text-[#F5F2EB]">
+              <VigorLogo className="w-10 h-10 text-current" size={40} />
             </div>
 
             <div className="flex items-center gap-2 mb-3 text-[11px] font-semibold tracking-[0.24em] uppercase text-[#736B5E] dark:text-stone-300">

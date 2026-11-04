@@ -17,6 +17,7 @@ import {
   ArrowUpRight,
   Sparkles,
 } from 'lucide-react';
+import VigorLogo from './VigorLogo';
 import { Locale } from '@/types/vigor';
 
 interface FooterProps {
@@ -46,7 +47,7 @@ export default function Footer({
   }, []);
 
   return (
-    <footer className="relative overflow-hidden bg-[#181614] dark:bg-[#0E0D0C] text-[#C2BBB0] border-t border-[#DDD7C8]/70 dark:border-stone-850 text-xs">
+    <footer className="relative overflow-hidden bg-[#181614] dark:bg-[#0E0D0C] text-[#C2BBB0] border-t border-[#DDD7C8]/70 dark:border-[#2E2A24] text-xs">
       {/* Background Image of Clinical Lab with Warm Editorial Charcoal Gradient Overlay */}
       <div className="absolute inset-0 z-0 pointer-events-none select-none">
         <img
@@ -88,34 +89,36 @@ export default function Footer({
             {/* Col 1 & 2: Brand & Identity */}
             <div className="lg:col-span-2 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-sky-500 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/30">
-                  <Shield className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-xl bg-[#2E2922] dark:bg-[#FAF8F5] border border-[#8C8375]/40 flex items-center justify-center text-[#FAF8F5] dark:text-[#181614] shadow-md">
+                  <VigorLogo className="w-6 h-6 text-current" size={24} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl font-black text-white tracking-tight">VIGOR</span>
-                    <span className="px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-md bg-gradient-to-r from-blue-500 to-sky-400 text-white">
+                    <span className="font-editorial-serif text-2xl font-medium tracking-[0.2em] text-white uppercase">
+                      Vigor
+                    </span>
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold tracking-[0.2em] uppercase rounded-sm bg-[#3D372E] text-[#FAF8F5] border border-[#7A7163]/50">
                       AI
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-900/70 text-sky-300 border border-blue-700/60">
+                    <span className="text-[10px] font-medium uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#26231E] text-[#DDD7C8] border border-[#52493D]">
                       Abu Dhabi Edition
                     </span>
                   </div>
                 </div>
               </div>
 
-              <p className="text-xs text-slate-300 leading-relaxed max-w-md">
+              <p className="text-xs text-stone-300 leading-relaxed max-w-md">
                 {isAr
                   ? 'البوابة الرقمية الأولى من نوعها في أبوظبي لصحة الرجل التناسلية: فحص مبكر مجهول الهوية بالكامل، كشف حتمي لعلامات الخطر، وتوجيه آمن ومشفّر للرعاية التخصصية وفق معايير منظمة الصحة العالمية 2021.'
                   : 'An anonymous-first clinical entry point for male reproductive health in Abu Dhabi. Built with deterministic red-flag gating, strict escalate-only safety rules, and privacy-preserving care routing complying with WHO 2021 6th Edition reference standards.'}
               </p>
 
               <div className="flex flex-wrap items-center gap-2 pt-1">
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-sky-200 bg-blue-950/80 px-3 py-1 rounded-lg border border-blue-800/70">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-sky-400" />
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#DDD7C8] bg-[#221F1C] px-3 py-1 rounded-sm border border-[#3E382F]">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#A8A092]" />
                   {isAr ? 'تحدي أبوظبي للابتكار الصحي' : 'Abu Dhabi Health Challenge'}
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-300 bg-emerald-950/70 px-3 py-1 rounded-lg border border-emerald-800/70">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-300 bg-emerald-950/70 px-3 py-1 rounded-sm border border-emerald-800/70">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   {isAr ? 'نظام n8n الحقيقي متصل' : '10 Live Workflows Active'}
                 </span>
