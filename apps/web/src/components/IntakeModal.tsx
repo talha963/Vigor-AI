@@ -13,6 +13,8 @@ import {
   Activity,
   Check,
   Loader2,
+  Mail,
+  Send,
 } from 'lucide-react';
 import { IntakeAnswers, Locale, Symptom, TriageResult } from '@/types/vigor';
 import { reconcileIntake } from '@/lib/clinical-engine';
@@ -22,7 +24,7 @@ interface IntakeModalProps {
   isOpen: boolean;
   onClose: () => void;
   locale: Locale;
-  onAssessmentCompleted: (result: TriageResult, answers: IntakeAnswers) => void;
+  onAssessmentCompleted: (result: TriageResult, answers: IntakeAnswers, email?: string) => void;
   initialAnswers?: IntakeAnswers;
 }
 
@@ -36,6 +38,7 @@ export default function IntakeModal({
   const isAr = locale === 'ar';
   const [step, setStep] = useState<number>(1);
   const [answers, setAnswers] = useState<IntakeAnswers>(initialAnswers || {});
+  const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatusText, setSubmitStatusText] = useState('');
 
@@ -106,6 +109,7 @@ export default function IntakeModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           answers,
+          email: email.trim() || undefined,
           locale,
           startedAt: new Date(Date.now() - 300_000).toISOString(),
         }),
@@ -133,7 +137,7 @@ export default function IntakeModal({
               mapped.requiresHumanReview = liveResult.decision.requiresHumanReview;
             }
             setIsSubmitting(false);
-            onAssessmentCompleted(mapped, answers);
+            onAssessmentCompleted(mapped, answers, email.trim() || undefined);
             return;
           }
         }
@@ -145,7 +149,7 @@ export default function IntakeModal({
     // Deterministic safety fallback if network ever drops
     const fallbackResult = reconcileIntake(answers);
     setIsSubmitting(false);
-    onAssessmentCompleted(fallbackResult, answers);
+    onAssessmentCompleted(fallbackResult, answers, email.trim() || undefined);
   };
 
   return (
@@ -227,6 +231,31 @@ export default function IntakeModal({
                   {isAr
                     ? 'تؤثر السمنة وداء السكري وضغط الدم على جودة النطاف ومستويات هرمون الذكورة (التستوستيرون).'
                     : 'Metabolic syndrome and elevated BMI are clinically linked to peripheral aromatization of testosterone.'}
+                </p>
+              </div>
+
+              {/* Confidential Report Delivery Email */}
+              <div className="bg-[#FAF8F5] dark:bg-[#1C1A17] p-4 rounded-2xl border border-[#DDD7C8] dark:border-stone-800 shadow-xs">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="flex items-center gap-2 text-xs font-bold text-[#2E2922] dark:text-[#FAF7F2] uppercase tracking-wide">
+                    <Mail className="w-4 h-4 text-[#7A7163] dark:text-[#B5ADA0]" />
+                    <span>{isAr ? 'البريد الإلكتروني للتقرير السري (اختياري)' : 'Confidential Report Delivery Email (Optional)'}</span>
+                  </label>
+                  <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full">
+                    {isAr ? 'تقرير تلقائي فوري' : 'Automated Dispatch'}
+                  </span>
+                </div>
+                <input
+                  type="email"
+                  placeholder={isAr ? 'example@domain.com' : 'yourname@domain.com (to receive formatted report)'}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm border border-[#DDD7C8] dark:border-stone-700 bg-white dark:bg-[#25221E] text-slate-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7A7163] transition-colors"
+                />
+                <p className="text-[11px] text-[#7A7163] dark:text-[#A8A092] mt-1.5 leading-relaxed">
+                  {isAr
+                    ? 'إذا تم تزويده، سيتم إرسال تقرير الفرز السريري بتنسيق فاخر متوافق مع معايير منظمة الصحة العالمية إلى بريدك عند اكتمال الفحص.'
+                    : 'If provided, a comprehensive clinical report formatted with WHO 2021 benchmarks and safety gates will be automatically sent to your inbox upon completion.'}
                 </p>
               </div>
 

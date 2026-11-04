@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   X,
   ShieldAlert,
@@ -16,8 +16,10 @@ import {
   FileText,
   AlertCircle,
   HelpCircle,
+  Mail,
+  Send,
 } from 'lucide-react';
-import { TriageResult, Locale } from '@/types/vigor';
+import { TriageResult, Locale, IntakeAnswers } from '@/types/vigor';
 
 interface ResultsModalProps {
   isOpen: boolean;
@@ -26,6 +28,8 @@ interface ResultsModalProps {
   locale: Locale;
   onOpenConsent: () => void;
   onOpenAtHomeKit: () => void;
+  recipientEmail?: string;
+  answers?: IntakeAnswers;
 }
 
 export default function ResultsModal({
@@ -35,7 +39,24 @@ export default function ResultsModal({
   locale,
   onOpenConsent,
   onOpenAtHomeKit,
+  recipientEmail,
+  answers,
 }: ResultsModalProps) {
+  const [emailInput, setEmailInput] = useState(recipientEmail || '');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<string | null>(
+    recipientEmail ? `Report automatically formatted and dispatched to ${recipientEmail}` : null
+  );
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+
+  // Sync if recipientEmail changes
+  React.useEffect(() => {
+    if (recipientEmail) {
+      setEmailInput(recipientEmail);
+      setEmailStatus(`Report automatically formatted and dispatched to ${recipientEmail}`);
+    }
+  }, [recipientEmail]);
+
   if (!isOpen || !result) return null;
   const isAr = locale === 'ar';
 
@@ -43,6 +64,32 @@ export default function ResultsModal({
   const isAndrology = result.tier === 'ANDROLOGY_UROLOGY';
   const isFertility = result.tier === 'FERTILITY_SERVICES';
   const isPrimary = result.tier === 'PRIMARY_CARE';
+
+  const handleSendEmail = async () => {
+    if (!emailInput || !emailInput.includes('@')) return;
+    setEmailSending(true);
+    try {
+      const res = await fetch('/api/report/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: emailInput.trim(),
+          triageResult: result,
+          answers,
+          locale,
+        }),
+      });
+      if (res.ok) {
+        setEmailStatus(`Report successfully dispatched to ${emailInput.trim()}`);
+      } else {
+        setEmailStatus('Failed to dispatch report. Please check the email address.');
+      }
+    } catch {
+      setEmailStatus('Network error while dispatching report.');
+    } finally {
+      setEmailSending(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in text-left rtl:text-right">
@@ -77,6 +124,23 @@ export default function ResultsModal({
 
         {/* Content */}
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
+          {/* Automated Email Dispatch Status Banner */}
+          {emailStatus && (
+            <div className="bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 p-3.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-emerald-900 dark:text-emerald-300">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="font-semibold">{emailStatus}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEmailPreview(!showEmailPreview)}
+                className="text-[11px] font-bold text-emerald-800 dark:text-emerald-200 underline hover:text-emerald-950 dark:hover:text-white"
+              >
+                {showEmailPreview ? 'Close Preview' : 'Preview Formatted Email Report ↗'}
+              </button>
+            </div>
+          )}
+
           {/* Main Tier Acuity Banner */}
           <div
             className={`rounded-2xl p-6 border ${
@@ -220,6 +284,79 @@ export default function ResultsModal({
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
               {isAr ? result.boundary.statementAr : result.boundary.statement}
             </p>
+          </div>
+
+          {/* Confidential Report Email Dispatch Section */}
+          <div className="bg-[#FAF8F5] dark:bg-[#1C1A17] p-5 rounded-2xl border border-[#DDD7C8] dark:border-stone-800 shadow-xs">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#EFECE3] dark:bg-[#28241F] flex items-center justify-center text-[#2E2922] dark:text-[#FAF7F2] shrink-0 border border-[#DDD7C8] dark:border-stone-700">
+                  <Mail className="w-4 h-4 text-[#7A7163] dark:text-[#DDD7C8]" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-[#2E2922] dark:text-[#FAF7F2]">
+                    {isAr ? 'إرسال التقرير السري إلى بريدك' : 'Confidential Report Email Dispatch'}
+                  </h4>
+                  <p className="text-[11px] text-[#7A7163] dark:text-[#A8A092]">
+                    {isAr
+                      ? 'احصل على نسخة كاملة بتنسيق فاخر متوافق مع معايير منظمة الصحة العالمية 2021.'
+                      : 'Send or resend a matched-theme clinical report to your email.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                <input
+                  type="email"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  placeholder="your.email@example.com"
+                  className="px-3.5 py-2 text-xs rounded-xl border border-[#DDD7C8] dark:border-stone-700 bg-white dark:bg-[#25221E] text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#7A7163] w-full sm:w-56"
+                />
+                <button
+                  type="button"
+                  onClick={handleSendEmail}
+                  disabled={emailSending || !emailInput.includes('@')}
+                  className="px-4 py-2 text-xs font-bold rounded-xl bg-[#2E2922] dark:bg-[#FAF8F5] text-[#FAF8F5] dark:text-[#181614] hover:bg-[#453E34] transition-colors disabled:opacity-50 flex items-center gap-1.5 shrink-0 shadow-xs"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{emailSending ? 'Sending...' : 'Send Report'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowEmailPreview(!showEmailPreview)}
+                  className="px-3.5 py-2 text-xs font-semibold rounded-xl border border-[#DDD7C8] dark:border-stone-700 text-[#7A7163] dark:text-[#DDD7C8] hover:bg-slate-100 dark:hover:bg-stone-800 transition-colors shrink-0"
+                >
+                  {showEmailPreview ? 'Hide' : 'Preview'}
+                </button>
+              </div>
+            </div>
+
+            {/* Live Rendered Email Report Preview */}
+            {showEmailPreview && (
+              <div className="mt-4 pt-4 border-t border-[#DDD7C8] dark:border-stone-800">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-[11px] font-bold text-[#7A7163] dark:text-[#A8A092] uppercase tracking-wider">
+                    {isAr ? 'معاينة حية للتقرير المرسل عبر البريد:' : 'Live Rendered Email Report Preview:'}
+                  </span>
+                  <a
+                    href={`/api/report/email?email=${encodeURIComponent(emailInput || 'patient@example.com')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-semibold text-blue-600 dark:text-sky-400 hover:underline"
+                  >
+                    Open Full Report in New Tab ↗
+                  </a>
+                </div>
+                <div className="w-full h-80 rounded-xl border border-[#DDD7C8] dark:border-stone-800 overflow-hidden bg-white shadow-inner">
+                  <iframe
+                    src={`/api/report/email?email=${encodeURIComponent(emailInput || 'patient@example.com')}`}
+                    title="Email Report Preview"
+                    className="w-full h-full border-none"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

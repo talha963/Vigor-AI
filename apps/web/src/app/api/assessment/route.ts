@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { ensureSession } from '@/lib/server/session';
 import { callWorkflow } from '@/lib/server/n8n';
 import { db } from '@/lib/server/mongo';
+import { sendClinicalReportEmail } from '@/lib/server/email';
+import { TriageResult } from '@/types/vigor';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -71,5 +73,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: result.error, detail: result.data }, { status: result.status });
   }
 
-  return NextResponse.json(result.data, { status: 200 });
+  // Automatic report dispatch if user provided their email
+  const userEmail =
+    typeof body.email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email.trim())
+      ? body.email.trim()
+      : null;
+
+  if (userEmail && result.data) {
+    try {
+      await sendClinicalReportEmail({
+        recipientEmail: userEmail,
+        triageResult: result.data as TriageResult,
+        answers,
+        assessmentId,
+        pseudonymId,
+        locale: body.locale === 'ar' ? 'ar' : 'en',
+      });
+    } catch (e) {
+      console.error('[Assessment API] Email dispatch error:', e);
+    }
+  }
+
+  const responsePayload =
+    typeof result.data === 'object' && result.data !== null
+      ? { ...result.data, emailReportDispatched: !!userEmail, recipientEmail: userEmail }
+      : result.data;
+
+  return NextResponse.json(responsePayload, { status: 200 });
 }

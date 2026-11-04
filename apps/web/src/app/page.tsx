@@ -26,6 +26,8 @@ export default function Home() {
 
   const [triageResult, setTriageResult] = useState<TriageResult | null>(null);
   const [selectedInitialAnswers, setSelectedInitialAnswers] = useState<IntakeAnswers | undefined>(undefined);
+  const [recipientEmail, setRecipientEmail] = useState<string | undefined>(undefined);
+  const [completedAnswers, setCompletedAnswers] = useState<IntakeAnswers | undefined>(undefined);
 
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
@@ -55,8 +57,10 @@ export default function Home() {
     }
   };
 
-  const handleAssessmentCompleted = (result: TriageResult) => {
+  const handleAssessmentCompleted = (result: TriageResult, answers?: IntakeAnswers, email?: string) => {
     setTriageResult(result);
+    setCompletedAnswers(answers);
+    setRecipientEmail(email);
     setIsIntakeOpen(false);
     setIsResultsOpen(true);
   };
@@ -143,6 +147,8 @@ export default function Home() {
         locale={locale}
         onOpenConsent={() => setIsConsentOpen(true)}
         onOpenAtHomeKit={() => setIsAtHomeKitOpen(true)}
+        recipientEmail={recipientEmail}
+        answers={completedAnswers}
       />
 
       <ConsentCentreModal
