@@ -76,8 +76,8 @@ export default function Header({
       <div
         className={`w-full transition-all duration-200 ${
           scrolled
-            ? 'bg-[#FAF9F6]/95 dark:bg-[#090E1A]/95 backdrop-blur-xl shadow-sm border-b border-slate-200/80 dark:border-slate-800'
-            : 'bg-[#FAF9F6]/90 dark:bg-[#090E1A]/90 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60'
+            ? 'bg-[#F7F6F2]/95 dark:bg-[#0A0F1D]/95 backdrop-blur-xl shadow-xs border-b border-[#E5E1D6]/90 dark:border-slate-800'
+            : 'bg-[#F7F6F2]/90 dark:bg-[#0A0F1D]/90 backdrop-blur-md border-b border-[#EAE6DC]/70 dark:border-slate-800/60'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

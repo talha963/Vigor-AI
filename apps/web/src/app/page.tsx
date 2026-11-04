@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import HeroSection from '@/components/HeroSection';
-import ClinicalJourney from '@/components/ClinicalJourney';
+import ZigzagArrowJourney from '@/components/ZigzagArrowJourney';
+import WatermarkBackground from '@/components/WatermarkBackground';
 import Footer from '@/components/Footer';
 import IntakeModal from '@/components/IntakeModal';
 import ResultsModal from '@/components/ResultsModal';
@@ -74,7 +75,13 @@ export default function Home() {
   };
 
   return (
-    <div dir={locale === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen flex flex-col bg-[#FAF9F6] dark:bg-[#090E1A] transition-colors duration-200">
+    <div
+      dir={locale === 'ar' ? 'rtl' : 'ltr'}
+      className="min-h-screen flex flex-col bg-[#F7F6F2] dark:bg-[#0A0F1D] text-slate-900 dark:text-slate-100 relative selection:bg-blue-600 selection:text-white transition-colors duration-300"
+    >
+      {/* Artistic Off-White Background with Subtle Medical Watermark Illustrations */}
+      <WatermarkBackground />
+
       {/* Top Header - Fixed & Always Visible */}
       <Header
         locale={locale}
@@ -98,8 +105,8 @@ export default function Home() {
           onSelectGoldenCase={handleSelectGoldenCase}
         />
 
-        {/* Unique Zigzag / Ladder-Style Clinical Journey with Scroll-Based Progressive Reveal */}
-        <ClinicalJourney
+        {/* Unique Zigzag / Ladder-Style Arrow Journey with Scroll-Based Progressive Reveal */}
+        <ZigzagArrowJourney
           locale={locale}
           onOpenIntake={handleOpenNewIntake}
           onOpenConsent={() => setIsConsentOpen(true)}
