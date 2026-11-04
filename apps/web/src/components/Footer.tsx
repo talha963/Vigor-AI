@@ -46,18 +46,18 @@ export default function Footer({
   }, []);
 
   return (
-    <footer className="relative overflow-hidden bg-[#071328] text-slate-300 border-t border-blue-900/60 text-xs">
-      {/* Background Image of Clinical Lab with Deep Blue Medical Gradient Overlay */}
+    <footer className="relative overflow-hidden bg-[#181614] dark:bg-[#0E0D0C] text-[#C2BBB0] border-t border-[#DDD7C8]/70 dark:border-stone-850 text-xs">
+      {/* Background Image of Clinical Lab with Warm Editorial Charcoal Gradient Overlay */}
       <div className="absolute inset-0 z-0 pointer-events-none select-none">
         <img
           src="/images/andrology-lab.jpg"
           alt="Clinical Infrastructure Background"
-          className="w-full h-full object-cover object-center opacity-15 filter contrast-125 brightness-75 mix-blend-luminosity"
+          className="w-full h-full object-cover object-center opacity-10 filter contrast-125 brightness-75 mix-blend-luminosity"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0a1e3f]/95 via-[#071328]/95 to-[#030914]/98" />
-        {/* Subtle decorative mesh glow */}
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-10 left-10 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#181614]/95 via-[#181614]/98 to-[#0E0D0C]/99" />
+        {/* Subtle warm glow */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#8C8375]/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-10 left-10 w-80 h-80 bg-[#BDB5A7]/10 rounded-full blur-3xl" />
       </div>
 
       <div className="relative z-10">

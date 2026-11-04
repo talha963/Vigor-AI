@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import HeroSection from '@/components/HeroSection';
-import ZigzagArrowJourney from '@/components/ZigzagArrowJourney';
+import WindingLadderJourney from '@/components/WindingLadderJourney';
 import WatermarkBackground from '@/components/WatermarkBackground';
 import Footer from '@/components/Footer';
 import IntakeModal from '@/components/IntakeModal';
@@ -77,9 +77,9 @@ export default function Home() {
   return (
     <div
       dir={locale === 'ar' ? 'rtl' : 'ltr'}
-      className="min-h-screen flex flex-col bg-[#F7F6F2] dark:bg-[#0A0F1D] text-slate-900 dark:text-slate-100 relative selection:bg-blue-600 selection:text-white transition-colors duration-300"
+      className="min-h-screen flex flex-col bg-[#F5F3EA] dark:bg-[#141311] text-[#22201D] dark:text-[#F2EEE6] relative selection:bg-[#2E2922] selection:text-[#F7F4EB] transition-colors duration-300"
     >
-      {/* Artistic Off-White Background with Subtle Medical Watermark Illustrations */}
+      {/* Artistic Off-White Background with Subtle Medical & Typographic Watermark Illustrations */}
       <WatermarkBackground />
 
       {/* Top Header - Fixed & Always Visible */}
@@ -96,8 +96,8 @@ export default function Home() {
       />
 
       {/* Main Page Surfaces with pt-16 offset for fixed header */}
-      <main className="flex-1 pt-16">
-        {/* Front Hero with Animated Healthcare Illustration */}
+      <main className="flex-1 pt-14 sm:pt-16">
+        {/* Front Hero Section */}
         <HeroSection
           locale={locale}
           onOpenIntake={handleOpenNewIntake}
@@ -105,8 +105,8 @@ export default function Home() {
           onSelectGoldenCase={handleSelectGoldenCase}
         />
 
-        {/* Unique Zigzag / Ladder-Style Arrow Journey with Scroll-Based Progressive Reveal */}
-        <ZigzagArrowJourney
+        {/* Continuous 3D Winding Ladder Journey with Scroll-Synchronized Progressive Drawing */}
+        <WindingLadderJourney
           locale={locale}
           onOpenIntake={handleOpenNewIntake}
           onOpenConsent={() => setIsConsentOpen(true)}
