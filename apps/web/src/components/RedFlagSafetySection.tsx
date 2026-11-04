@@ -133,11 +133,19 @@ export default function RedFlagSafetySection({
   ];
 
   return (
-    <section id="red-flags" className="py-20 bg-white dark:bg-[#080d1a] border-b border-blue-50 dark:border-slate-800 transition-colors duration-200">
+    <section id="red-flags" className="relative overflow-hidden py-20 bg-white dark:bg-[#080d1a] border-b border-blue-50 dark:border-slate-800 transition-colors duration-200">
+      {/* Background Animated Ambient Light Glow */}
+      <div className="absolute top-1/3 left-10 w-96 h-96 bg-red-500/5 dark:bg-red-600/5 rounded-full blur-3xl animate-ambient-glow pointer-events-none -z-10" />
+      <div className="absolute bottom-10 right-1/4 w-80 h-80 bg-blue-500/5 dark:bg-blue-600/5 rounded-full blur-3xl animate-ambient-glow pointer-events-none -z-10 [animation-delay:3s]" />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Title */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 text-xs font-bold uppercase tracking-wider mb-4 border border-red-200 dark:border-red-900">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 text-xs font-bold uppercase tracking-wider mb-4 border border-red-200 dark:border-red-900 shadow-xs">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600" />
+            </span>
             <ShieldAlert className="w-4 h-4 text-red-600 dark:text-red-400" />
             <span>{isAr ? 'صمام الأمان السريري غير القابل للتراجع' : 'The Deterministic Safety Floor'}</span>
           </div>
@@ -152,15 +160,17 @@ export default function RedFlagSafetySection({
         </div>
 
         {/* Invariant Banner */}
-        <div className="mb-12 bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 dark:from-blue-950 dark:via-blue-900 dark:to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-lg border border-blue-700/50 dark:border-slate-700">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="mb-12 relative overflow-hidden bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 dark:from-blue-950 dark:via-blue-900 dark:to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-lg border border-blue-700/50 dark:border-slate-700 group hover:border-blue-500/80 transition-all">
+          <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-amber-400/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
             <div className="flex items-start gap-4 text-left rtl:text-right">
-              <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20 animate-cardiac">
                 <AlertTriangle className="w-6 h-6 text-amber-300" />
               </div>
               <div>
-                <h3 className="text-lg font-black tracking-wide uppercase text-blue-100">
-                  {isAr ? 'قاعدة التصعيد الحتمي الإلزامي' : 'The Escalate-Only Invariant'}
+                <h3 className="text-lg font-black tracking-wide uppercase text-blue-100 flex items-center gap-2">
+                  <span>{isAr ? 'قاعدة التصعيد الحتمي الإلزامي' : 'The Escalate-Only Invariant'}</span>
+                  <span className="hidden sm:inline-block w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                 </h3>
                 <p className="text-sm text-blue-200 mt-1 max-w-2xl leading-relaxed">
                   {isAr
@@ -171,7 +181,7 @@ export default function RedFlagSafetySection({
             </div>
 
             <div className="flex items-center gap-3 shrink-0">
-              <span className="text-xs font-bold px-3.5 py-2 rounded-xl bg-amber-400 text-blue-950 uppercase tracking-wider shadow-sm">
+              <span className="text-xs font-bold px-3.5 py-2 rounded-xl bg-amber-400 text-blue-950 uppercase tracking-wider shadow-sm hover:scale-105 transition-transform">
                 {isAr ? 'ضمان سلامة 100٪' : 'Zero-Drift Safety Floor'}
               </span>
             </div>
@@ -187,27 +197,35 @@ export default function RedFlagSafetySection({
             return (
               <div
                 key={flag.code}
-                className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-blue-100 dark:border-slate-800 hover:border-blue-300 dark:hover:border-slate-700 shadow-xs hover:shadow-md transition-all flex flex-col justify-between text-left rtl:text-right"
+                className="hover-lift group bg-white dark:bg-slate-900 rounded-2xl p-5 border border-blue-100 dark:border-slate-800 hover:border-blue-400 dark:hover:border-slate-700 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between text-left rtl:text-right"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <span
-                      className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                      className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
                         isUrgent
-                          ? 'bg-red-100 dark:bg-red-950/80 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-900'
+                          ? 'bg-red-100 dark:bg-red-950/80 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-900 shadow-xs'
                           : isSameDay
                           ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900'
                           : 'bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-sky-300 border border-blue-200 dark:border-blue-900'
                       }`}
                     >
-                      {flag.severity} · {flag.slaMinutes}m SLA
+                      {isUrgent ? (
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-80" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600" />
+                        </span>
+                      ) : isSameDay ? (
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                      ) : null}
+                      <span>{flag.severity} · {flag.slaMinutes}m SLA</span>
                     </span>
                     <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 font-medium">
                       {flag.code}
                     </span>
                   </div>
 
-                  <h4 className="text-base font-bold text-blue-950 dark:text-white mb-2">
+                  <h4 className="text-base font-bold text-blue-950 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-sky-300 transition-colors">
                     {isAr ? flag.titleAr : flag.titleEn}
                   </h4>
 
@@ -219,10 +237,10 @@ export default function RedFlagSafetySection({
                 <div className="pt-3 border-t border-blue-50 dark:border-slate-800 flex items-center justify-between mt-auto">
                   <button
                     onClick={() => onSelectGoldenCase(flag.goldenCase)}
-                    className="text-xs font-bold text-blue-600 dark:text-sky-400 hover:text-blue-800 dark:hover:text-sky-300 flex items-center gap-1 hover:underline"
+                    className="text-xs font-bold text-blue-600 dark:text-sky-400 hover:text-blue-800 dark:hover:text-sky-300 flex items-center gap-1 group/btn"
                   >
                     <span>{isAr ? `اختبر حالة ${flag.goldenCase}` : `Test Case ${flag.goldenCase}`}</span>
-                    <ArrowUpRight className="w-3.5 h-3.5 rtl:rotate-90" />
+                    <ArrowUpRight className="w-3.5 h-3.5 rtl:rotate-90 group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
                   </button>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                     {isUrgent ? 'SLA: <= 60 mins' : isSameDay ? 'SLA: <= 8 hours' : 'SLA: <= 48 hours'}

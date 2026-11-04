@@ -59,7 +59,11 @@ body {
   background: #2563eb;
 }
 
-/* Medical ECG Wave Pulse Animation */
+/* -------------------------------------------------------------
+   Medical Animations & High-Tech Visual Effects
+   ------------------------------------------------------------- */
+
+/* 1. Medical ECG Wave Pulse Animation */
 @keyframes ecgDraw {
   0% {
     stroke-dashoffset: 1000;
@@ -74,7 +78,7 @@ body {
   animation: ecgDraw 6s linear infinite;
 }
 
-/* Floating Elements */
+/* 2. Floating Elements & Organic Float */
 @keyframes floatUp {
   0%, 100% {
     transform: translateY(0px) rotate(0deg);
@@ -92,7 +96,7 @@ body {
   animation: floatUp 5s ease-in-out 1.5s infinite;
 }
 
-/* Soft glowing pulse */
+/* 3. Soft Glowing Pulse */
 @keyframes glowPulse {
   0%, 100% {
     box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
@@ -104,4 +108,102 @@ body {
 
 .medical-glow {
   animation: glowPulse 3s infinite ease-in-out;
+}
+
+/* 4. Cardiac 72 BPM Double-Thump Pulse */
+@keyframes cardiacPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  14% {
+    transform: scale(1.08);
+  }
+  28% {
+    transform: scale(1);
+  }
+  42% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(1);
+  }
+}
+
+.animate-cardiac {
+  animation: cardiacPulse 1.8s ease-in-out infinite;
+}
+
+/* 5. Shimmer Light Sweep on Cards & Buttons */
+@keyframes shimmerSweep {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmerSweep 3s infinite;
+}
+
+/* 6. Medical Diagnostic Radar Rings */
+@keyframes radarPingRing {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.animate-radar-ring {
+  animation: radarPingRing 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* 7. Diagnostic Scanline Effect */
+@keyframes diagnosticScan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(200%);
+  }
+}
+
+.scanline-beam {
+  animation: diagnosticScan 4s linear infinite;
+}
+
+/* 8. Breathing Ambient Light Glow */
+@keyframes ambientBreathe {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.08);
+  }
+}
+
+.animate-ambient-glow {
+  animation: ambientBreathe 6s ease-in-out infinite;
+}
+
+/* 9. Interactive Card Hover Lift */
+.hover-lift {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
 }

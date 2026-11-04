@@ -29,7 +29,10 @@ export default function AboutSection({ locale }: AboutSectionProps) {
   const isAr = locale === 'ar';
 
   return (
-    <section id="how-it-works" className="py-20 bg-slate-50/70 dark:bg-[#070d1a] border-b border-blue-100/60 dark:border-slate-800 transition-colors duration-200">
+    <section id="how-it-works" className="relative overflow-hidden py-20 bg-slate-50/70 dark:bg-[#070d1a] border-b border-blue-100/60 dark:border-slate-800 transition-colors duration-200">
+      {/* Background Animated Ambient Light Glow */}
+      <div className="absolute top-20 left-10 w-80 h-80 bg-blue-400/10 dark:bg-blue-600/10 rounded-full blur-3xl animate-ambient-glow pointer-events-none -z-10" />
+      <div className="absolute bottom-20 right-10 w-96 h-96 bg-sky-400/10 dark:bg-sky-500/10 rounded-full blur-3xl animate-ambient-glow pointer-events-none -z-10 [animation-delay:2.5s]" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
@@ -52,12 +55,13 @@ export default function AboutSection({ locale }: AboutSectionProps) {
         {/* The 4-Step Pathway Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 items-stretch">
           {/* Step 1 */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-blue-100 dark:border-slate-800 shadow-sm hover:shadow-md dark:hover:border-slate-700 transition-all relative overflow-hidden group flex flex-col justify-between text-left rtl:text-right">
+          <div className="hover-lift bg-white dark:bg-slate-900 rounded-2xl p-6 border border-blue-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-blue-400 dark:hover:border-sky-500 transition-all relative overflow-hidden group flex flex-col justify-between text-left rtl:text-right">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/0 via-transparent to-blue-100/30 dark:to-sky-950/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             <div>
-              <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-sky-300 font-black text-xl flex items-center justify-center mb-5 border border-blue-100 dark:border-slate-700 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-sky-300 font-black text-xl flex items-center justify-center mb-5 border border-blue-100 dark:border-slate-700 group-hover:bg-blue-600 group-hover:text-white group-hover:scale-110 shadow-xs transition-all duration-300">
                 01
               </div>
-              <h3 className="text-lg font-bold text-blue-950 dark:text-white mb-2">
+              <h3 className="text-lg font-bold text-blue-950 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-sky-300 transition-colors">
                 {isAr ? 'الفرز المجهول ثنائي اللغة' : 'Anonymous Bilingual Intake'}
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
@@ -67,18 +71,19 @@ export default function AboutSection({ locale }: AboutSectionProps) {
               </p>
             </div>
             <div className="text-xs font-semibold text-blue-600 dark:text-sky-400 flex items-center gap-1.5 pt-3 border-t border-blue-50 dark:border-slate-800 mt-auto">
-              <EyeOff className="w-4 h-4 shrink-0" />
+              <EyeOff className="w-4 h-4 shrink-0 group-hover:rotate-12 transition-transform duration-300" />
               <span>{isAr ? 'هوية مقنعة (Pseudonym ID)' : 'Pseudonymous psn_ ID'}</span>
             </div>
           </div>
 
           {/* Step 2 */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-blue-100 dark:border-slate-800 shadow-sm hover:shadow-md dark:hover:border-slate-700 transition-all relative overflow-hidden group flex flex-col justify-between text-left rtl:text-right">
+          <div className="hover-lift bg-white dark:bg-slate-900 rounded-2xl p-6 border border-blue-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-blue-400 dark:hover:border-sky-500 transition-all relative overflow-hidden group flex flex-col justify-between text-left rtl:text-right">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/0 via-transparent to-blue-100/30 dark:to-sky-950/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             <div>
-              <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-sky-300 font-black text-xl flex items-center justify-center mb-5 border border-blue-100 dark:border-slate-700 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-sky-300 font-black text-xl flex items-center justify-center mb-5 border border-blue-100 dark:border-slate-700 group-hover:bg-blue-600 group-hover:text-white group-hover:scale-110 shadow-xs transition-all duration-300">
                 02
               </div>
-              <h3 className="text-lg font-bold text-blue-950 dark:text-white mb-2">
+              <h3 className="text-lg font-bold text-blue-950 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-sky-300 transition-colors">
                 {isAr ? 'صمام الأمان السريري الحتمي' : 'Deterministic Safety Floor'}
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
@@ -88,18 +93,19 @@ export default function AboutSection({ locale }: AboutSectionProps) {
               </p>
             </div>
             <div className="text-xs font-semibold text-blue-600 dark:text-sky-400 flex items-center gap-1.5 pt-3 border-t border-blue-50 dark:border-slate-800 mt-auto">
-              <Activity className="w-4 h-4 shrink-0" />
+              <Activity className="w-4 h-4 shrink-0 group-hover:scale-125 transition-transform duration-300 text-red-500" />
               <span>{isAr ? 'استجابة طارئة خلال 60 دقيقة' : '60-Min Emergency SLA'}</span>
             </div>
           </div>
 
           {/* Step 3 */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-blue-100 dark:border-slate-800 shadow-sm hover:shadow-md dark:hover:border-slate-700 transition-all relative overflow-hidden group flex flex-col justify-between text-left rtl:text-right">
+          <div className="hover-lift bg-white dark:bg-slate-900 rounded-2xl p-6 border border-blue-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-blue-400 dark:hover:border-sky-500 transition-all relative overflow-hidden group flex flex-col justify-between text-left rtl:text-right">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/0 via-transparent to-blue-100/30 dark:to-sky-950/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             <div>
-              <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-sky-300 font-black text-xl flex items-center justify-center mb-5 border border-blue-100 dark:border-slate-700 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-sky-300 font-black text-xl flex items-center justify-center mb-5 border border-blue-100 dark:border-slate-700 group-hover:bg-blue-600 group-hover:text-white group-hover:scale-110 shadow-xs transition-all duration-300">
                 03
               </div>
-              <h3 className="text-lg font-bold text-blue-950 dark:text-white mb-2">
+              <h3 className="text-lg font-bold text-blue-950 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-sky-300 transition-colors">
                 {isAr ? 'دفتر الموافقة غير القابل للتعديل' : 'Cryptographic Consent Ledger'}
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
@@ -109,18 +115,19 @@ export default function AboutSection({ locale }: AboutSectionProps) {
               </p>
             </div>
             <div className="text-xs font-semibold text-blue-600 dark:text-sky-400 flex items-center gap-1.5 pt-3 border-t border-blue-50 dark:border-slate-800 mt-auto">
-              <Lock className="w-4 h-4 shrink-0" />
+              <Lock className="w-4 h-4 shrink-0 group-hover:-rotate-12 transition-transform duration-300" />
               <span>{isAr ? 'إلغاء فوري بضغطة واحدة' : 'Instant Revocation Cascade'}</span>
             </div>
           </div>
 
           {/* Step 4 */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-blue-100 dark:border-slate-800 shadow-sm hover:shadow-md dark:hover:border-slate-700 transition-all relative overflow-hidden group flex flex-col justify-between text-left rtl:text-right">
+          <div className="hover-lift bg-white dark:bg-slate-900 rounded-2xl p-6 border border-blue-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-blue-400 dark:hover:border-sky-500 transition-all relative overflow-hidden group flex flex-col justify-between text-left rtl:text-right">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/0 via-transparent to-blue-100/30 dark:to-sky-950/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             <div>
-              <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-sky-300 font-black text-xl flex items-center justify-center mb-5 border border-blue-100 dark:border-slate-700 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-sky-300 font-black text-xl flex items-center justify-center mb-5 border border-blue-100 dark:border-slate-700 group-hover:bg-blue-600 group-hover:text-white group-hover:scale-110 shadow-xs transition-all duration-300">
                 04
               </div>
-              <h3 className="text-lg font-bold text-blue-950 dark:text-white mb-2">
+              <h3 className="text-lg font-bold text-blue-950 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-sky-300 transition-colors">
                 {isAr ? 'التوجيه السري المعتمد' : 'Safe Closed-Loop Routing'}
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
@@ -130,7 +137,7 @@ export default function AboutSection({ locale }: AboutSectionProps) {
               </p>
             </div>
             <div className="text-xs font-semibold text-blue-600 dark:text-sky-400 flex items-center gap-1.5 pt-3 border-t border-blue-50 dark:border-slate-800 mt-auto">
-              <Stethoscope className="w-4 h-4 shrink-0" />
+              <Stethoscope className="w-4 h-4 shrink-0 group-hover:scale-110 transition-transform duration-300" />
               <span>{isAr ? 'مراكز معتمدة في أبوظبي' : 'Abu Dhabi Accredited Facilities'}</span>
             </div>
           </div>
@@ -156,21 +163,24 @@ export default function AboutSection({ locale }: AboutSectionProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
             {/* Photo Card 1: Andrology Lab */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-blue-100 dark:border-slate-800 shadow-sm hover:shadow-lg transition-all group flex flex-col justify-between">
+            <div className="hover-lift bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-blue-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-blue-400 dark:hover:border-sky-500 transition-all group flex flex-col justify-between">
               <div>
                 <div className="relative h-48 overflow-hidden bg-slate-100 dark:bg-slate-800">
                   <img
                     src="/images/andrology-lab.jpg"
                     alt="Modern Andrology Laboratory"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700"
                   />
-                  <div className="absolute top-3 left-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-bold text-blue-950 dark:text-sky-200 border border-blue-100 dark:border-slate-700 shadow-xs flex items-center gap-1.5">
-                    <FlaskConical className="w-3 h-3 text-blue-600 dark:text-sky-400" />
+                  {/* Diagnostic Scanline Laser Beam on Hover */}
+                  <div className="pointer-events-none absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent scanline-beam opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-blue-950/40 via-transparent to-transparent" />
+                  <div className="absolute top-3 left-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-bold text-blue-950 dark:text-sky-200 border border-blue-100 dark:border-slate-700 shadow-xs flex items-center gap-1.5 group-hover:border-blue-300 dark:group-hover:border-sky-500 transition-colors">
+                    <FlaskConical className="w-3 h-3 text-blue-600 dark:text-sky-400 group-hover:rotate-12 transition-transform duration-300" />
                     <span>{isAr ? 'مختبر أندورلوجيا' : 'Andrology Laboratory'}</span>
                   </div>
                 </div>
                 <div className="p-4 text-left rtl:text-right">
-                  <h4 className="text-sm font-bold text-blue-950 dark:text-white mb-1">
+                  <h4 className="text-sm font-bold text-blue-950 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-sky-300 transition-colors">
                     {isAr ? 'مختبرات الفحص المجهري المتقدم' : 'High-Precision Diagnostics'}
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
@@ -183,21 +193,24 @@ export default function AboutSection({ locale }: AboutSectionProps) {
             </div>
 
             {/* Photo Card 2: Clinical Consultation */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-blue-100 dark:border-slate-800 shadow-sm hover:shadow-lg transition-all group flex flex-col justify-between">
+            <div className="hover-lift bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-blue-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-blue-400 dark:hover:border-sky-500 transition-all group flex flex-col justify-between">
               <div>
                 <div className="relative h-48 overflow-hidden bg-slate-100 dark:bg-slate-800">
                   <img
                     src="/images/clinical-consult.jpg"
                     alt="Doctor Clinical Consultation"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700"
                   />
-                  <div className="absolute top-3 left-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-bold text-blue-950 dark:text-sky-200 border border-blue-100 dark:border-slate-700 shadow-xs flex items-center gap-1.5">
-                    <Stethoscope className="w-3 h-3 text-blue-600 dark:text-sky-400" />
+                  {/* Diagnostic Scanline Laser Beam on Hover */}
+                  <div className="pointer-events-none absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent scanline-beam opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-blue-950/40 via-transparent to-transparent" />
+                  <div className="absolute top-3 left-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-bold text-blue-950 dark:text-sky-200 border border-blue-100 dark:border-slate-700 shadow-xs flex items-center gap-1.5 group-hover:border-blue-300 dark:group-hover:border-sky-500 transition-colors">
+                    <Stethoscope className="w-3 h-3 text-blue-600 dark:text-sky-400 group-hover:scale-110 transition-transform duration-300" />
                     <span>{isAr ? 'استشارة استشاري' : 'Consultant Review'}</span>
                   </div>
                 </div>
                 <div className="p-4 text-left rtl:text-right">
-                  <h4 className="text-sm font-bold text-blue-950 dark:text-white mb-1">
+                  <h4 className="text-sm font-bold text-blue-950 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-sky-300 transition-colors">
                     {isAr ? 'استشارة طبية خاصة وسرية' : 'Private Clinical Consult'}
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
@@ -210,21 +223,24 @@ export default function AboutSection({ locale }: AboutSectionProps) {
             </div>
 
             {/* Photo Card 3: At-Home Testing Kit */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-blue-100 dark:border-slate-800 shadow-sm hover:shadow-lg transition-all group flex flex-col justify-between">
+            <div className="hover-lift bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-blue-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-blue-400 dark:hover:border-sky-500 transition-all group flex flex-col justify-between">
               <div>
                 <div className="relative h-48 overflow-hidden bg-slate-100 dark:bg-slate-800">
                   <img
                     src="/images/athome-kit.jpg"
                     alt="At-Home Sample Collection Kit"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700"
                   />
-                  <div className="absolute top-3 left-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-bold text-blue-950 dark:text-sky-200 border border-blue-100 dark:border-slate-700 shadow-xs flex items-center gap-1.5">
-                    <Package className="w-3 h-3 text-blue-600 dark:text-sky-400" />
+                  {/* Diagnostic Scanline Laser Beam on Hover */}
+                  <div className="pointer-events-none absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent scanline-beam opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-blue-950/40 via-transparent to-transparent" />
+                  <div className="absolute top-3 left-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-bold text-blue-950 dark:text-sky-200 border border-blue-100 dark:border-slate-700 shadow-xs flex items-center gap-1.5 group-hover:border-blue-300 dark:group-hover:border-sky-500 transition-colors">
+                    <Package className="w-3 h-3 text-blue-600 dark:text-sky-400 group-hover:scale-110 transition-transform duration-300" />
                     <span>{isAr ? 'فحص منزلي سري' : 'At-Home Testing Kit'}</span>
                   </div>
                 </div>
                 <div className="p-4 text-left rtl:text-right">
-                  <h4 className="text-sm font-bold text-blue-950 dark:text-white mb-1">
+                  <h4 className="text-sm font-bold text-blue-950 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-sky-300 transition-colors">
                     {isAr ? 'طرد العينات المعزول حرارياً' : 'Discreet Thermal Collection'}
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
@@ -237,21 +253,24 @@ export default function AboutSection({ locale }: AboutSectionProps) {
             </div>
 
             {/* Photo Card 4: Semen Microscopy */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-blue-100 dark:border-slate-800 shadow-sm hover:shadow-lg transition-all group flex flex-col justify-between">
+            <div className="hover-lift bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-blue-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-blue-400 dark:hover:border-sky-500 transition-all group flex flex-col justify-between">
               <div>
                 <div className="relative h-48 overflow-hidden bg-slate-100 dark:bg-slate-800">
                   <img
                     src="/images/semen-microscopy.jpg"
                     alt="WHO 2021 Semen Analysis Microscopy"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700"
                   />
-                  <div className="absolute top-3 left-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-bold text-blue-950 dark:text-sky-200 border border-blue-100 dark:border-slate-700 shadow-xs flex items-center gap-1.5">
-                    <Microscope className="w-3 h-3 text-blue-600 dark:text-sky-400" />
+                  {/* Diagnostic Scanline Laser Beam on Hover */}
+                  <div className="pointer-events-none absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent scanline-beam opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-blue-950/40 via-transparent to-transparent" />
+                  <div className="absolute top-3 left-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-bold text-blue-950 dark:text-sky-200 border border-blue-100 dark:border-slate-700 shadow-xs flex items-center gap-1.5 group-hover:border-blue-300 dark:group-hover:border-sky-500 transition-colors">
+                    <Microscope className="w-3 h-3 text-blue-600 dark:text-sky-400 group-hover:rotate-12 transition-transform duration-300" />
                     <span>{isAr ? 'معايير WHO 2021' : 'WHO 2021 Standard'}</span>
                   </div>
                 </div>
                 <div className="p-4 text-left rtl:text-right">
-                  <h4 className="text-sm font-bold text-blue-950 dark:text-white mb-1">
+                  <h4 className="text-sm font-bold text-blue-950 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-sky-300 transition-colors">
                     {isAr ? 'تحليل الحركة والتركيز الحقيقي' : 'CASA Motility & Viability'}
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">

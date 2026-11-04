@@ -75,10 +75,14 @@ export default function WhoStandardsSection({ locale }: WhoStandardsSectionProps
   };
 
   return (
-    <section id="who-standards" className="py-20 bg-slate-50/70 dark:bg-[#070d1a] border-b border-blue-50 dark:border-slate-800 transition-colors duration-200">
+    <section id="who-standards" className="relative overflow-hidden py-20 bg-slate-50/70 dark:bg-[#070d1a] border-b border-blue-50 dark:border-slate-800 transition-colors duration-200">
+      {/* Background Animated Ambient Light Glow */}
+      <div className="absolute top-1/4 right-10 w-96 h-96 bg-blue-400/10 dark:bg-blue-600/10 rounded-full blur-3xl animate-ambient-glow pointer-events-none -z-10" />
+      <div className="absolute bottom-10 left-10 w-80 h-80 bg-cyan-400/10 dark:bg-cyan-500/10 rounded-full blur-3xl animate-ambient-glow pointer-events-none -z-10 [animation-delay:2s]" />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-sky-300 text-xs font-bold uppercase tracking-wider mb-4 border border-blue-200/60 dark:border-blue-800/60">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-sky-300 text-xs font-bold uppercase tracking-wider mb-4 border border-blue-200/60 dark:border-blue-800/60 shadow-xs">
             <Microscope className="w-4 h-4 text-blue-600 dark:text-sky-400" />
             <span>{isAr ? 'المعايير الدولية المعتمدة' : 'WHO 2021 (6th Edition) Semen Reference'}</span>
           </div>
@@ -111,19 +115,19 @@ export default function WhoStandardsSection({ locale }: WhoStandardsSectionProps
                 <div className="flex flex-wrap gap-1.5">
                   <button
                     onClick={() => applyLabCase('normal')}
-                    className="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800"
+                    className="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 hover:scale-105 active:scale-95 transition-all shadow-xs"
                   >
                     LC04 Normal
                   </button>
                   <button
                     onClick={() => applyLabCase('severeOligo')}
-                    className="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-800"
+                    className="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-800 hover:scale-105 active:scale-95 transition-all shadow-xs"
                   >
                     LC02 Severe Oligo
                   </button>
                   <button
                     onClick={() => applyLabCase('azoospermia')}
-                    className="px-2.5 py-1 text-xs font-bold rounded-lg bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200 dark:border-red-800"
+                    className="px-2.5 py-1 text-xs font-bold rounded-lg bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200 dark:border-red-800 hover:scale-105 active:scale-95 transition-all shadow-xs"
                   >
                     LC01 Azoospermia
                   </button>
@@ -149,6 +153,20 @@ export default function WhoStandardsSection({ locale }: WhoStandardsSectionProps
                     onChange={(e) => setVolume(parseFloat(e.target.value))}
                     className="w-full accent-blue-600 dark:accent-sky-500 cursor-pointer"
                   />
+                  {/* Dynamic Threshold Progress Bar */}
+                  <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-1.5 relative">
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-slate-400 dark:bg-slate-500 z-10"
+                      style={{ left: `${(WHO_2021_REFERENCE_LIMITS.volumeMl / 6.0) * 100}%` }}
+                      title={`Ref limit: ${WHO_2021_REFERENCE_LIMITS.volumeMl} mL`}
+                    />
+                    <div
+                      className={`h-full transition-all duration-300 rounded-full ${
+                        isVolumeOk ? 'bg-gradient-to-r from-blue-500 to-emerald-500' : 'bg-gradient-to-r from-amber-400 to-rose-500'
+                      }`}
+                      style={{ width: `${Math.min(100, (volume / 6.0) * 100)}%` }}
+                    />
+                  </div>
                 </div>
 
                 {/* Concentration */}
@@ -168,6 +186,20 @@ export default function WhoStandardsSection({ locale }: WhoStandardsSectionProps
                     onChange={(e) => setConcentration(parseFloat(e.target.value))}
                     className="w-full accent-blue-600 dark:accent-sky-500 cursor-pointer"
                   />
+                  {/* Dynamic Threshold Progress Bar */}
+                  <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-1.5 relative">
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-slate-400 dark:bg-slate-500 z-10"
+                      style={{ left: `${(WHO_2021_REFERENCE_LIMITS.concentrationMillionPerMl / 100) * 100}%` }}
+                      title={`Ref limit: ${WHO_2021_REFERENCE_LIMITS.concentrationMillionPerMl} M/mL`}
+                    />
+                    <div
+                      className={`h-full transition-all duration-300 rounded-full ${
+                        isConcOk ? 'bg-gradient-to-r from-blue-500 to-emerald-500' : 'bg-gradient-to-r from-amber-400 to-rose-500'
+                      }`}
+                      style={{ width: `${Math.min(100, (concentration / 100) * 100)}%` }}
+                    />
+                  </div>
                 </div>
 
                 {/* Progressive Motility */}
@@ -187,6 +219,20 @@ export default function WhoStandardsSection({ locale }: WhoStandardsSectionProps
                     onChange={(e) => setProgressiveMotility(parseFloat(e.target.value))}
                     className="w-full accent-blue-600 dark:accent-sky-500 cursor-pointer"
                   />
+                  {/* Dynamic Threshold Progress Bar */}
+                  <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-1.5 relative">
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-slate-400 dark:bg-slate-500 z-10"
+                      style={{ left: `${(WHO_2021_REFERENCE_LIMITS.progressiveMotilityPct / 80) * 100}%` }}
+                      title={`Ref limit: ${WHO_2021_REFERENCE_LIMITS.progressiveMotilityPct}%`}
+                    />
+                    <div
+                      className={`h-full transition-all duration-300 rounded-full ${
+                        isProgMotOk ? 'bg-gradient-to-r from-blue-500 to-emerald-500' : 'bg-gradient-to-r from-amber-400 to-rose-500'
+                      }`}
+                      style={{ width: `${Math.min(100, (progressiveMotility / 80) * 100)}%` }}
+                    />
+                  </div>
                 </div>
 
                 {/* Total Motility */}
@@ -206,6 +252,20 @@ export default function WhoStandardsSection({ locale }: WhoStandardsSectionProps
                     onChange={(e) => setTotalMotility(parseFloat(e.target.value))}
                     className="w-full accent-blue-600 dark:accent-sky-500 cursor-pointer"
                   />
+                  {/* Dynamic Threshold Progress Bar */}
+                  <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-1.5 relative">
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-slate-400 dark:bg-slate-500 z-10"
+                      style={{ left: `${(WHO_2021_REFERENCE_LIMITS.totalMotilityPct / 90) * 100}%` }}
+                      title={`Ref limit: ${WHO_2021_REFERENCE_LIMITS.totalMotilityPct}%`}
+                    />
+                    <div
+                      className={`h-full transition-all duration-300 rounded-full ${
+                        isTotalMotOk ? 'bg-gradient-to-r from-blue-500 to-emerald-500' : 'bg-gradient-to-r from-amber-400 to-rose-500'
+                      }`}
+                      style={{ width: `${Math.min(100, (totalMotility / 90) * 100)}%` }}
+                    />
+                  </div>
                 </div>
 
                 {/* Normal Forms */}
@@ -225,6 +285,20 @@ export default function WhoStandardsSection({ locale }: WhoStandardsSectionProps
                     onChange={(e) => setNormalForms(parseFloat(e.target.value))}
                     className="w-full accent-blue-600 dark:accent-sky-500 cursor-pointer"
                   />
+                  {/* Dynamic Threshold Progress Bar */}
+                  <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-1.5 relative">
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-slate-400 dark:bg-slate-500 z-10"
+                      style={{ left: `${(WHO_2021_REFERENCE_LIMITS.normalFormsPct / 20) * 100}%` }}
+                      title={`Ref limit: ${WHO_2021_REFERENCE_LIMITS.normalFormsPct}%`}
+                    />
+                    <div
+                      className={`h-full transition-all duration-300 rounded-full ${
+                        isFormsOk ? 'bg-gradient-to-r from-blue-500 to-emerald-500' : 'bg-gradient-to-r from-amber-400 to-rose-500'
+                      }`}
+                      style={{ width: `${Math.min(100, (normalForms / 20) * 100)}%` }}
+                    />
+                  </div>
                 </div>
 
                 {/* Vitality */}
@@ -244,6 +318,20 @@ export default function WhoStandardsSection({ locale }: WhoStandardsSectionProps
                     onChange={(e) => setVitality(parseFloat(e.target.value))}
                     className="w-full accent-blue-600 dark:accent-sky-500 cursor-pointer"
                   />
+                  {/* Dynamic Threshold Progress Bar */}
+                  <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-1.5 relative">
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-slate-400 dark:bg-slate-500 z-10"
+                      style={{ left: `${(WHO_2021_REFERENCE_LIMITS.vitalityPct / 95) * 100}%` }}
+                      title={`Ref limit: ${WHO_2021_REFERENCE_LIMITS.vitalityPct}%`}
+                    />
+                    <div
+                      className={`h-full transition-all duration-300 rounded-full ${
+                        isVitalityOk ? 'bg-gradient-to-r from-blue-500 to-emerald-500' : 'bg-gradient-to-r from-amber-400 to-rose-500'
+                      }`}
+                      style={{ width: `${Math.min(100, (vitality / 95) * 100)}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -264,12 +352,22 @@ export default function WhoStandardsSection({ locale }: WhoStandardsSectionProps
                 <img
                   src="/images/semen-microscopy.jpg"
                   alt="Microscopic Semen Analysis under WHO 2021 Reference Criteria"
-                  className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-500"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-blue-950/80 via-transparent to-transparent flex items-end p-3">
+                {/* Diagnostic Scanline Beam */}
+                <div className="pointer-events-none absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent scanline-beam" />
+                <div className="absolute inset-0 bg-gradient-to-t from-blue-950/85 via-blue-950/20 to-transparent flex items-end p-3">
                   <div className="text-white text-[11px] font-semibold flex items-center justify-between w-full">
-                    <span>{isAr ? 'المجهر الضوئي المرجعي (CASA)' : 'High-Power Microscopy (CASA Motility)'}</span>
-                    <span className="text-[10px] bg-blue-600/90 px-2 py-0.5 rounded">WHO 2021 6th Ed.</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                      </span>
+                      <span>{isAr ? 'المجهر الضوئي المرجعي (CASA)' : 'High-Power Microscopy (CASA Motility)'}</span>
+                    </div>
+                    <span className="text-[10px] bg-blue-600/90 text-white font-mono px-2 py-0.5 rounded shadow-xs">
+                      WHO 2021 6th Ed.
+                    </span>
                   </div>
                 </div>
               </div>
@@ -338,6 +436,23 @@ export default function WhoStandardsSection({ locale }: WhoStandardsSectionProps
                     {isTotalOk ? 'Above Reference' : 'Below Reference'}
                   </span>
                 </p>
+
+                {/* Animated Comparative Progress Bar */}
+                <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mt-3 relative">
+                  <div
+                    className="absolute top-0 bottom-0 w-0.5 bg-slate-500 dark:bg-slate-300 z-10"
+                    style={{ left: `${(WHO_2021_REFERENCE_LIMITS.totalSpermMillion / 120) * 100}%` }}
+                    title={`WHO Floor: ${WHO_2021_REFERENCE_LIMITS.totalSpermMillion}M`}
+                  />
+                  <div
+                    className={`h-full transition-all duration-500 rounded-full ${
+                      isTotalOk
+                        ? 'bg-gradient-to-r from-blue-500 via-sky-400 to-emerald-500'
+                        : 'bg-gradient-to-r from-amber-400 to-rose-500'
+                    }`}
+                    style={{ width: `${Math.min(100, (totalSperm / 120) * 100)}%` }}
+                  />
+                </div>
               </div>
 
               {/* Summary Checklist */}

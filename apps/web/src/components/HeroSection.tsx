@@ -13,6 +13,7 @@ import {
   FileBadge,
   Activity,
   Award,
+  Zap,
 } from 'lucide-react';
 import AnimatedHealthcareHero from './AnimatedHealthcareHero';
 import { Locale } from '@/types/vigor';
@@ -34,15 +35,21 @@ export default function HeroSection({
 
   return (
     <section className="relative overflow-hidden bg-white dark:bg-[#080d1a] pt-10 pb-16 lg:pt-16 lg:pb-24 border-b border-blue-100/70 dark:border-slate-800 transition-colors duration-200">
-      {/* Background radial gradients for soft medical lighting */}
+      {/* Background Animated Ambient Light Glow Orbs */}
+      <div className="absolute top-10 left-1/4 w-96 h-96 bg-blue-400/15 dark:bg-blue-600/10 rounded-full blur-3xl animate-ambient-glow pointer-events-none -z-10" />
+      <div className="absolute top-28 right-1/4 w-80 h-80 bg-sky-300/15 dark:bg-sky-500/10 rounded-full blur-3xl animate-ambient-glow pointer-events-none -z-10 [animation-delay:3s]" />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-gradient-to-b from-blue-50/70 via-sky-50/20 to-transparent dark:from-blue-950/20 dark:via-transparent dark:to-transparent pointer-events-none -z-10" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
           {/* Left Column: Headlines & Call to Action */}
           <div className="lg:col-span-7 flex flex-col justify-center text-left rtl:text-right">
-            {/* Top Challenge Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800/60 text-blue-800 dark:text-sky-300 text-xs font-bold tracking-wide uppercase mb-6 w-fit shadow-xs">
+            {/* Top Challenge Badge with Animated Radar Ping */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50/90 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800/60 text-blue-800 dark:text-sky-300 text-xs font-bold tracking-wide uppercase mb-6 w-fit shadow-xs group">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-600 dark:bg-sky-400" />
+              </span>
               <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-sky-400" />
               <span>
                 {isAr
@@ -78,21 +85,21 @@ export default function HeroSection({
                 : 'Male reproductive health is too often treated only as a late-stage infertility reaction rather than routine preventive care. Vigor provides a culturally trusted, anonymous-first front door—delivering clear risk evaluation in under 10 minutes with zero account requirement, deterministic safety gates, and cryptographically revocable consent.'}
             </p>
 
-            {/* Core Value Props List */}
+            {/* Core Value Props List with Hover Physics */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8 max-w-xl">
-              <div className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-blue-950 dark:text-sky-200 bg-blue-50/70 dark:bg-slate-900/70 p-3 rounded-xl border border-blue-100/80 dark:border-slate-800">
+              <div className="hover-lift flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-blue-950 dark:text-sky-200 bg-blue-50/70 dark:bg-slate-900/70 p-3 rounded-xl border border-blue-100/80 dark:border-slate-800 shadow-xs hover:border-blue-300 dark:hover:border-slate-700 transition-all">
                 <CheckCircle className="w-4 h-4 text-blue-600 dark:text-sky-400 shrink-0" />
                 <span>{isAr ? 'بدون حساب أو بيانات هوية' : 'Zero Account / Anonymous-First'}</span>
               </div>
-              <div className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-blue-950 dark:text-sky-200 bg-blue-50/70 dark:bg-slate-900/70 p-3 rounded-xl border border-blue-100/80 dark:border-slate-800">
+              <div className="hover-lift flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-blue-950 dark:text-sky-200 bg-blue-50/70 dark:bg-slate-900/70 p-3 rounded-xl border border-blue-100/80 dark:border-slate-800 shadow-xs hover:border-blue-300 dark:hover:border-slate-700 transition-all">
                 <CheckCircle className="w-4 h-4 text-blue-600 dark:text-sky-400 shrink-0" />
                 <span>{isAr ? 'صمام أمان حتمي لـ 9 علامات خطر' : 'Deterministic 9 Red-Flag Safety Floor'}</span>
               </div>
-              <div className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-blue-950 dark:text-sky-200 bg-blue-50/70 dark:bg-slate-900/70 p-3 rounded-xl border border-blue-100/80 dark:border-slate-800">
+              <div className="hover-lift flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-blue-950 dark:text-sky-200 bg-blue-50/70 dark:bg-slate-900/70 p-3 rounded-xl border border-blue-100/80 dark:border-slate-800 shadow-xs hover:border-blue-300 dark:hover:border-slate-700 transition-all">
                 <CheckCircle className="w-4 h-4 text-blue-600 dark:text-sky-400 shrink-0" />
                 <span>{isAr ? 'معايير منظمة الصحة العالمية 2021' : 'WHO 2021 6th Edition Standard'}</span>
               </div>
-              <div className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-blue-950 dark:text-sky-200 bg-blue-50/70 dark:bg-slate-900/70 p-3 rounded-xl border border-blue-100/80 dark:border-slate-800">
+              <div className="hover-lift flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-blue-950 dark:text-sky-200 bg-blue-50/70 dark:bg-slate-900/70 p-3 rounded-xl border border-blue-100/80 dark:border-slate-800 shadow-xs hover:border-blue-300 dark:hover:border-slate-700 transition-all">
                 <CheckCircle className="w-4 h-4 text-blue-600 dark:text-sky-400 shrink-0" />
                 <span>{isAr ? 'إلغاء فوري بضغطة زر مع إيصال مشفر' : '1-Click Consent Revocation Receipt'}</span>
               </div>
@@ -102,15 +109,18 @@ export default function HeroSection({
             <div className="flex flex-wrap items-center gap-4 mb-6">
               <button
                 onClick={onOpenIntake}
-                className="inline-flex items-center gap-3 bg-gradient-to-r from-blue-700 via-blue-600 to-sky-600 hover:from-blue-800 hover:to-blue-700 text-white font-bold text-sm sm:text-base px-6 sm:px-7 py-3.5 sm:py-4 rounded-2xl shadow-lg shadow-blue-600/25 hover:shadow-xl hover:shadow-blue-600/35 transition-all transform hover:-translate-y-0.5 active:scale-95"
+                className="relative overflow-hidden group inline-flex items-center gap-3 bg-gradient-to-r from-blue-700 via-blue-600 to-sky-600 hover:from-blue-800 hover:to-blue-700 text-white font-bold text-sm sm:text-base px-6 sm:px-7 py-3.5 sm:py-4 rounded-2xl shadow-lg shadow-blue-600/25 hover:shadow-xl hover:shadow-blue-600/35 transition-all transform hover:-translate-y-0.5 active:scale-95"
               >
+                {/* Moving light shimmer sweep */}
+                <span className="absolute inset-0 w-full h-full animate-shimmer pointer-events-none opacity-40 group-hover:opacity-75 transition-opacity" />
+                <Sparkles className="w-5 h-5 text-sky-200" />
                 <span>{isAr ? 'ابدأ الفحص السري الآن (مجاناً)' : 'Start Confidential Intake (10 min)'}</span>
-                <ArrowRight className="w-5 h-5 text-blue-200 rtl:rotate-180" />
+                <ArrowRight className="w-5 h-5 text-blue-200 rtl:rotate-180 group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform" />
               </button>
 
               <button
                 onClick={onOpenClinician}
-                className="inline-flex items-center gap-2.5 bg-white dark:bg-slate-900 hover:bg-blue-50/80 dark:hover:bg-slate-800 text-blue-950 dark:text-slate-100 font-bold text-sm sm:text-base px-5 sm:px-6 py-3.5 sm:py-4 rounded-2xl border-2 border-blue-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600 transition-all shadow-xs active:scale-95"
+                className="hover-lift inline-flex items-center gap-2.5 bg-white dark:bg-slate-900 hover:bg-blue-50/80 dark:hover:bg-slate-800 text-blue-950 dark:text-slate-100 font-bold text-sm sm:text-base px-5 sm:px-6 py-3.5 sm:py-4 rounded-2xl border-2 border-blue-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-slate-600 transition-all shadow-xs active:scale-95"
               >
                 <Stethoscope className="w-5 h-5 text-blue-600 dark:text-sky-400" />
                 <span>{isAr ? 'منصة المراجعة السريرية' : 'Clinician Review Console'}</span>
@@ -121,36 +131,38 @@ export default function HeroSection({
             <div className="pt-4 border-t border-blue-100 dark:border-slate-800 max-w-xl">
               <div className="flex items-center justify-between text-xs mb-2.5">
                 <span className="font-bold text-blue-950 dark:text-white flex items-center gap-1.5">
-                  <Activity className="w-3.5 h-3.5 text-blue-600 dark:text-sky-400" />
+                  <Activity className="w-3.5 h-3.5 text-blue-600 dark:text-sky-400 animate-pulse" />
                   {isAr ? 'اختبار الحالات الذهبية (Golden Cases):' : 'Preload Verified Clinical Golden Cases:'}
                 </span>
-                <span className="text-[11px] font-semibold text-blue-700 dark:text-sky-400">16/16 Verified</span>
+                <span className="text-[11px] font-semibold text-blue-700 dark:text-sky-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-900">
+                  16/16 Verified
+                </span>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => onSelectGoldenCase('GC01')}
-                  className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200 dark:border-red-900 transition-colors"
+                  className="hover-lift px-2.5 py-1 text-xs font-semibold rounded-lg bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200 dark:border-red-900 transition-colors shadow-2xs"
                   title="Acute scrotal pain (torsion window <=6h) -> clamps to URGENT"
                 >
                   GC01: Acute Scrotal Pain (Urgent)
                 </button>
                 <button
                   onClick={() => onSelectGoldenCase('GC02')}
-                  className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200 dark:border-red-900 transition-colors"
+                  className="hover-lift px-2.5 py-1 text-xs font-semibold rounded-lg bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200 dark:border-red-900 transition-colors shadow-2xs"
                   title="Testicular lump -> clamps to URGENT"
                 >
                   GC02: Testicular Mass (Urgent)
                 </button>
                 <button
                   onClick={() => onSelectGoldenCase('GC09')}
-                  className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-sky-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-900 transition-colors"
+                  className="hover-lift px-2.5 py-1 text-xs font-semibold rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-sky-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-900 transition-colors shadow-2xs"
                   title="Subfertility + Metabolic risk -> ANDROLOGY_UROLOGY"
                 >
                   GC09: Metabolic + Infertility
                 </button>
                 <button
                   onClick={() => onSelectGoldenCase('GC16')}
-                  className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-900 transition-colors"
+                  className="hover-lift px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-900 transition-colors shadow-2xs"
                   title="Gradual scrotal ache -> must NOT falsely escalate"
                 >
                   GC16: Gradual Ache (Near-Miss Safe)
