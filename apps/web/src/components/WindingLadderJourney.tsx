@@ -96,7 +96,8 @@ export default function WindingLadderJourney({
   // =========================================================================
   // BIDIRECTIONAL SCROLL-SYNCHRONIZED PROGRESSIVE LADDER & CONTENT REVEAL
   // =========================================================================
-  const RUNG_Y = useMemo(() => [700, 1450, 2200, 2950, 3700, 4450, 5000], []);
+  // Ladder rungs and terminal hub apex (H=4750 terminates cleanly before Section 07 text)
+  const RUNG_Y = useMemo(() => [700, 1450, 2200, 2950, 3700, 4450, 4750], []);
 
   useEffect(() => {
     let rafId: number;
@@ -105,10 +106,13 @@ export default function WindingLadderJourney({
       rafId = requestAnimationFrame(() => {
         if (!containerRef.current) return;
         const windowHeight = window.innerHeight;
-        // Reveal line at 62% of viewport height (comfortable, direct eye-level reading zone)
-        const revealLine = windowHeight * 0.62;
-        // Hysteresis threshold at 66% prevents edge jitter on slow/micro scroll
-        const hideLine = windowHeight * 0.66;
+        // Text reveals EARLY (at 85% of viewport height) as the section enters the screen
+        // so when the user reaches the point, the information is ALREADY comfortably visible!
+        const revealLine = windowHeight * 0.85;
+        // Hysteresis threshold: hides only when scrolled back up past the section (leaves viewport at 92%)
+        const hideLine = windowHeight * 0.92;
+        // Ladder target line: ladder draws to Rung k as the section approaches focus (58% of viewport)
+        const ladderTargetLine = windowHeight * 0.58;
 
         const sectionEls = [
           section1Ref.current,
@@ -124,30 +128,27 @@ export default function WindingLadderJourney({
         const anchors = sectionEls.map((el) => {
           if (!el) return 999999;
           const rect = el.getBoundingClientRect();
-          // Anchor point at 38% of section height (near the title/header)
-          return rect.top + rect.height * 0.38;
+          // Anchor point at 35% of section height (near the category label and heading)
+          return rect.top + rect.height * 0.35;
         });
 
-        // 1. Bidirectional Reversible Section Visibility
+        // 1. Bidirectional Reversible Section Visibility (Early reveal before reaching point)
         setVisibleSections((prev) => {
           return anchors.map((anchorY, i) => {
             if (anchorY > 900000) return false;
             const wasVisible = prev[i] || false;
             if (wasVisible) {
-              // Hide only when scrolled back down below hide threshold
               return anchorY <= hideLine;
             } else {
-              // Reveal immediately when reaching reveal threshold
               return anchorY <= revealLine;
             }
           });
         });
 
-        // 2. Bidirectional Reversible Ladder Drawing Progress (revealedY)
-        if (anchors[0] > revealLine) {
-          // Above Section 01: ladder enters smoothly from top
-          const distToFirst = anchors[0] - revealLine;
-          const enterProgress = Math.max(0, Math.min(1, 1 - distToFirst / (windowHeight * 0.75)));
+        // 2. Ladder Progressive Drawing Progress (revealedY)
+        if (anchors[0] > ladderTargetLine) {
+          const distToFirst = anchors[0] - ladderTargetLine;
+          const enterProgress = Math.max(0, Math.min(1, 1 - distToFirst / (windowHeight * 0.85)));
           setRevealedY(320 + enterProgress * (RUNG_Y[0] - 320));
         } else {
           let computedY = RUNG_Y[0];
@@ -155,20 +156,20 @@ export default function WindingLadderJourney({
           for (let i = 0; i < anchors.length - 1; i++) {
             const aCurrent = anchors[i];
             const aNext = anchors[i + 1];
-            if (aCurrent <= revealLine && aNext > revealLine) {
+            if (aCurrent <= ladderTargetLine && aNext > ladderTargetLine) {
               const span = Math.max(1, aNext - aCurrent);
-              const t = Math.max(0, Math.min(1, (revealLine - aCurrent) / span));
+              const t = Math.max(0, Math.min(1, (ladderTargetLine - aCurrent) / span));
               computedY = RUNG_Y[i] + t * (RUNG_Y[i + 1] - RUNG_Y[i]);
               matched = true;
               break;
             }
           }
-          if (!matched && anchors[anchors.length - 1] <= revealLine) {
+          if (!matched && anchors[anchors.length - 1] <= ladderTargetLine) {
             const aLast = anchors[anchors.length - 1];
-            const tLast = Math.max(0, Math.min(1, (revealLine - aLast) / (windowHeight * 0.4)));
-            computedY = RUNG_Y[RUNG_Y.length - 1] + tLast * (5100 - RUNG_Y[RUNG_Y.length - 1]);
+            const tLast = Math.max(0, Math.min(1, (ladderTargetLine - aLast) / (windowHeight * 0.4)));
+            computedY = RUNG_Y[RUNG_Y.length - 1] + tLast * (4750 - RUNG_Y[RUNG_Y.length - 1]);
           }
-          setRevealedY(Math.min(5100, Math.max(320, computedY)));
+          setRevealedY(Math.min(4750, Math.max(320, computedY)));
         }
 
         setShowScrollTop(window.scrollY > 400);
@@ -193,13 +194,13 @@ export default function WindingLadderJourney({
   // =========================================================================
   // MATHEMATICAL PROCEDURAL LADDER GENERATOR (Smooth Winding 3D Ladder)
   // =========================================================================
-  const H = 5100;
+  const H = 4750;
   const N = 400;
   const W = 82; // Ladder width between rails
 
   function getCenter(y: number) {
     const damp = Math.min(1, Math.max(0, (y - 250) / 350));
-    const endDamp = Math.min(1, Math.max(0, (5100 - y) / 300));
+    const endDamp = Math.min(1, Math.max(0, (4750 - y) / 280));
     const phase = (y - 325) * (2 * Math.PI / 1500);
     const x = 500 + damp * endDamp * 140 * Math.sin(phase);
     return { x, y };
@@ -399,7 +400,7 @@ export default function WindingLadderJourney({
           ========================================================================= */}
       <div className="absolute inset-0 pointer-events-none flex justify-center z-10">
         <svg
-          viewBox="0 0 1000 5100"
+          viewBox="0 0 1000 4750"
           className="w-full max-w-6xl h-full"
           preserveAspectRatio="none"
         >
@@ -536,10 +537,14 @@ export default function WindingLadderJourney({
               <circle cx="401" cy="4450" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
             </g>
 
-            {/* Base Milestone Hub (y=5000) */}
+            {/* Bottom Rounded End Caps of the Ladder at Terminus (y=4750) */}
+            <ellipse cx="459" cy="4750" rx="3.5" ry="3.5" fill="#EFEAE0" stroke="#8C8375" strokeWidth="1" />
+            <ellipse cx="541" cy="4750" rx="3.5" ry="3.5" fill="#EFEAE0" stroke="#8C8375" strokeWidth="1" />
+
+            {/* Terminal Milestone Hub (y=4750) */}
             <g opacity={isSection7Visible ? 1 : 0} className="transition-opacity duration-500">
-              <circle cx="500" cy="5000" r="14" fill="#FAF8F5" stroke="#7A7163" strokeWidth="2.5" className="dark:fill-stone-900 dark:stroke-stone-400" />
-              <circle cx="500" cy="5000" r="5" fill="#2E2922" className="dark:fill-stone-200" />
+              <circle cx="500" cy="4750" r="14" fill="#FAF8F5" stroke="#7A7163" strokeWidth="2.5" className="dark:fill-stone-900 dark:stroke-stone-400" />
+              <circle cx="500" cy="4750" r="5" fill="#2E2922" className="dark:fill-stone-200" />
             </g>
           </g>
 
@@ -573,7 +578,7 @@ export default function WindingLadderJourney({
           id="section-intake"
           className="relative min-h-[750px] flex items-center mb-32 pt-8"
         >
-          <div className="w-full lg:w-1/2 lg:pr-14">
+          <div className="w-full lg:w-[46%] xl:w-[44%] lg:mr-auto lg:pr-6">
             <div
               className={`relative transition-all duration-700 ease-out ${
                 isSection1Visible
@@ -666,7 +671,7 @@ export default function WindingLadderJourney({
           id="section-safety"
           className="relative min-h-[850px] flex items-center justify-end mb-32 pt-8"
         >
-          <div className="w-full lg:w-1/2 lg:pl-14">
+          <div className="w-full lg:w-[46%] xl:w-[44%] lg:ml-auto lg:pl-6">
             <div
               className={`relative transition-all duration-700 ease-out ${
                 isSection2Visible
@@ -766,7 +771,7 @@ export default function WindingLadderJourney({
           id="section-consent"
           className="relative min-h-[750px] flex items-center mb-32 pt-8"
         >
-          <div className="w-full lg:w-1/2 lg:pr-14">
+          <div className="w-full lg:w-[46%] xl:w-[44%] lg:mr-auto lg:pr-6">
             <div
               className={`relative transition-all duration-700 ease-out ${
                 isSection3Visible
@@ -883,7 +888,7 @@ export default function WindingLadderJourney({
           id="section-who"
           className="relative min-h-[920px] flex items-center justify-end mb-32 pt-8"
         >
-          <div className="w-full lg:w-1/2 lg:pl-14">
+          <div className="w-full lg:w-[46%] xl:w-[44%] lg:ml-auto lg:pl-6">
             <div
               className={`relative transition-all duration-700 ease-out ${
                 isSection4Visible
@@ -1067,7 +1072,7 @@ export default function WindingLadderJourney({
           id="section-care"
           className="relative min-h-[780px] flex items-center mb-32 pt-8"
         >
-          <div className="w-full lg:w-1/2 lg:pr-14">
+          <div className="w-full lg:w-[46%] xl:w-[44%] lg:mr-auto lg:pr-6">
             <div
               className={`relative transition-all duration-700 ease-out ${
                 isSection5Visible
@@ -1169,7 +1174,7 @@ export default function WindingLadderJourney({
           id="section-telemetry"
           className="relative min-h-[820px] flex items-center justify-end mb-32 pt-8"
         >
-          <div className="w-full lg:w-1/2 lg:pl-14">
+          <div className="w-full lg:w-[46%] xl:w-[44%] lg:ml-auto lg:pl-6">
             <div
               className={`relative transition-all duration-700 ease-out ${
                 isSection6Visible
@@ -1278,10 +1283,10 @@ export default function WindingLadderJourney({
         <section
           ref={section7Ref}
           id="section-architecture"
-          className="relative pt-16 pb-28 text-center flex flex-col items-center justify-center"
+          className="relative pt-12 pb-28 text-center flex flex-col items-center justify-center z-20"
         >
           <div
-            className={`relative flex flex-col items-center justify-center transition-all duration-700 ease-out ${
+            className={`relative z-20 max-w-3xl mx-auto p-8 sm:p-12 rounded-3xl bg-[#FAF8F5]/94 dark:bg-[#181715]/94 backdrop-blur-md border border-[#DDD7C8]/70 dark:border-stone-800/70 shadow-sm flex flex-col items-center justify-center transition-all duration-700 ease-out ${
               isSection7Visible
                 ? 'opacity-100 translate-y-0 pointer-events-auto'
                 : 'opacity-0 translate-y-6 pointer-events-none'
