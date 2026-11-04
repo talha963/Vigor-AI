@@ -50,6 +50,9 @@ x-n8n-env: &n8n-env
   EXECUTIONS_DATA_PRUNE: "true"
   EXECUTIONS_DATA_MAX_AGE: ${EXECUTIONS_DATA_MAX_AGE:-72}
   EXECUTIONS_DATA_PRUNE_MAX_COUNT: ${EXECUTIONS_DATA_PRUNE_MAX_COUNT:-250}
+  EXECUTIONS_DATA_SAVE_ON_SUCCESS: "all"
+  EXECUTIONS_DATA_SAVE_ON_ERROR: "all"
+  EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS: "true"
   # Keep binary payloads in memory; Vigor never moves files through n8n, and
   # filesystem mode would write them into the volume.
   N8N_DEFAULT_BINARY_DATA_MODE: default

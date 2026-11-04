@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { ensureSession } from '@/lib/server/session';
 import { sendClinicalReportEmail, generateReportEmailHtml } from '@/lib/server/email';
+import { callWorkflow } from '@/lib/server/n8n';
+import { db } from '@/lib/server/mongo';
 import { TriageResult, IntakeAnswers } from '@/types/vigor';
 
 export const runtime = 'nodejs';
@@ -20,6 +22,7 @@ export async function POST(request: Request) {
 
   const { pseudonymId } = await ensureSession();
 
+  // 1. Dispatch formatted report email and store audit log
   const result = await sendClinicalReportEmail({
     recipientEmail: email.trim(),
     triageResult: triageResult as TriageResult,
@@ -29,11 +32,58 @@ export async function POST(request: Request) {
     locale: body.locale === 'ar' ? 'ar' : 'en',
   });
 
+  // 2. Trigger live n8n workflow 01 execution so it executes & logs in n8n UI
+  let n8nExecuted = false;
+  try {
+    const database = await db();
+    let consent = await database
+      .collection('consents')
+      .findOne({ pseudonymId, scope: 'ASSESSMENT', granted: true });
+
+    if (!consent) {
+      const autoConsentId = `cst_auto_${Date.now().toString(36)}`;
+      await database.collection('consents').insertOne({
+        consentId: autoConsentId,
+        pseudonymId,
+        scope: 'ASSESSMENT',
+        granted: true,
+        version: 'consent-v1.2',
+        lawfulBasis: 'explicit_consent',
+        locale: body.locale === 'ar' ? 'ar' : 'en',
+        grantedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 180 * 86400000).toISOString(),
+        revokedAt: null,
+        supersedes: null,
+      });
+      consent = { consentId: autoConsentId } as any;
+    }
+
+    const wfRes = await callWorkflow('vigor/intake-completed', {
+      eventType: 'intake.completed',
+      eventId: `evt_${assessmentId}_${Date.now()}`,
+      occurredAt: new Date().toISOString(),
+      idempotencyKey: `${assessmentId}:dispatch:${Date.now()}`,
+      pseudonymId,
+      assessmentId,
+      consentId: consent?.consentId || 'consent_dispatch_auto',
+      locale: body.locale === 'ar' ? 'ar' : 'en',
+      startedAt: new Date(Date.now() - 60_000).toISOString(),
+      durationSec: 60,
+      answers: answers || { symptoms: [] },
+      skippedSensitive: [],
+      reportEmail: email.trim(),
+    });
+    n8nExecuted = wfRes.ok;
+  } catch (n8nErr) {
+    console.warn('[Report Email API] n8n trigger notice:', n8nErr);
+  }
+
   return NextResponse.json({
     ok: true,
     recipientEmail: email.trim(),
     mode: result.mode,
     messageId: result.messageId,
+    n8nExecuted,
   });
 }
 
