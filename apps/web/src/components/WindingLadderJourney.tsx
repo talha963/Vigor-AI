@@ -196,13 +196,15 @@ export default function WindingLadderJourney({
   // =========================================================================
   const H = 4750;
   const N = 400;
-  const W = 82; // Ladder width between rails
+  const W = 76; // Ladder width between rails (strictly contained in central corridor)
 
   function getCenter(y: number) {
     const damp = Math.min(1, Math.max(0, (y - 250) / 350));
     const endDamp = Math.min(1, Math.max(0, (4750 - y) / 280));
     const phase = (y - 325) * (2 * Math.PI / 1500);
-    const x = 500 + damp * endDamp * 140 * Math.sin(phase);
+    // Controlled horizontal swing amplitude (65 units) ensures ladder stays within x=397 to x=603
+    // leaving a guaranteed wide empty margin on both left and right sides
+    const x = 500 + damp * endDamp * 65 * Math.sin(phase);
     return { x, y };
   }
 
@@ -495,51 +497,51 @@ export default function WindingLadderJourney({
             </g>
 
             {/* Top Rounded End Caps of the Ladder */}
-            <ellipse cx="459" cy="0" rx="3.5" ry="3.5" fill="#EFEAE0" stroke="#8C8375" strokeWidth="1" />
-            <ellipse cx="541" cy="0" rx="3.5" ry="3.5" fill="#EFEAE0" stroke="#8C8375" strokeWidth="1" />
+            <ellipse cx="462" cy="0" rx="3.5" ry="3.5" fill="#EFEAE0" stroke="#8C8375" strokeWidth="1" />
+            <ellipse cx="538" cy="0" rx="3.5" ry="3.5" fill="#EFEAE0" stroke="#8C8375" strokeWidth="1" />
 
             {/* -------------------------------------------------------------
                 4. SECTION CONNECTOR PINS & NODES (Revealed with Ladder Progress)
                 ------------------------------------------------------------- */}
             {/* Section 01 Connector (Left, y=700) */}
             <g opacity={isSection1Visible ? 1 : 0} className="transition-opacity duration-500">
-              <line x1="390" y1="700" x2="599" y2="700" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
-              <circle cx="599" cy="700" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
+              <line x1="410" y1="700" x2="527" y2="700" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
+              <circle cx="410" cy="700" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
             </g>
 
             {/* Section 02 Connector (Right, y=1450) */}
             <g opacity={isSection2Visible ? 1 : 0} className="transition-opacity duration-500">
-              <line x1="401" y1="1450" x2="610" y2="1450" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
-              <circle cx="401" cy="1450" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
+              <line x1="473" y1="1450" x2="590" y2="1450" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
+              <circle cx="590" cy="1450" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
             </g>
 
             {/* Section 03 Connector (Left, y=2200) */}
             <g opacity={isSection3Visible ? 1 : 0} className="transition-opacity duration-500">
-              <line x1="390" y1="2200" x2="599" y2="2200" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
-              <circle cx="599" cy="2200" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
+              <line x1="410" y1="2200" x2="527" y2="2200" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
+              <circle cx="410" cy="2200" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
             </g>
 
             {/* Section 04 Connector (Right, y=2950) */}
             <g opacity={isSection4Visible ? 1 : 0} className="transition-opacity duration-500">
-              <line x1="401" y1="2950" x2="610" y2="2950" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
-              <circle cx="401" cy="2950" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
+              <line x1="473" y1="2950" x2="590" y2="2950" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
+              <circle cx="590" cy="2950" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
             </g>
 
             {/* Section 05 Connector (Left, y=3700) */}
             <g opacity={isSection5Visible ? 1 : 0} className="transition-opacity duration-500">
-              <line x1="390" y1="3700" x2="599" y2="3700" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
-              <circle cx="599" cy="3700" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
+              <line x1="410" y1="3700" x2="527" y2="3700" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
+              <circle cx="410" cy="3700" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
             </g>
 
             {/* Section 06 Connector (Right, y=4450) */}
             <g opacity={isSection6Visible ? 1 : 0} className="transition-opacity duration-500">
-              <line x1="401" y1="4450" x2="610" y2="4450" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
-              <circle cx="401" cy="4450" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
+              <line x1="473" y1="4450" x2="590" y2="4450" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
+              <circle cx="590" cy="4450" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
             </g>
 
             {/* Bottom Rounded End Caps of the Ladder at Terminus (y=4750) */}
-            <ellipse cx="459" cy="4750" rx="3.5" ry="3.5" fill="#EFEAE0" stroke="#8C8375" strokeWidth="1" />
-            <ellipse cx="541" cy="4750" rx="3.5" ry="3.5" fill="#EFEAE0" stroke="#8C8375" strokeWidth="1" />
+            <ellipse cx="462" cy="4750" rx="3.5" ry="3.5" fill="#EFEAE0" stroke="#8C8375" strokeWidth="1" />
+            <ellipse cx="538" cy="4750" rx="3.5" ry="3.5" fill="#EFEAE0" stroke="#8C8375" strokeWidth="1" />
 
             {/* Terminal Milestone Hub (y=4750) */}
             <g opacity={isSection7Visible ? 1 : 0} className="transition-opacity duration-500">
@@ -578,7 +580,7 @@ export default function WindingLadderJourney({
           id="section-intake"
           className="relative min-h-[750px] flex items-center mb-32 pt-8"
         >
-          <div className="w-full lg:w-[46%] xl:w-[44%] lg:mr-auto lg:pr-6">
+          <div className="w-full lg:w-[40%] xl:w-[38%] lg:mr-auto lg:pr-4">
             <div
               className={`relative transition-all duration-700 ease-out ${
                 isSection1Visible
@@ -671,7 +673,7 @@ export default function WindingLadderJourney({
           id="section-safety"
           className="relative min-h-[850px] flex items-center justify-end mb-32 pt-8"
         >
-          <div className="w-full lg:w-[46%] xl:w-[44%] lg:ml-auto lg:pl-6">
+          <div className="w-full lg:w-[40%] xl:w-[38%] lg:ml-auto lg:pl-4">
             <div
               className={`relative transition-all duration-700 ease-out ${
                 isSection2Visible
@@ -771,7 +773,7 @@ export default function WindingLadderJourney({
           id="section-consent"
           className="relative min-h-[750px] flex items-center mb-32 pt-8"
         >
-          <div className="w-full lg:w-[46%] xl:w-[44%] lg:mr-auto lg:pr-6">
+          <div className="w-full lg:w-[40%] xl:w-[38%] lg:mr-auto lg:pr-4">
             <div
               className={`relative transition-all duration-700 ease-out ${
                 isSection3Visible
@@ -888,7 +890,7 @@ export default function WindingLadderJourney({
           id="section-who"
           className="relative min-h-[920px] flex items-center justify-end mb-32 pt-8"
         >
-          <div className="w-full lg:w-[46%] xl:w-[44%] lg:ml-auto lg:pl-6">
+          <div className="w-full lg:w-[40%] xl:w-[38%] lg:ml-auto lg:pl-4">
             <div
               className={`relative transition-all duration-700 ease-out ${
                 isSection4Visible
@@ -1072,7 +1074,7 @@ export default function WindingLadderJourney({
           id="section-care"
           className="relative min-h-[780px] flex items-center mb-32 pt-8"
         >
-          <div className="w-full lg:w-[46%] xl:w-[44%] lg:mr-auto lg:pr-6">
+          <div className="w-full lg:w-[40%] xl:w-[38%] lg:mr-auto lg:pr-4">
             <div
               className={`relative transition-all duration-700 ease-out ${
                 isSection5Visible
@@ -1174,7 +1176,7 @@ export default function WindingLadderJourney({
           id="section-telemetry"
           className="relative min-h-[820px] flex items-center justify-end mb-32 pt-8"
         >
-          <div className="w-full lg:w-[46%] xl:w-[44%] lg:ml-auto lg:pl-6">
+          <div className="w-full lg:w-[40%] xl:w-[38%] lg:ml-auto lg:pl-4">
             <div
               className={`relative transition-all duration-700 ease-out ${
                 isSection6Visible
