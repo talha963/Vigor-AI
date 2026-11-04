@@ -82,138 +82,6 @@ export default function Footer({
           </div>
         </div>
 
-        {/* Featured Visual Cards: Real Photos Related to Website (At-Home Kit, Microscopy Lab, Clinical Consult) */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-8">
-          <div className="border-b border-blue-900/60 pb-10">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-              <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-900/60 text-sky-300 text-[11px] font-bold uppercase tracking-wider mb-2 border border-blue-700/50">
-                  <Sparkles className="w-3.5 h-3.5 text-sky-400" />
-                  <span>{isAr ? 'البنية التحتية والتشخيصية' : 'Verified Clinical Diagnostics'}</span>
-                </div>
-                <h3 className="text-xl sm:text-2xl font-black text-white">
-                  {isAr
-                    ? 'البيئة التشخيصية والمخبرية المعتمدة في أبوظبي'
-                    : 'Accredited Diagnostics & Care Network'}
-                </h3>
-              </div>
-              <p className="text-xs text-slate-400 max-w-md">
-                {isAr
-                  ? 'فحوصات معملية مطابقة لمعايير منظمة الصحة العالمية 2021 ومسارات سريرية موثقة في إمارة أبوظبي.'
-                  : 'WHO 2021 6th Edition compliant diagnostic standards with encrypted sample routing across Abu Dhabi.'}
-              </p>
-            </div>
-
-            {/* 3 Related Project Images */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {/* Card 1: At-Home Sample Collection Kit */}
-              <div
-                onClick={onOpenAtHomeKit}
-                className="group relative bg-[#0b1c38]/90 hover:bg-[#0e2347] border border-blue-800/50 hover:border-blue-600/80 rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer shadow-lg hover:shadow-blue-900/30 flex flex-col"
-              >
-                <div className="relative h-44 overflow-hidden bg-slate-900">
-                  <img
-                    src="/images/athome-kit.jpg"
-                    alt="At-Home Sample Collection Kit"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0b1c38] via-transparent to-black/30" />
-                  <div className="absolute top-3 left-3 bg-blue-950/90 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-bold text-sky-300 border border-blue-700/60 flex items-center gap-1.5 shadow-sm">
-                    <Package className="w-3.5 h-3.5 text-sky-400" />
-                    <span>{isAr ? 'فحص منزلي مجهول' : 'At-Home Diagnostic Kit'}</span>
-                  </div>
-                </div>
-                <div className="p-4 flex-1 flex flex-col justify-between">
-                  <div>
-                    <h4 className="text-sm font-bold text-white group-hover:text-sky-300 transition-colors mb-1">
-                      {isAr ? 'طرد العينات المعزول حرارياً' : 'Discreet Thermal Collection Kit'}
-                    </h4>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      {isAr
-                        ? 'طقم فحص معقم بحفظ حراري مبرد، واستلام مجهول عبر خزائن ذكية دون كشف الهوية.'
-                        : 'Sterile thermal-sleeved collection vials with barcode seals for anonymous smart-locker drop-off.'}
-                    </p>
-                  </div>
-                  <div className="mt-3 pt-2.5 border-t border-blue-900/60 flex items-center justify-between text-[11px] font-semibold text-sky-400">
-                    <span>{isAr ? 'طلب الفحص المنزلي' : 'Explore At-Home Kit'}</span>
-                    <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 2: Semen Microscopy & CASA */}
-              <div className="group relative bg-[#0b1c38]/90 hover:bg-[#0e2347] border border-blue-800/50 hover:border-blue-600/80 rounded-2xl overflow-hidden transition-all duration-300 shadow-lg hover:shadow-blue-900/30 flex flex-col">
-                <div className="relative h-44 overflow-hidden bg-slate-900">
-                  <img
-                    src="/images/semen-microscopy.jpg"
-                    alt="WHO 2021 Semen Analysis Microscopy"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0b1c38] via-transparent to-black/30" />
-                  <div className="absolute top-3 left-3 bg-blue-950/90 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-bold text-sky-300 border border-blue-700/60 flex items-center gap-1.5 shadow-sm">
-                    <Microscope className="w-3.5 h-3.5 text-sky-400" />
-                    <span>{isAr ? 'مختبر WHO 2021' : 'WHO 2021 Standard'}</span>
-                  </div>
-                </div>
-                <div className="p-4 flex-1 flex flex-col justify-between">
-                  <div>
-                    <h4 className="text-sm font-bold text-white group-hover:text-sky-300 transition-colors mb-1">
-                      {isAr ? 'فحص الحركة والتشوهات المجهرية' : 'Advanced CASA Sperm Microscopy'}
-                    </h4>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      {isAr
-                        ? 'تحليل حركي آلي دقيق يقيس الحركة التقدمية (30٪) والأشكال الطبيعية (4٪) طبياً.'
-                        : 'Algorithmic path tracking evaluating 30% progressive motility, 4% morphology, and viability.'}
-                    </p>
-                  </div>
-                  <div className="mt-3 pt-2.5 border-t border-blue-900/60 flex items-center justify-between text-[11px] font-semibold text-sky-400">
-                    <span>{isAr ? 'المعايير المرجعية' : 'WHO Reference Limits'}</span>
-                    <a href="#who-standards" className="hover:underline flex items-center gap-1">
-                      <span>{isAr ? 'عرض' : 'View'}</span>
-                      <ArrowUpRight className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 3: Doctor Consultation */}
-              <div
-                onClick={onOpenClinician}
-                className="group relative bg-[#0b1c38]/90 hover:bg-[#0e2347] border border-blue-800/50 hover:border-blue-600/80 rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer shadow-lg hover:shadow-blue-900/30 flex flex-col"
-              >
-                <div className="relative h-44 overflow-hidden bg-slate-900">
-                  <img
-                    src="/images/clinical-consult.jpg"
-                    alt="Clinical Consultation with Doctor"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0b1c38] via-transparent to-black/30" />
-                  <div className="absolute top-3 left-3 bg-blue-950/90 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-bold text-sky-300 border border-blue-700/60 flex items-center gap-1.5 shadow-sm">
-                    <Stethoscope className="w-3.5 h-3.5 text-sky-400" />
-                    <span>{isAr ? 'استشارة استشاري' : 'Consultant Review'}</span>
-                  </div>
-                </div>
-                <div className="p-4 flex-1 flex flex-col justify-between">
-                  <div>
-                    <h4 className="text-sm font-bold text-white group-hover:text-sky-300 transition-colors mb-1">
-                      {isAr ? 'استشارة سرية مع أطباء الذكورة' : 'Confidential Specialist Consultation'}
-                    </h4>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      {isAr
-                        ? 'مراجعة سريرية متخصصة مع استشاريي مسالك بولية وطب ذكورة مرخصين في إمارة أبوظبي.'
-                        : 'Direct clinical escalation and private consultation with licensed andrologists across Abu Dhabi.'}
-                    </p>
-                  </div>
-                  <div className="mt-3 pt-2.5 border-t border-blue-900/60 flex items-center justify-between text-[11px] font-semibold text-sky-400">
-                    <span>{isAr ? 'بوابة المراجعة' : 'Clinician Console'}</span>
-                    <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Main Footer Links & Telemetry Columns */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 mb-12">
@@ -339,7 +207,7 @@ export default function Footer({
                 <Server className="w-4 h-4 text-sky-400" />
                 <span>{isAr ? 'البنية التحتية' : 'Live Telemetry'}</span>
               </h4>
-              <div className="bg-[#0b1c38]/90 rounded-2xl p-3.5 border border-blue-800/50 space-y-2">
+              <div className="bg-white/5 rounded-2xl p-3.5 border border-white/10 space-y-2">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-slate-400">{isAr ? 'محرك n8n' : 'Workflow Engine'}</span>
                   <span className="font-bold text-emerald-400 flex items-center gap-1">
@@ -367,7 +235,7 @@ export default function Footer({
           </div>
 
           {/* Regulatory Disclaimer Box */}
-          <div className="bg-blue-950/50 rounded-2xl p-4 border border-blue-800/60 mb-10 text-[11px] text-slate-300 leading-relaxed backdrop-blur-sm">
+          <div className="bg-white/5 rounded-2xl p-4 border border-white/10 mb-10 text-[11px] text-slate-300 leading-relaxed backdrop-blur-sm">
             <p className="font-bold text-white mb-1 flex items-center gap-2">
               <Shield className="w-3.5 h-3.5 text-sky-400" />
               <span>{isAr ? 'إشعار الحدود التشخيصية السريرية (DoH أبوظبي)' : 'Clinical Boundary & Informational Screening Notice'}</span>
@@ -380,12 +248,12 @@ export default function Footer({
           </div>
 
           {/* Bottom Bar: Copyright & Verified Status */}
-          <div className="pt-8 border-t border-blue-900/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-400">
+          <div className="pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-400">
             <p>© 2026 Vigor Male Health Technologies. Abu Dhabi Reproductive Health Challenge.</p>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setLocale(isAr ? 'en' : 'ar')}
-                className="text-sky-300 font-bold hover:underline flex items-center gap-1.5 bg-blue-950/80 px-2.5 py-1 rounded-md border border-blue-800/80"
+                className="text-stone-300 font-bold hover:underline flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-md border border-white/15"
               >
                 <Globe className="w-3.5 h-3.5" />
                 <span>{isAr ? 'English' : 'العربية'}</span>

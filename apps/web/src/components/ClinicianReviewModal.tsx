@@ -189,7 +189,7 @@ export default function ClinicianReviewModal({
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 dark:text-slate-200 hover:bg-slate-100 flex items-center justify-center transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -198,9 +198,9 @@ export default function ClinicianReviewModal({
         {/* Console Body: 2 Columns */}
         <div className="grid grid-cols-1 md:grid-cols-12 flex-1 overflow-hidden">
           {/* Left: Pending Review Queue */}
-          <div className="md:col-span-5 border-r border-blue-50 p-4 overflow-y-auto space-y-3 bg-slate-50/40">
+          <div className="md:col-span-5 border-r border-blue-50 p-4 overflow-y-auto space-y-3 bg-slate-50 dark:bg-slate-800/60/40">
             <div className="flex items-center justify-between pb-2 border-b border-blue-100">
-              <span className="text-xs font-bold uppercase tracking-wider text-blue-950">
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-950 dark:text-white">
                 Pending Queue ({pendingCases.length})
               </span>
               <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
@@ -224,7 +224,7 @@ export default function ClinicianReviewModal({
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-mono text-xs font-bold text-blue-950">
+                    <span className="font-mono text-xs font-bold text-blue-950 dark:text-white">
                       {c.caseId} · {c.pseudonymId}
                     </span>
                     <span
@@ -238,15 +238,15 @@ export default function ClinicianReviewModal({
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-600 line-clamp-2 mb-2 leading-relaxed">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 mb-2 leading-relaxed">
                     {c.summary}
                   </p>
 
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-slate-600">Age: {c.ageBand}</span>
+                    <span className="text-slate-600 dark:text-slate-300">Age: {c.ageBand}</span>
                     <span
                       className={`font-semibold flex items-center gap-1 ${
-                        c.slaMinutesRemaining < 60 ? 'text-red-600 font-bold' : 'text-slate-600'
+                        c.slaMinutesRemaining < 60 ? 'text-red-600 font-bold' : 'text-slate-600 dark:text-slate-300'
                       }`}
                     >
                       <Clock className="w-3 h-3" />
@@ -265,14 +265,14 @@ export default function ClinicianReviewModal({
                 <span className="text-xs font-mono font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
                   Case ID: {currentCase.caseId}
                 </span>
-                <span className="text-xs text-slate-500 font-medium">
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                   Pseudonym: <strong>{currentCase.pseudonymId}</strong>
                 </span>
               </div>
-              <h3 className="text-base font-bold text-blue-950 mb-1">
+              <h3 className="text-base font-bold text-blue-950 dark:text-white mb-1">
                 Clinical Overview & Presentations
               </h3>
-              <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-blue-50">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-blue-50">
                 {currentCase.summary}
               </p>
             </div>
@@ -292,7 +292,7 @@ export default function ClinicianReviewModal({
 
             {/* Decision Controls */}
             <div className="space-y-4 pt-3 border-t border-blue-100">
-              <label className="block text-xs font-bold text-blue-950 uppercase tracking-wide">
+              <label className="block text-xs font-bold text-blue-950 dark:text-white uppercase tracking-wide">
                 Assign / Override Triage Tier
               </label>
 
@@ -308,7 +308,7 @@ export default function ClinicianReviewModal({
                           ? tier === 'URGENT'
                             ? 'bg-red-600 text-white border-red-600'
                             : 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-slate-700 border-blue-100 hover:border-blue-200'
+                          : 'bg-white text-slate-700 dark:text-slate-200 border-blue-100 hover:border-blue-200'
                       }`}
                     >
                       {tier.replace('_', ' ')}
@@ -320,7 +320,7 @@ export default function ClinicianReviewModal({
               {/* Justification Textarea */}
               <div>
                 <div className="flex justify-between items-center text-xs mb-1">
-                  <label className="font-bold text-blue-950">
+                  <label className="font-bold text-blue-950 dark:text-white">
                     Clinical Justification (Mandatory for overrides &ge; 20 chars):
                   </label>
                   <span

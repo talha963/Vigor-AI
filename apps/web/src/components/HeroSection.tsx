@@ -119,14 +119,14 @@ export default function HeroSection({
 
             {/* Quick Golden Case Fast-Track Selector */}
             <div className="pt-4 border-t border-[#DDD7C8]/70 dark:border-stone-800">
-              <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#7A7163] dark:text-[#9E9587] block mb-2">
+              <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#7A7163] dark:text-stone-300 block mb-2">
                 {isAr ? 'جرّب إحدى الحالات الذهبية السريرية المعتمدة:' : 'Simulate Verified Golden Cases:'}
               </span>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => onSelectGoldenCase('GC01')}
-                  className="px-2.5 py-1 text-xs font-medium rounded-sm bg-[#FAF8F5] dark:bg-stone-900 text-[#403B33] dark:text-[#DDD6C8] border border-[#DDD7C8] hover:border-[#7A7163] transition-colors"
+                  className="px-2.5 py-1 text-xs font-medium rounded-sm bg-[#FAF8F5] dark:bg-stone-900 text-[#403B33] dark:text-stone-200 border border-[#DDD7C8] dark:border-stone-800 hover:border-[#7A7163] dark:hover:border-stone-600 transition-colors"
                   title="Acute scrotal pain (< 6h) -> EMERGENCY_ED"
                 >
                   GC01: Acute Torsion (&lt; 6h)
@@ -134,7 +134,7 @@ export default function HeroSection({
                 <button
                   type="button"
                   onClick={() => onSelectGoldenCase('GC02')}
-                  className="px-2.5 py-1 text-xs font-medium rounded-sm bg-[#FAF8F5] dark:bg-stone-900 text-[#403B33] dark:text-[#DDD6C8] border border-[#DDD7C8] hover:border-[#7A7163] transition-colors"
+                  className="px-2.5 py-1 text-xs font-medium rounded-sm bg-[#FAF8F5] dark:bg-stone-900 text-[#403B33] dark:text-stone-200 border border-[#DDD7C8] dark:border-stone-800 hover:border-[#7A7163] dark:hover:border-stone-600 transition-colors"
                   title="Painless firm lump -> URGENT_UROLOGY"
                 >
                   GC02: Testicular Mass
@@ -142,7 +142,7 @@ export default function HeroSection({
                 <button
                   type="button"
                   onClick={() => onSelectGoldenCase('GC09')}
-                  className="px-2.5 py-1 text-xs font-medium rounded-sm bg-[#FAF8F5] dark:bg-stone-900 text-[#403B33] dark:text-[#DDD6C8] border border-[#DDD7C8] hover:border-[#7A7163] transition-colors"
+                  className="px-2.5 py-1 text-xs font-medium rounded-sm bg-[#FAF8F5] dark:bg-stone-900 text-[#403B33] dark:text-stone-200 border border-[#DDD7C8] dark:border-stone-800 hover:border-[#7A7163] dark:hover:border-stone-600 transition-colors"
                   title="Subfertility + Metabolic risk -> ANDROLOGY_UROLOGY"
                 >
                   GC09: Metabolic Infertility
@@ -150,7 +150,7 @@ export default function HeroSection({
                 <button
                   type="button"
                   onClick={() => onSelectGoldenCase('GC16')}
-                  className="px-2.5 py-1 text-xs font-medium rounded-sm bg-[#FAF8F5] dark:bg-stone-900 text-[#403B33] dark:text-[#DDD6C8] border border-[#DDD7C8] hover:border-[#7A7163] transition-colors"
+                  className="px-2.5 py-1 text-xs font-medium rounded-sm bg-[#FAF8F5] dark:bg-stone-900 text-[#403B33] dark:text-stone-200 border border-[#DDD7C8] dark:border-stone-800 hover:border-[#7A7163] dark:hover:border-stone-600 transition-colors"
                   title="Gradual scrotal ache -> Near-Miss Safe"
                 >
                   GC16: Gradual Ache (Near-Miss)

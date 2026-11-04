@@ -7,6 +7,11 @@
 :root {
   --background: #f5f3ea;
   --foreground: #22201d;
+  --text-primary: #22201d;
+  --text-secondary: #5a544a;
+  --text-muted: #7a7163;
+  --border-subtle: #ddd7c8;
+  --card-bg: #faf8f5;
   --primary-blue: #1e40af;
   --primary-blue-light: #3b82f6;
   --accent-cyan: #0284c7;
@@ -14,7 +19,12 @@
 
 .dark {
   --background: #141311;
-  --foreground: #f2eee6;
+  --foreground: #f5f2eb;
+  --text-primary: #f5f2eb;
+  --text-secondary: #c5beb2;
+  --text-muted: #9e9587;
+  --border-subtle: #2e2b26;
+  --card-bg: #1c1a17;
   --primary-blue: #3b82f6;
   --primary-blue-light: #60a5fa;
   --accent-cyan: #38bdf8;

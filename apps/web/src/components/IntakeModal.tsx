@@ -178,8 +178,8 @@ export default function IntakeModal({
         </div>
 
         {/* Golden Cases Quick Picker Bar */}
-        <div className="px-6 py-2 bg-blue-50/30 border-b border-blue-50 text-xs flex items-center gap-2 overflow-x-auto">
-          <span className="font-bold text-blue-900 shrink-0">
+        <div className="px-6 py-2 bg-blue-50/30 border-b border-blue-50 dark:border-slate-800 text-xs flex items-center gap-2 overflow-x-auto">
+          <span className="font-bold text-blue-900 dark:text-sky-300 shrink-0">
             {isAr ? 'تحميل سيناريو مسبق:' : 'Load Golden Case:'}
           </span>
           <button
@@ -219,11 +219,11 @@ export default function IntakeModal({
           {/* Step 1: Anthropometrics & Metabolic */}
           {step === 1 && (
             <div className="space-y-6">
-              <div className="border-b border-blue-50 pb-3">
-                <h3 className="text-lg font-bold text-blue-950">
+              <div className="border-b border-blue-50 dark:border-slate-800 pb-3">
+                <h3 className="text-lg font-bold text-blue-950 dark:text-white">
                   {isAr ? '1. مؤشرات القياس وصحة التمثيل الغذائي' : '1. Anthropometrics & Metabolic Indicators'}
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {isAr
                     ? 'تؤثر السمنة وداء السكري وضغط الدم على جودة النطاف ومستويات هرمون الذكورة (التستوستيرون).'
                     : 'Metabolic syndrome and elevated BMI are clinically linked to peripheral aromatization of testosterone.'}
@@ -232,7 +232,7 @@ export default function IntakeModal({
 
               {/* BMI */}
               <div>
-                <label className="block text-xs font-bold text-blue-950 uppercase tracking-wide mb-1">
+                <label className="block text-xs font-bold text-blue-950 dark:text-white uppercase tracking-wide mb-1">
                   {isAr ? 'مؤشر كتلة الجسم (BMI)' : 'Body Mass Index (BMI)'}
                 </label>
                 <div className="flex items-center gap-3">
@@ -244,9 +244,9 @@ export default function IntakeModal({
                     placeholder="e.g. 24.5"
                     value={answers.bmi || ''}
                     onChange={(e) => handleUpdate('bmi', parseFloat(e.target.value) || undefined)}
-                    className="w-40 px-3 py-2 text-sm border border-blue-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-40 px-3 py-2 text-sm border border-blue-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     {answers.bmi ? (answers.bmi >= 30 ? '⚠️ Obese' : answers.bmi >= 25 ? 'Overweight' : '✓ Normal') : '(Optional / Skippable)'}
                   </span>
                 </div>
@@ -254,7 +254,7 @@ export default function IntakeModal({
 
               {/* Diabetes */}
               <div>
-                <label className="block text-xs font-bold text-blue-950 uppercase tracking-wide mb-2">
+                <label className="block text-xs font-bold text-blue-950 dark:text-white uppercase tracking-wide mb-2">
                   {isAr ? 'تاريخ داء السكري' : 'Diabetes Status'}
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -266,7 +266,7 @@ export default function IntakeModal({
                       className={`px-3 py-2 text-xs font-semibold rounded-xl border transition-all text-center ${
                         answers.diabetes === status
                           ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                          : 'bg-white text-slate-700 border-blue-100 hover:border-blue-300'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-blue-100 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600'
                       }`}
                     >
                       {status === 'none' ? 'None' : status === 'prediabetes' ? 'Prediabetes' : status === 'type2' ? 'Type 2' : 'Type 1'}
@@ -277,7 +277,7 @@ export default function IntakeModal({
 
               {/* Hypertension */}
               <div>
-                <label className="block text-xs font-bold text-blue-950 uppercase tracking-wide mb-2">
+                <label className="block text-xs font-bold text-blue-950 dark:text-white uppercase tracking-wide mb-2">
                   {isAr ? 'هل تعاني من ارتفاع ضغط الدم المشخص؟' : 'Diagnosed Hypertension'}
                 </label>
                 <div className="flex gap-3">
@@ -287,7 +287,7 @@ export default function IntakeModal({
                     className={`px-4 py-2 text-xs font-semibold rounded-xl border transition-all ${
                       answers.hypertension === true
                         ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-slate-700 border-blue-100 hover:border-blue-300'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-blue-100 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600'
                     }`}
                   >
                     {isAr ? 'نعم' : 'Yes'}
@@ -298,7 +298,7 @@ export default function IntakeModal({
                     className={`px-4 py-2 text-xs font-semibold rounded-xl border transition-all ${
                       answers.hypertension === false
                         ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-slate-700 border-blue-100 hover:border-blue-300'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-blue-100 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600'
                     }`}
                   >
                     {isAr ? 'لا' : 'No'}
@@ -308,7 +308,7 @@ export default function IntakeModal({
 
               {/* Trying to Conceive */}
               <div>
-                <label className="block text-xs font-bold text-blue-950 uppercase tracking-wide mb-1">
+                <label className="block text-xs font-bold text-blue-950 dark:text-white uppercase tracking-wide mb-1">
                   {isAr ? 'مدة محاولة الإنجاب (بالأشهر)' : 'Months Trying to Conceive'}
                 </label>
                 <div className="flex items-center gap-3">
@@ -324,9 +324,9 @@ export default function IntakeModal({
                         e.target.value === '' ? undefined : parseInt(e.target.value, 10)
                       )
                     }
-                    className="w-40 px-3 py-2 text-sm border border-blue-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-40 px-3 py-2 text-sm border border-blue-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     {(answers.tryingToConceiveMonths ?? 0) >= 12
                       ? '⚠️ >= 12 mo qualifies for andrology evaluation'
                       : '0 if not actively trying'}
@@ -339,11 +339,11 @@ export default function IntakeModal({
           {/* Step 2: Lifestyle & Exposures */}
           {step === 2 && (
             <div className="space-y-6">
-              <div className="border-b border-blue-50 pb-3">
-                <h3 className="text-lg font-bold text-blue-950">
+              <div className="border-b border-blue-50 dark:border-slate-800 pb-3">
+                <h3 className="text-lg font-bold text-blue-950 dark:text-white">
                   {isAr ? '2. نمط الحياة والعوامل البيئية' : '2. Lifestyle & Environmental Factors'}
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {isAr
                     ? 'التدخين والحرارة المفرطة واستخدام الستيرويدات تؤثر بشكل مباشر على تكوين النطاف وتلف المادة الوراثية (DNA Fragmentation).'
                     : 'Tobacco use, testicular heat exposure, and anabolic steroids significantly affect spermatogenesis.'}
@@ -352,7 +352,7 @@ export default function IntakeModal({
 
               {/* Smoking */}
               <div>
-                <label className="block text-xs font-bold text-blue-950 uppercase tracking-wide mb-2">
+                <label className="block text-xs font-bold text-blue-950 dark:text-white uppercase tracking-wide mb-2">
                   {isAr ? 'التدخين والتبغ' : 'Tobacco & Smoking'}
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -364,7 +364,7 @@ export default function IntakeModal({
                       className={`px-3 py-2 text-xs font-semibold rounded-xl border transition-all text-center ${
                         answers.smoking === status
                           ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-slate-700 border-blue-100 hover:border-blue-300'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-blue-100 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600'
                       }`}
                     >
                       {status === 'never' ? 'Never' : status === 'former' ? 'Former Smoker' : 'Active Smoker'}
@@ -375,7 +375,7 @@ export default function IntakeModal({
 
               {/* Testicular Heat Exposure */}
               <div>
-                <label className="block text-xs font-bold text-blue-950 uppercase tracking-wide mb-2">
+                <label className="block text-xs font-bold text-blue-950 dark:text-white uppercase tracking-wide mb-2">
                   {isAr ? 'التعرض للحرارة (الساونا، الحمامات الساخنة، العمل بحرارة عالية)' : 'Frequent Testicular Heat Exposure'}
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -387,7 +387,7 @@ export default function IntakeModal({
                       className={`px-3 py-2 text-xs font-semibold rounded-xl border transition-all text-center ${
                         answers.heatExposure === heat
                           ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-slate-700 border-blue-100 hover:border-blue-300'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-blue-100 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600'
                       }`}
                     >
                       {heat === 'none' ? 'None' : heat === 'occasional' ? 'Occasional' : 'Frequent'}
@@ -398,7 +398,7 @@ export default function IntakeModal({
 
               {/* Anabolic Steroids */}
               <div>
-                <label className="block text-xs font-bold text-blue-950 uppercase tracking-wide mb-2">
+                <label className="block text-xs font-bold text-blue-950 dark:text-white uppercase tracking-wide mb-2">
                   {isAr ? 'الستيرويدات البنائية / هرمونات كمال الأجسام' : 'Anabolic-Androgenic Steroids (TRT/Gym enhancers)'}
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -410,7 +410,7 @@ export default function IntakeModal({
                       className={`px-3 py-2 text-xs font-semibold rounded-xl border transition-all text-center ${
                         answers.anabolicSteroids === status
                           ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-slate-700 border-blue-100 hover:border-blue-300'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-blue-100 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600'
                       }`}
                     >
                       {status === 'never' ? 'Never' : status === 'past' ? 'Past Use' : 'Current Use'}
@@ -424,11 +424,11 @@ export default function IntakeModal({
           {/* Step 3: Medical & Anatomical History */}
           {step === 3 && (
             <div className="space-y-6">
-              <div className="border-b border-blue-50 pb-3">
-                <h3 className="text-lg font-bold text-blue-950">
+              <div className="border-b border-blue-50 dark:border-slate-800 pb-3">
+                <h3 className="text-lg font-bold text-blue-950 dark:text-white">
                   {isAr ? '3. التاريخ الجراحي والتشريحي' : '3. Anatomical & Surgical History'}
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {isAr
                     ? 'دوالي الخصية، والخصية الهاجرة، وجراحات الفتق السابقة، وقطع القناة المنوية.'
                     : 'Known varicoceles, history of cryptorchidism, or prior inguinal/scrotal surgeries.'}
@@ -437,7 +437,7 @@ export default function IntakeModal({
 
               {/* Varicocele */}
               <div>
-                <label className="block text-xs font-bold text-blue-950 uppercase tracking-wide mb-2">
+                <label className="block text-xs font-bold text-blue-950 dark:text-white uppercase tracking-wide mb-2">
                   {isAr ? 'دوالي الخصية (Varicocele)' : 'Varicocele (Scrotal Varicose Veins)'}
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -449,7 +449,7 @@ export default function IntakeModal({
                       className={`px-3 py-2 text-xs font-semibold rounded-xl border transition-all text-center ${
                         answers.varicocele === v
                           ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-slate-700 border-blue-100 hover:border-blue-300'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-blue-100 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600'
                       }`}
                     >
                       {v === 'none' ? 'None' : v === 'known' ? 'Diagnosed Varicocele' : 'Unchecked / Unknown'}
@@ -460,7 +460,7 @@ export default function IntakeModal({
 
               {/* Undescended Testis */}
               <div>
-                <label className="block text-xs font-bold text-blue-950 uppercase tracking-wide mb-2">
+                <label className="block text-xs font-bold text-blue-950 dark:text-white uppercase tracking-wide mb-2">
                   {isAr ? 'تاريخ الخصية الهاجرة في الصغر (Undescended Testis)' : 'History of Undescended Testis'}
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -479,7 +479,7 @@ export default function IntakeModal({
                       className={`px-2 py-2 text-[11px] font-semibold rounded-xl border transition-all text-center ${
                         answers.undescendedTestis === item.key
                           ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-slate-700 border-blue-100 hover:border-blue-300'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-blue-100 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600'
                       }`}
                     >
                       {item.label}
@@ -490,7 +490,7 @@ export default function IntakeModal({
 
               {/* Prior Vasectomy */}
               <div>
-                <label className="block text-xs font-bold text-blue-950 uppercase tracking-wide mb-2">
+                <label className="block text-xs font-bold text-blue-950 dark:text-white uppercase tracking-wide mb-2">
                   {isAr ? 'هل خضعت سابقاً لعملية قطع القناة المنوية (Vasectomy)؟' : 'Prior Vasectomy'}
                 </label>
                 <div className="flex gap-3">
@@ -500,7 +500,7 @@ export default function IntakeModal({
                     className={`px-4 py-2 text-xs font-semibold rounded-xl border transition-all ${
                       answers.priorVasectomy === true
                         ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-slate-700 border-blue-100 hover:border-blue-300'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-blue-100 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600'
                     }`}
                   >
                     Yes (Prior Vasectomy)
@@ -511,7 +511,7 @@ export default function IntakeModal({
                     className={`px-4 py-2 text-xs font-semibold rounded-xl border transition-all ${
                       answers.priorVasectomy === false
                         ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-slate-700 border-blue-100 hover:border-blue-300'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-blue-100 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-600'
                     }`}
                   >
                     No
@@ -524,14 +524,14 @@ export default function IntakeModal({
           {/* Step 4: Closed-Vocabulary Symptoms & Red Flags */}
           {step === 4 && (
             <div className="space-y-6">
-              <div className="border-b border-blue-50 pb-3">
+              <div className="border-b border-blue-50 dark:border-slate-800 pb-3">
                 <div className="flex items-center gap-2 mb-1">
                   <AlertTriangle className="w-5 h-5 text-amber-500" />
-                  <h3 className="text-lg font-bold text-blue-950">
+                  <h3 className="text-lg font-bold text-blue-950 dark:text-white">
                     {isAr ? '4. الأعراض السريرية وعلامات الأمان الحمراء' : '4. Clinical Symptoms & Safety Red Flags'}
                   </h3>
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {isAr
                     ? 'حدد أي أعراض حالية. تؤدي العلامات الحادة إلى تفعيل صمام الأمان الفوري لضمان التدخل الطارئ.'
                     : 'Select any current presentations. Acute red flags trigger the deterministic safety clamp to ensure immediate care.'}
@@ -613,7 +613,7 @@ export default function IntakeModal({
                           ? item.isRedFlag
                             ? 'bg-red-50 border-red-300 text-red-900'
                             : 'bg-blue-50 border-blue-300 text-blue-900'
-                          : 'bg-white border-blue-100 text-slate-700 hover:border-blue-200'
+                          : 'bg-white dark:bg-slate-800/80 border-blue-100 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-blue-200 dark:hover:border-slate-600'
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -672,13 +672,13 @@ export default function IntakeModal({
         </div>
 
         {/* Modal Footer Controls */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-blue-50 flex items-center justify-between">
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/80 border-t border-blue-50 dark:border-slate-800 flex items-center justify-between">
           <div>
             {step > 1 && (
               <button
                 type="button"
                 onClick={() => setStep(step - 1)}
-                className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-1.5"
+                className="px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5"
               >
                 <ChevronLeft className="w-4 h-4" />
                 <span>{isAr ? 'السابق' : 'Previous'}</span>

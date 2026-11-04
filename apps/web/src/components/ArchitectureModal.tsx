@@ -117,7 +117,7 @@ export default function ArchitectureModal({
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 dark:text-slate-200 hover:bg-slate-100 flex items-center justify-center transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -126,8 +126,8 @@ export default function ArchitectureModal({
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
           {/* Architecture Pipeline Visual */}
-          <div className="bg-slate-50 p-5 rounded-2xl border border-blue-100">
-            <div className="text-xs font-bold text-blue-950 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-5 rounded-2xl border border-blue-100">
+            <div className="text-xs font-bold text-blue-950 dark:text-white uppercase tracking-wider mb-3 flex items-center gap-2">
               <Layers className="w-4 h-4 text-blue-600" />
               <span>End-to-End Orchestration Spine</span>
             </div>
@@ -135,33 +135,33 @@ export default function ArchitectureModal({
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-center">
               <div className="bg-white p-3 rounded-xl border border-blue-100">
                 <span className="text-[10px] font-bold text-blue-500 uppercase">Layer 1</span>
-                <h4 className="text-xs font-bold text-blue-950">Next.js 15 App</h4>
-                <p className="text-[10px] text-slate-500 mt-1">Anonymous Intake & Consent Centre</p>
+                <h4 className="text-xs font-bold text-blue-950 dark:text-white">Next.js 15 App</h4>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Anonymous Intake & Consent Centre</p>
               </div>
 
               <div className="bg-white p-3 rounded-xl border border-blue-100">
                 <span className="text-[10px] font-bold text-blue-500 uppercase">Layer 2</span>
-                <h4 className="text-xs font-bold text-blue-950">FastAPI & LangGraph</h4>
-                <p className="text-[10px] text-slate-500 mt-1">Adaptive State Machine & Risk Engine</p>
+                <h4 className="text-xs font-bold text-blue-950 dark:text-white">FastAPI & LangGraph</h4>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Adaptive State Machine & Risk Engine</p>
               </div>
 
               <div className="bg-white p-3 rounded-xl border border-blue-300 ring-2 ring-blue-500/20 shadow-xs">
                 <span className="text-[10px] font-bold text-blue-600 uppercase">Layer 3 (Spine)</span>
-                <h4 className="text-xs font-black text-blue-950">n8n Orchestrator</h4>
-                <p className="text-[10px] text-slate-500 mt-1">9 Workflows / 257 Nodes / SLAs</p>
+                <h4 className="text-xs font-black text-blue-950 dark:text-white">n8n Orchestrator</h4>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">9 Workflows / 257 Nodes / SLAs</p>
               </div>
 
               <div className="bg-white p-3 rounded-xl border border-blue-100">
                 <span className="text-[10px] font-bold text-blue-500 uppercase">Layer 4</span>
-                <h4 className="text-xs font-bold text-blue-950">MongoDB Atlas</h4>
-                <p className="text-[10px] text-slate-500 mt-1">13 Collections & Append-Only Ledgers</p>
+                <h4 className="text-xs font-bold text-blue-950 dark:text-white">MongoDB Atlas</h4>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">13 Collections & Append-Only Ledgers</p>
               </div>
             </div>
           </div>
 
           {/* 9 Workflows List */}
           <div>
-            <h3 className="text-xs font-bold text-blue-950 uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-bold text-blue-950 dark:text-white uppercase tracking-wider mb-3">
               The 9 Lifecycle Workflows (Generated & Contract-Verified)
             </h3>
 
@@ -176,13 +176,13 @@ export default function ArchitectureModal({
                       <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
                         {wf.id}
                       </span>
-                      <span className="text-[11px] font-semibold text-slate-500">
+                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                         {wf.nodes} Nodes
                       </span>
                     </div>
 
-                    <h4 className="text-xs font-bold text-blue-950 mb-1">{wf.name}</h4>
-                    <p className="text-[11px] text-slate-600 leading-relaxed mb-2">{wf.desc}</p>
+                    <h4 className="text-xs font-bold text-blue-950 dark:text-white mb-1">{wf.name}</h4>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed mb-2">{wf.desc}</p>
                   </div>
 
                   <div className="pt-2 border-t border-blue-50 text-[10px] font-mono text-blue-800 truncate">
@@ -195,8 +195,8 @@ export default function ArchitectureModal({
 
           {/* Key Facts / Invariants */}
           <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100 text-xs space-y-2">
-            <h4 className="font-bold text-blue-950">Offline Verification & Stability Facts</h4>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700">
+            <h4 className="font-bold text-blue-950 dark:text-white">Offline Verification & Stability Facts</h4>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700 dark:text-slate-200">
               <li className="flex items-center gap-1.5">
                 <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span>107/107 safety checks pass offline</span>
@@ -218,7 +218,7 @@ export default function ArchitectureModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-blue-50 flex items-center justify-end">
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/60 border-t border-blue-50 flex items-center justify-end">
           <button
             onClick={onClose}
             className="px-5 py-2 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-colors"

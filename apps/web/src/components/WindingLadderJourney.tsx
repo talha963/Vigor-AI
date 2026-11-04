@@ -53,6 +53,7 @@ export default function WindingLadderJourney({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState<number>(0.08);
+  const [maxRevealedY, setMaxRevealedY] = useState<number>(380);
   const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
 
   // Red-flag selector state (Section 02)
@@ -106,7 +107,7 @@ export default function WindingLadderJourney({
   };
 
   // =========================================================================
-  // MATHEMATICAL PROCEDURAL LADDER GENERATOR (Reference Video: Smooth Winding 3D Ladder)
+  // MATHEMATICAL PROCEDURAL LADDER GENERATOR (Smooth Winding 3D Ladder)
   // =========================================================================
   const { leftRailPath, rightRailPath, rungs, totalHeight, revealedY, guideSketchPaths } = useMemo(() => {
     const H = 5100;
@@ -178,7 +179,7 @@ export default function WindingLadderJourney({
     // Current revealed Y depth based on scroll progress
     const revY = Math.min(H, Math.max(380, scrollProgress * H));
 
-    // Trailing sketch lines that extend slightly below the solid ladder (from video reference)
+    // Trailing sketch lines that extend slightly below the solid ladder
     const sketchY = Math.min(H, revY + 80);
     const p1 = getCenter(revY);
     const p2 = getCenter(sketchY);
@@ -196,6 +197,22 @@ export default function WindingLadderJourney({
       guideSketchPaths: guidePaths,
     };
   }, [scrollProgress]);
+
+  // Keep track of the highest point reached so revealed content stays visible
+  useEffect(() => {
+    if (revealedY > maxRevealedY) {
+      setMaxRevealedY(revealedY);
+    }
+  }, [revealedY, maxRevealedY]);
+
+  // Synchronized text reveal triggers (exact designated rungs)
+  const isSection1Visible = maxRevealedY >= 680;
+  const isSection2Visible = maxRevealedY >= 1420;
+  const isSection3Visible = maxRevealedY >= 2180;
+  const isSection4Visible = maxRevealedY >= 2920;
+  const isSection5Visible = maxRevealedY >= 3680;
+  const isSection6Visible = maxRevealedY >= 4420;
+  const isSection7Visible = maxRevealedY >= 4950;
 
   // Derived WHO calculations
   const totalSperm = Math.round(volume * concentration * 10) / 10;
@@ -303,7 +320,7 @@ export default function WindingLadderJourney({
   return (
     <div
       ref={containerRef}
-      className="relative w-full overflow-hidden text-[#22201D] dark:text-[#F2EEE6] font-editorial-sans transition-colors duration-300"
+      className="relative w-full overflow-hidden text-[#22201D] dark:text-[#F5F2EB] font-editorial-sans transition-colors duration-300"
     >
       {/* =========================================================================
           CONTINUOUS 3D WINDING LADDER CANVAS (SVG)
@@ -315,9 +332,9 @@ export default function WindingLadderJourney({
           preserveAspectRatio="xMidYMin meet"
         >
           <defs>
-            {/* 3D Drop Shadow for the Ladder (Reference Video Shading) */}
+            {/* 3D Drop Shadow for the Ladder */}
             <filter id="ladder-3d-shadow" x="-30%" y="-10%" width="160%" height="120%">
-              <feDropShadow dx="-10" dy="16" stdDeviation="14" floodColor="#2A241C" floodOpacity="0.13" />
+              <feDropShadow dx="-10" dy="16" stdDeviation="14" floodColor="#2A241C" floodOpacity="0.14" />
             </filter>
 
             {/* Scroll-driven progressive reveal mask */}
@@ -329,7 +346,7 @@ export default function WindingLadderJourney({
           {/* Masked Solid Ladder Structure */}
           <g mask="url(#ladder-scroll-mask)" filter="url(#ladder-3d-shadow)">
             {/* -------------------------------------------------------------
-                1. 3D BASE / BEVEL EXTRUSION RAILS (Taupe/Bronze Shadow Depth)
+                1. 3D BASE / BEVEL EXTRUSION RAILS (Depth & Shading)
                 ------------------------------------------------------------- */}
             <path
               d={leftRailPath}
@@ -338,7 +355,7 @@ export default function WindingLadderJourney({
               strokeWidth="6.5"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="dark:stroke-[#4A4338]"
+              className="dark:stroke-[#5A5245]"
             />
             <path
               d={rightRailPath}
@@ -347,7 +364,7 @@ export default function WindingLadderJourney({
               strokeWidth="6.5"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="dark:stroke-[#4A4338]"
+              className="dark:stroke-[#5A5245]"
             />
 
             {/* -------------------------------------------------------------
@@ -364,7 +381,7 @@ export default function WindingLadderJourney({
                   stroke="#7A7163"
                   strokeWidth="5"
                   strokeLinecap="round"
-                  className="dark:stroke-[#3E382F]"
+                  className="dark:stroke-[#443D33]"
                 />
                 {/* Rung Top Highlight Line */}
                 <line
@@ -375,7 +392,7 @@ export default function WindingLadderJourney({
                   stroke="#F7F4EB"
                   strokeWidth="3.2"
                   strokeLinecap="round"
-                  className="dark:stroke-[#C2BBB0]"
+                  className="dark:stroke-[#D1C9BC]"
                 />
               </g>
             ))}
@@ -391,7 +408,7 @@ export default function WindingLadderJourney({
                 strokeWidth="4"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="dark:stroke-[#B8B1A5]"
+                className="dark:stroke-[#C9C2B4]"
               />
               <path
                 d={rightRailPath}
@@ -400,7 +417,7 @@ export default function WindingLadderJourney({
                 strokeWidth="4"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="dark:stroke-[#B8B1A5]"
+                className="dark:stroke-[#C9C2B4]"
               />
             </g>
 
@@ -409,52 +426,52 @@ export default function WindingLadderJourney({
             <ellipse cx="541" cy="0" rx="3.5" ry="3.5" fill="#EFEAE0" stroke="#8C8375" strokeWidth="1" />
 
             {/* -------------------------------------------------------------
-                4. SECTION CONNECTOR PINS & NODES (Direct from Reference Video)
+                4. SECTION CONNECTOR PINS & NODES (Revealed with Ladder Progress)
                 ------------------------------------------------------------- */}
             {/* Section 01 Connector (Left, y=700) */}
-            <g opacity={revealedY >= 680 ? 1 : 0.2} className="transition-opacity duration-300">
-              <line x1="390" y1="700" x2="599" y2="700" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" />
-              <circle cx="599" cy="700" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" />
+            <g opacity={isSection1Visible ? 1 : 0} className="transition-opacity duration-500">
+              <line x1="390" y1="700" x2="599" y2="700" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
+              <circle cx="599" cy="700" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
             </g>
 
             {/* Section 02 Connector (Right, y=1450) */}
-            <g opacity={revealedY >= 1420 ? 1 : 0.2} className="transition-opacity duration-300">
-              <line x1="401" y1="1450" x2="610" y2="1450" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" />
-              <circle cx="401" cy="1450" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" />
+            <g opacity={isSection2Visible ? 1 : 0} className="transition-opacity duration-500">
+              <line x1="401" y1="1450" x2="610" y2="1450" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
+              <circle cx="401" cy="1450" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
             </g>
 
             {/* Section 03 Connector (Left, y=2200) */}
-            <g opacity={revealedY >= 2180 ? 1 : 0.2} className="transition-opacity duration-300">
-              <line x1="390" y1="2200" x2="599" y2="2200" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" />
-              <circle cx="599" cy="2200" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" />
+            <g opacity={isSection3Visible ? 1 : 0} className="transition-opacity duration-500">
+              <line x1="390" y1="2200" x2="599" y2="2200" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
+              <circle cx="599" cy="2200" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
             </g>
 
             {/* Section 04 Connector (Right, y=2950) */}
-            <g opacity={revealedY >= 2920 ? 1 : 0.2} className="transition-opacity duration-300">
-              <line x1="401" y1="2950" x2="610" y2="2950" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" />
-              <circle cx="401" cy="2950" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" />
+            <g opacity={isSection4Visible ? 1 : 0} className="transition-opacity duration-500">
+              <line x1="401" y1="2950" x2="610" y2="2950" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
+              <circle cx="401" cy="2950" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
             </g>
 
             {/* Section 05 Connector (Left, y=3700) */}
-            <g opacity={revealedY >= 3680 ? 1 : 0.2} className="transition-opacity duration-300">
-              <line x1="390" y1="3700" x2="599" y2="3700" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" />
-              <circle cx="599" cy="3700" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" />
+            <g opacity={isSection5Visible ? 1 : 0} className="transition-opacity duration-500">
+              <line x1="390" y1="3700" x2="599" y2="3700" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
+              <circle cx="599" cy="3700" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
             </g>
 
             {/* Section 06 Connector (Right, y=4450) */}
-            <g opacity={revealedY >= 4420 ? 1 : 0.2} className="transition-opacity duration-300">
-              <line x1="401" y1="4450" x2="610" y2="4450" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" />
-              <circle cx="401" cy="4450" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" />
+            <g opacity={isSection6Visible ? 1 : 0} className="transition-opacity duration-500">
+              <line x1="401" y1="4450" x2="610" y2="4450" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
+              <circle cx="401" cy="4450" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
             </g>
 
             {/* Base Milestone Hub (y=5000) */}
-            <g opacity={revealedY >= 4950 ? 1 : 0.2} className="transition-opacity duration-300">
-              <circle cx="500" cy="5000" r="14" fill="#FAF8F5" stroke="#7A7163" strokeWidth="2.5" />
-              <circle cx="500" cy="5000" r="5" fill="#2E281F" />
+            <g opacity={isSection7Visible ? 1 : 0} className="transition-opacity duration-500">
+              <circle cx="500" cy="5000" r="14" fill="#FAF8F5" stroke="#7A7163" strokeWidth="2.5" className="dark:fill-stone-900 dark:stroke-stone-400" />
+              <circle cx="500" cy="5000" r="5" fill="#2E2922" className="dark:fill-stone-200" />
             </g>
           </g>
 
-          {/* Trailing Pencil / Draft Sketch Lines Below Current Revealed Tip (Video Feature) */}
+          {/* Trailing Pencil / Draft Sketch Lines Below Current Revealed Tip */}
           {guideSketchPaths.map((d, i) => (
             <path
               key={`sketch-${i}`}
@@ -464,6 +481,7 @@ export default function WindingLadderJourney({
               strokeWidth="1.2"
               strokeDasharray="2 3"
               opacity="0.4"
+              className="dark:stroke-stone-500"
             />
           ))}
         </svg>
@@ -476,28 +494,34 @@ export default function WindingLadderJourney({
         
         {/* =====================================================================
             SECTION 01 (LEFT): Anonymous-First Male Reproductive Intake
-            Curve Peak 1: Ladder bends Right (y=700) -> Content on the LEFT
+            Reveals when ladder reaches y=680
             ===================================================================== */}
         <section
           id="section-intake"
           className="relative min-h-[750px] flex items-center mb-32 pt-8"
         >
           <div className="w-full lg:w-1/2 lg:pr-14">
-            <div className="relative">
-              {/* Giant Pale Serif Watermark Number (Reference Video) */}
-              <div className="absolute -top-16 -left-6 font-editorial-serif text-[180px] lg:text-[240px] italic font-light text-[#7C7365]/[0.06] dark:text-[#E8E4DA]/[0.05] select-none pointer-events-none leading-none">
+            <div
+              className={`relative transition-all duration-700 ease-out ${
+                isSection1Visible
+                  ? 'opacity-100 translate-y-0 pointer-events-auto'
+                  : 'opacity-0 translate-y-6 pointer-events-none'
+              }`}
+            >
+              {/* Giant Pale Serif Watermark Number */}
+              <div className="absolute -top-16 -left-6 font-editorial-serif text-[180px] lg:text-[240px] italic font-light text-[#7C7365]/[0.06] dark:text-[#E8E4DA]/[0.04] select-none pointer-events-none leading-none">
                 01
               </div>
 
               {/* Editorial Category Label */}
-              <div className="flex items-center gap-2 mb-3 text-[11px] font-semibold tracking-[0.24em] uppercase text-[#736B5E] dark:text-[#B0A99C]">
-                <span className="font-editorial-serif italic text-sm text-[#4A443A] dark:text-[#E0DACF]">01</span>
+              <div className="flex items-center gap-2 mb-3 text-[11px] font-semibold tracking-[0.24em] uppercase text-[#736B5E] dark:text-stone-300">
+                <span className="font-editorial-serif italic text-sm text-[#4A443A] dark:text-stone-200">01</span>
                 <span>/</span>
                 <span>{isAr ? 'بروتوكول الاستقبال الرقمي' : 'Intake Protocol'}</span>
               </div>
 
               {/* Editorial Serif Heading */}
-              <h2 className="font-editorial-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#22201D] dark:text-[#F2EEE6] leading-[1.15] mb-5">
+              <h2 className="font-editorial-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#22201D] dark:text-[#F5F2EB] leading-[1.15] mb-5">
                 {isAr ? (
                   <>استقبال سريري <span className="italic font-light">مجهول الهوية بالكامل</span> بدون إنشاء حساب</>
                 ) : (
@@ -506,19 +530,19 @@ export default function WindingLadderJourney({
               </h2>
 
               {/* Editorial Description */}
-              <p className="text-[#5A544A] dark:text-[#B8B1A3] text-sm lg:text-[15px] leading-relaxed mb-6 max-w-lg">
+              <p className="text-[#5A544A] dark:text-[#C5BEB2] text-sm lg:text-[15px] leading-relaxed mb-6 max-w-lg">
                 {isAr
                   ? 'نموذج استقبال طبي آمن ومحمي خوارزمياً. لا نطلب أسماء أو هواتف أو بريد إلكتروني. يتم إنشاء رمز تعريفي سريري مشفر (Pseudonym ID) داخل المتصفح، محمي بسلسلة كتل غير قابلة للتتبع.'
                   : 'A clinically governed, high-precision male reproductive screening pathway. No sign-ups, no phone numbers, and no third-party email collection. Your session generates an ephemeral cryptographic pseudonym entirely in browser memory.'}
               </p>
 
               {/* Interactive In-Session Pseudonym Pill */}
-              <div className="inline-flex items-center gap-3 px-3.5 py-2 rounded-lg bg-[#EFECE3]/70 dark:bg-[#1E1C18] border border-[#DDD7C8] dark:border-stone-800 text-xs mb-7 shadow-xs">
-                <KeyRound className="w-4 h-4 text-[#7A7163] dark:text-[#A89F90]" />
-                <span className="font-mono font-medium text-[#403B33] dark:text-[#DDD6C8]">
+              <div className="inline-flex items-center gap-3 px-3.5 py-2 rounded-lg bg-[#EFECE3]/70 dark:bg-stone-900 border border-[#DDD7C8] dark:border-stone-800 text-xs mb-7 shadow-xs">
+                <KeyRound className="w-4 h-4 text-[#7A7163] dark:text-stone-400" />
+                <span className="font-mono font-medium text-[#403B33] dark:text-stone-200">
                   psn_984f82a17b0c
                 </span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-[#DDD7C8]/70 dark:bg-stone-800 text-[#544E43] dark:text-[#A89F90]">
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-[#DDD7C8]/70 dark:bg-stone-800 text-[#544E43] dark:text-stone-300">
                   {isAr ? 'مشفر محلياً' : 'In-Memory Only'}
                 </span>
               </div>
@@ -528,7 +552,7 @@ export default function WindingLadderJourney({
                 <button
                   type="button"
                   onClick={onOpenIntake}
-                  className="group inline-flex items-center gap-3 px-6 py-3 rounded-sm bg-[#2E2922] dark:bg-[#EFEAE0] text-[#F7F4EB] dark:text-[#22201D] text-xs font-semibold tracking-[0.18em] uppercase hover:bg-[#453E34] dark:hover:bg-white transition-all shadow-sm"
+                  className="group inline-flex items-center gap-3 px-6 py-3 rounded-sm bg-[#2E2922] dark:bg-[#F5F2EB] text-[#F7F4EB] dark:text-[#141311] text-xs font-semibold tracking-[0.18em] uppercase hover:bg-[#453E34] dark:hover:bg-white transition-all shadow-sm"
                 >
                   <span>{isAr ? 'ابدأ الفحص المجهول الآن' : 'Start Anonymous Intake'}</span>
                   <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
@@ -537,20 +561,20 @@ export default function WindingLadderJourney({
                 <button
                   type="button"
                   onClick={() => onSelectGoldenCase('GC01')}
-                  className="text-xs font-medium text-[#6B6355] dark:text-[#A8A092] hover:text-[#22201D] dark:hover:text-white underline underline-offset-4 tracking-wide transition-colors"
+                  className="text-xs font-medium text-[#6B6355] dark:text-stone-300 hover:text-[#22201D] dark:hover:text-white underline underline-offset-4 tracking-wide transition-colors"
                 >
                   {isAr ? 'تجربة حالة طوارئ سريرية (GC01)' : 'Simulate Torsion Case (GC01)'}
                 </button>
               </div>
 
-              {/* Small Editorial Image Frame (From Video Reference) */}
+              {/* Small Editorial Image Frame */}
               <div className="mt-8 relative max-w-sm rounded-lg overflow-hidden border border-[#DDD7C8] dark:border-stone-800 shadow-md">
                 <img
                   src="/images/clinical-consult.jpg"
                   alt="Clinical Consultation"
                   className="w-full h-36 object-cover filter contrast-[1.05] brightness-95"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#22201D]/70 via-transparent to-transparent flex items-end p-3">
+                <div className="absolute inset-0 bg-gradient-to-t from-[#22201D]/75 via-transparent to-transparent flex items-end p-3">
                   <span className="text-[10px] uppercase tracking-widest text-[#F7F4EB] font-medium">
                     {isAr ? 'استشارة سريرية متخصصة ومحمية' : 'Confidential Andrology Evaluation'}
                   </span>
@@ -562,28 +586,34 @@ export default function WindingLadderJourney({
 
         {/* =====================================================================
             SECTION 02 (RIGHT): Deterministic Safety Floor & 9 Red-Flag Gates
-            Curve Trough 1: Ladder bends Left (y=1450) -> Content on the RIGHT
+            Reveals when ladder reaches y=1420
             ===================================================================== */}
         <section
           id="section-safety"
           className="relative min-h-[850px] flex items-center justify-end mb-32 pt-8"
         >
           <div className="w-full lg:w-1/2 lg:pl-14">
-            <div className="relative">
+            <div
+              className={`relative transition-all duration-700 ease-out ${
+                isSection2Visible
+                  ? 'opacity-100 translate-y-0 pointer-events-auto'
+                  : 'opacity-0 translate-y-6 pointer-events-none'
+              }`}
+            >
               {/* Giant Pale Serif Watermark Number */}
-              <div className="absolute -top-16 -left-6 font-editorial-serif text-[180px] lg:text-[240px] italic font-light text-[#7C7365]/[0.06] dark:text-[#E8E4DA]/[0.05] select-none pointer-events-none leading-none">
+              <div className="absolute -top-16 -left-6 font-editorial-serif text-[180px] lg:text-[240px] italic font-light text-[#7C7365]/[0.06] dark:text-[#E8E4DA]/[0.04] select-none pointer-events-none leading-none">
                 02
               </div>
 
               {/* Editorial Category Label */}
-              <div className="flex items-center gap-2 mb-3 text-[11px] font-semibold tracking-[0.24em] uppercase text-[#736B5E] dark:text-[#B0A99C]">
-                <span className="font-editorial-serif italic text-sm text-[#4A443A] dark:text-[#E0DACF]">02</span>
+              <div className="flex items-center gap-2 mb-3 text-[11px] font-semibold tracking-[0.24em] uppercase text-[#736B5E] dark:text-stone-300">
+                <span className="font-editorial-serif italic text-sm text-[#4A443A] dark:text-stone-200">02</span>
                 <span>/</span>
                 <span>{isAr ? 'الحوكمة السريرية الصارمة' : 'Deterministic Safety'}</span>
               </div>
 
               {/* Editorial Serif Heading */}
-              <h2 className="font-editorial-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#22201D] dark:text-[#F2EEE6] leading-[1.15] mb-5">
+              <h2 className="font-editorial-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#22201D] dark:text-[#F5F2EB] leading-[1.15] mb-5">
                 {isAr ? (
                   <>قواعد السلامة الحتمية <span className="italic font-light">ومبدأ التصعيد الإجباري</span></>
                 ) : (
@@ -591,15 +621,15 @@ export default function WindingLadderJourney({
                 )}
               </h2>
 
-              <p className="text-[#5A544A] dark:text-[#B8B1A3] text-sm lg:text-[15px] leading-relaxed mb-6 max-w-lg">
+              <p className="text-[#5A544A] dark:text-[#C5BEB2] text-sm lg:text-[15px] leading-relaxed mb-6 max-w-lg">
                 {isAr
                   ? 'لا يسمح الذكاء الاصطناعي بتخفيض حدة الأعراض الخطرة إطلاقاً. تسعة بوابات طبية حتمية تكتشف علامات الخطر (التواء الخصية، الكتلة غير المؤلمة، القساح، الاحتباس البولي) وتقفل المسار نحو الطوارئ فوراً.'
                   : 'AI inference can never downgrade severe or borderline presentations. Nine deterministic safety gates enforce zero false reassurance: testicular torsion, painless scrotal lumps, priapism, and sepsis lock the platform into immediate escalation.'}
               </p>
 
               {/* Interactive 9 Red-Flag Symptoms Navigator */}
-              <div className="p-4 rounded-xl bg-[#FAF8F3] dark:bg-[#1A1916] border border-[#DDD7C8] dark:border-stone-800 mb-6 shadow-xs">
-                <div className="flex items-center justify-between mb-3 text-xs font-semibold text-[#544E43] dark:text-[#B8B1A3]">
+              <div className="p-4 rounded-xl bg-[#FAF8F3] dark:bg-stone-900 border border-[#DDD7C8] dark:border-stone-800 mb-6 shadow-xs">
+                <div className="flex items-center justify-between mb-3 text-xs font-semibold text-[#544E43] dark:text-stone-200">
                   <span>{isAr ? 'اختر بوابة سريرية للاختبار:' : 'Inspect Clinical Red Flag Gate:'}</span>
                   <span className="font-mono text-[10px] text-rose-600 dark:text-rose-400 font-bold uppercase">
                     Escalate-Only Active
@@ -614,8 +644,8 @@ export default function WindingLadderJourney({
                       onClick={() => setSelectedFlagIndex(idx)}
                       className={`px-2 py-1.5 rounded text-[11px] font-medium text-left truncate transition-all ${
                         selectedFlagIndex === idx
-                          ? 'bg-[#2E2922] text-[#F7F4EB] dark:bg-[#EFEAE0] dark:text-[#22201D]'
-                          : 'bg-[#EFECE3]/70 dark:bg-stone-800 text-[#544E43] dark:text-[#C5BEB2] hover:bg-[#E3DEC3]'
+                          ? 'bg-[#2E2922] text-[#F7F4EB] dark:bg-[#F5F2EB] dark:text-[#141311]'
+                          : 'bg-[#EFECE3]/70 dark:bg-stone-800 text-[#544E43] dark:text-stone-200 hover:bg-[#E3DEC3] dark:hover:bg-stone-700'
                       }`}
                     >
                       {flag.id}: {flag.organ}
@@ -624,16 +654,16 @@ export default function WindingLadderJourney({
                 </div>
 
                 {/* Selected Flag Diagnostic Card */}
-                <div className="p-3.5 rounded-lg bg-white/80 dark:bg-[#22201D]/80 border border-[#DDD7C8]/70 dark:border-stone-800">
+                <div className="p-3.5 rounded-lg bg-white/90 dark:bg-stone-850 border border-[#DDD7C8]/70 dark:border-stone-800">
                   <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className="font-serif font-bold text-sm text-[#22201D] dark:text-[#F2EEE6]">
+                    <span className="font-serif font-bold text-sm text-[#22201D] dark:text-[#F5F2EB]">
                       {isAr ? redFlagsList[selectedFlagIndex].titleAr : redFlagsList[selectedFlagIndex].titleEn}
                     </span>
                     <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300">
                       SLA: {redFlagsList[selectedFlagIndex].sla}
                     </span>
                   </div>
-                  <p className="text-xs text-[#5A544A] dark:text-[#B8B1A3] leading-relaxed">
+                  <p className="text-xs text-[#5A544A] dark:text-[#C5BEB2] leading-relaxed">
                     {redFlagsList[selectedFlagIndex].action}
                   </p>
                 </div>
@@ -644,7 +674,7 @@ export default function WindingLadderJourney({
                 <button
                   type="button"
                   onClick={() => onSelectGoldenCase('GC16')}
-                  className="px-4 py-2 rounded-sm bg-[#EFECE3] dark:bg-stone-800 text-[#2E2922] dark:text-[#F7F4EB] text-xs font-semibold tracking-wider uppercase hover:bg-[#DDD7C8] transition-colors"
+                  className="px-4 py-2 rounded-sm bg-[#EFECE3] dark:bg-stone-800 text-[#2E2922] dark:text-[#F5F2EB] text-xs font-semibold tracking-wider uppercase hover:bg-[#DDD7C8] dark:hover:bg-stone-700 transition-colors"
                 >
                   {isAr ? 'اختبار حالة سالبة (GC16 Near-Miss)' : 'Test Near-Miss (GC16 Safe Ache)'}
                 </button>
@@ -655,28 +685,34 @@ export default function WindingLadderJourney({
 
         {/* =====================================================================
             SECTION 03 (LEFT): Cryptographic Consent Ledger & Revocation
-            Curve Peak 2: Ladder bends Right (y=2200) -> Content on the LEFT
+            Reveals when ladder reaches y=2180
             ===================================================================== */}
         <section
           id="section-consent"
           className="relative min-h-[750px] flex items-center mb-32 pt-8"
         >
           <div className="w-full lg:w-1/2 lg:pr-14">
-            <div className="relative">
+            <div
+              className={`relative transition-all duration-700 ease-out ${
+                isSection3Visible
+                  ? 'opacity-100 translate-y-0 pointer-events-auto'
+                  : 'opacity-0 translate-y-6 pointer-events-none'
+              }`}
+            >
               {/* Giant Pale Serif Watermark Number */}
-              <div className="absolute -top-16 -left-6 font-editorial-serif text-[180px] lg:text-[240px] italic font-light text-[#7C7365]/[0.06] dark:text-[#E8E4DA]/[0.05] select-none pointer-events-none leading-none">
+              <div className="absolute -top-16 -left-6 font-editorial-serif text-[180px] lg:text-[240px] italic font-light text-[#7C7365]/[0.06] dark:text-[#E8E4DA]/[0.04] select-none pointer-events-none leading-none">
                 03
               </div>
 
               {/* Editorial Category Label */}
-              <div className="flex items-center gap-2 mb-3 text-[11px] font-semibold tracking-[0.24em] uppercase text-[#736B5E] dark:text-[#B0A99C]">
-                <span className="font-editorial-serif italic text-sm text-[#4A443A] dark:text-[#E0DACF]">03</span>
+              <div className="flex items-center gap-2 mb-3 text-[11px] font-semibold tracking-[0.24em] uppercase text-[#736B5E] dark:text-stone-300">
+                <span className="font-editorial-serif italic text-sm text-[#4A443A] dark:text-stone-200">03</span>
                 <span>/</span>
                 <span>{isAr ? 'سجل الموافقة التشفيري' : 'Consent Ledger'}</span>
               </div>
 
               {/* Editorial Serif Heading */}
-              <h2 className="font-editorial-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#22201D] dark:text-[#F2EEE6] leading-[1.15] mb-5">
+              <h2 className="font-editorial-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#22201D] dark:text-[#F5F2EB] leading-[1.15] mb-5">
                 {isAr ? (
                   <>سجل الموافقة السيادي <span className="italic font-light">وزر الإلغاء الفوري</span></>
                 ) : (
@@ -684,16 +720,16 @@ export default function WindingLadderJourney({
                 )}
               </h2>
 
-              <p className="text-[#5A544A] dark:text-[#B8B1A3] text-sm lg:text-[15px] leading-relaxed mb-6 max-w-lg">
+              <p className="text-[#5A544A] dark:text-[#C5BEB2] text-sm lg:text-[15px] leading-relaxed mb-6 max-w-lg">
                 {isAr
                   ? 'المريض يمتلك سيادة بياناته الطبية بشكل تام. كل تفويض سريري يتم توثيقه بتجزئة SHA-256 فريدة. نقرة واحدة على زر الإلغاء تبطل الرمز فورياً عبر سير عمل التراجع w07 وتلغي أي إحالة قائمة.'
                   : 'Every permission is explicitly ledger-backed with immutable SHA-256 hashes. Patients retain sovereign ownership over their data. A single click cascades through workflow w07 to immediately nullify active tokens and abort downstream referrals.'}
               </p>
 
               {/* Interactive Granular Consent Toggles */}
-              <div className="p-4 rounded-xl bg-[#FAF8F3] dark:bg-[#1A1916] border border-[#DDD7C8] dark:border-stone-800 mb-6 shadow-xs max-w-lg">
+              <div className="p-4 rounded-xl bg-[#FAF8F3] dark:bg-stone-900 border border-[#DDD7C8] dark:border-stone-800 mb-6 shadow-xs max-w-lg">
                 <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#DDD7C8]/70 dark:border-stone-800">
-                  <span className="text-xs font-bold tracking-wider uppercase text-[#4A443A] dark:text-[#DDD6C8]">
+                  <span className="text-xs font-bold tracking-wider uppercase text-[#4A443A] dark:text-stone-200">
                     {isAr ? 'حالة السجل الحي:' : 'Live Ledger Status:'}
                   </span>
                   <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
@@ -704,41 +740,41 @@ export default function WindingLadderJourney({
 
                 <div className="space-y-2.5 mb-4 text-xs">
                   <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-[#544E43] dark:text-[#B8B1A3]">
+                    <span className="text-[#544E43] dark:text-stone-300">
                       {isAr ? 'معالجة الفحص والفرز السريري' : 'Triage & Assessment Processing'}
                     </span>
                     <input
                       type="checkbox"
                       checked={consentItems.triage}
                       onChange={(e) => setConsentItems({ ...consentItems, triage: e.target.checked })}
-                      className="rounded accent-[#2E2922]"
+                      className="rounded accent-[#2E2922] dark:accent-[#F5F2EB]"
                     />
                   </label>
                   <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-[#544E43] dark:text-[#B8B1A3]">
+                    <span className="text-[#544E43] dark:text-stone-300">
                       {isAr ? 'إرسال الإحالة الطبية إلى المستشفى' : 'Hospital Referral Dispatch'}
                     </span>
                     <input
                       type="checkbox"
                       checked={consentItems.referral}
                       onChange={(e) => setConsentItems({ ...consentItems, referral: e.target.checked })}
-                      className="rounded accent-[#2E2922]"
+                      className="rounded accent-[#2E2922] dark:accent-[#F5F2EB]"
                     />
                   </label>
                   <label className="flex items-center justify-between cursor-pointer">
-                    <span className="text-[#544E43] dark:text-[#B8B1A3]">
+                    <span className="text-[#544E43] dark:text-stone-300">
                       {isAr ? 'توصيل عينة الفحص المنزلي المبرد' : 'Cold-Chain At-Home Kit Delivery'}
                     </span>
                     <input
                       type="checkbox"
                       checked={consentItems.logistics}
                       onChange={(e) => setConsentItems({ ...consentItems, logistics: e.target.checked })}
-                      className="rounded accent-[#2E2922]"
+                      className="rounded accent-[#2E2922] dark:accent-[#F5F2EB]"
                     />
                   </label>
                 </div>
 
-                <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#DDD7C8]/70 dark:border-stone-800 font-mono text-[10px] text-[#7A7163] dark:text-[#9E9587]">
+                <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#DDD7C8]/70 dark:border-stone-800 font-mono text-[10px] text-[#7A7163] dark:text-stone-400">
                   <span className="truncate">hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</span>
                   <button
                     type="button"
@@ -754,7 +790,7 @@ export default function WindingLadderJourney({
               <button
                 type="button"
                 onClick={onOpenConsent}
-                className="group inline-flex items-center gap-3 px-6 py-3 rounded-sm bg-[#2E2922] dark:bg-[#EFEAE0] text-[#F7F4EB] dark:text-[#22201D] text-xs font-semibold tracking-[0.18em] uppercase hover:bg-[#453E34] dark:hover:bg-white transition-all shadow-sm"
+                className="group inline-flex items-center gap-3 px-6 py-3 rounded-sm bg-[#2E2922] dark:bg-[#F5F2EB] text-[#F7F4EB] dark:text-[#141311] text-xs font-semibold tracking-[0.18em] uppercase hover:bg-[#453E34] dark:hover:bg-white transition-all shadow-sm"
               >
                 <span>{isAr ? 'فتح مركز إدارة الموافقة' : 'Manage Consent Ledger'}</span>
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
@@ -765,28 +801,34 @@ export default function WindingLadderJourney({
 
         {/* =====================================================================
             SECTION 04 (RIGHT): WHO 2021 Semen Analysis Interactive Simulator
-            Curve Trough 2: Ladder bends Left (y=2950) -> Content on the RIGHT
+            Reveals when ladder reaches y=2920
             ===================================================================== */}
         <section
           id="section-who"
           className="relative min-h-[920px] flex items-center justify-end mb-32 pt-8"
         >
           <div className="w-full lg:w-1/2 lg:pl-14">
-            <div className="relative">
+            <div
+              className={`relative transition-all duration-700 ease-out ${
+                isSection4Visible
+                  ? 'opacity-100 translate-y-0 pointer-events-auto'
+                  : 'opacity-0 translate-y-6 pointer-events-none'
+              }`}
+            >
               {/* Giant Pale Serif Watermark Number */}
-              <div className="absolute -top-16 -left-6 font-editorial-serif text-[180px] lg:text-[240px] italic font-light text-[#7C7365]/[0.06] dark:text-[#E8E4DA]/[0.05] select-none pointer-events-none leading-none">
+              <div className="absolute -top-16 -left-6 font-editorial-serif text-[180px] lg:text-[240px] italic font-light text-[#7C7365]/[0.06] dark:text-[#E8E4DA]/[0.04] select-none pointer-events-none leading-none">
                 04
               </div>
 
               {/* Editorial Category Label */}
-              <div className="flex items-center gap-2 mb-3 text-[11px] font-semibold tracking-[0.24em] uppercase text-[#736B5E] dark:text-[#B0A99C]">
-                <span className="font-editorial-serif italic text-sm text-[#4A443A] dark:text-[#E0DACF]">04</span>
+              <div className="flex items-center gap-2 mb-3 text-[11px] font-semibold tracking-[0.24em] uppercase text-[#736B5E] dark:text-stone-300">
+                <span className="font-editorial-serif italic text-sm text-[#4A443A] dark:text-stone-200">04</span>
                 <span>/</span>
                 <span>{isAr ? 'معايير منظمة الصحة العالمية' : 'WHO 2021 Reference'}</span>
               </div>
 
               {/* Editorial Serif Heading */}
-              <h2 className="font-editorial-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#22201D] dark:text-[#F2EEE6] leading-[1.15] mb-5">
+              <h2 className="font-editorial-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#22201D] dark:text-[#F5F2EB] leading-[1.15] mb-5">
                 {isAr ? (
                   <>محاكي تحليل السائل المنوي <span className="italic font-light">حسب معايير WHO 2021</span></>
                 ) : (
@@ -794,17 +836,17 @@ export default function WindingLadderJourney({
                 )}
               </h2>
 
-              <p className="text-[#5A544A] dark:text-[#B8B1A3] text-sm lg:text-[15px] leading-relaxed mb-6 max-w-lg">
+              <p className="text-[#5A544A] dark:text-[#C5BEB2] text-sm lg:text-[15px] leading-relaxed mb-6 max-w-lg">
                 {isAr
                   ? 'محرك تحليلي ديناميكي يعتمد على الحد الأدنى المرجعي المئوي الخامس (5th Centile) من الدليل المخبري لمنظمة الصحة العالمية. اختبر تأثير الحجم، التركيز، وحركة الحيوانات المنوية بشكل تفاعلي فوري.'
                   : 'An interactive clinical calculator benchmarked against the 5th centile lower reference limits of the WHO 6th Edition Manual. Dynamically adjust volume, sperm concentration, motility, and vitality to preview diagnostic categorization.'}
               </p>
 
               {/* Interactive WHO 2021 Diagnostic Simulator Card */}
-              <div className="p-4 sm:p-5 rounded-xl bg-[#FAF8F3] dark:bg-[#1A1916] border border-[#DDD7C8] dark:border-stone-800 mb-6 shadow-xs">
+              <div className="p-4 sm:p-5 rounded-xl bg-[#FAF8F3] dark:bg-stone-900 border border-[#DDD7C8] dark:border-stone-800 mb-6 shadow-xs">
                 {/* Preset Fast-Toggles */}
                 <div className="flex flex-wrap items-center gap-1.5 mb-4 pb-3 border-b border-[#DDD7C8]/70 dark:border-stone-800">
-                  <span className="text-[11px] font-bold text-[#544E43] dark:text-[#B8B1A3] mr-1">Presets:</span>
+                  <span className="text-[11px] font-bold text-[#544E43] dark:text-stone-300 mr-1">Presets:</span>
                   <button
                     onClick={() => { setVolume(3.0); setConcentration(28); setProgressiveMotility(42); setTotalMotility(60); setNormalForms(8); setVitality(72); }}
                     className="px-2 py-1 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 hover:bg-emerald-100"
@@ -830,7 +872,7 @@ export default function WindingLadderJourney({
                   {/* Slider 1: Volume */}
                   <div>
                     <div className="flex justify-between mb-1">
-                      <span className="text-[#544E43] dark:text-[#B8B1A3]">Volume (mL):</span>
+                      <span className="text-[#544E43] dark:text-stone-300">Volume (mL):</span>
                       <span className={`font-mono font-bold ${isVolumeSafe ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
                         {volume.toFixed(1)} mL (min 1.4)
                       </span>
@@ -842,14 +884,14 @@ export default function WindingLadderJourney({
                       step="0.1"
                       value={volume}
                       onChange={(e) => setVolume(parseFloat(e.target.value))}
-                      className="w-full accent-[#2E2922]"
+                      className="w-full accent-[#2E2922] dark:accent-[#F5F2EB]"
                     />
                   </div>
 
                   {/* Slider 2: Concentration */}
                   <div>
                     <div className="flex justify-between mb-1">
-                      <span className="text-[#544E43] dark:text-[#B8B1A3]">Concentration (M/mL):</span>
+                      <span className="text-[#544E43] dark:text-stone-300">Concentration (M/mL):</span>
                       <span className={`font-mono font-bold ${isConcSafe ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
                         {concentration} M/mL (min 16)
                       </span>
@@ -861,14 +903,14 @@ export default function WindingLadderJourney({
                       step="1"
                       value={concentration}
                       onChange={(e) => setConcentration(parseInt(e.target.value, 10))}
-                      className="w-full accent-[#2E2922]"
+                      className="w-full accent-[#2E2922] dark:accent-[#F5F2EB]"
                     />
                   </div>
 
                   {/* Slider 3: Progressive Motility */}
                   <div>
                     <div className="flex justify-between mb-1">
-                      <span className="text-[#544E43] dark:text-[#B8B1A3]">Prog. Motility (%):</span>
+                      <span className="text-[#544E43] dark:text-stone-300">Prog. Motility (%):</span>
                       <span className={`font-mono font-bold ${isProgMotileSafe ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
                         {progressiveMotility}% (min 30%)
                       </span>
@@ -880,14 +922,14 @@ export default function WindingLadderJourney({
                       step="1"
                       value={progressiveMotility}
                       onChange={(e) => setProgressiveMotility(parseInt(e.target.value, 10))}
-                      className="w-full accent-[#2E2922]"
+                      className="w-full accent-[#2E2922] dark:accent-[#F5F2EB]"
                     />
                   </div>
 
                   {/* Slider 4: Normal Morphology */}
                   <div>
                     <div className="flex justify-between mb-1">
-                      <span className="text-[#544E43] dark:text-[#B8B1A3]">Normal Forms (%):</span>
+                      <span className="text-[#544E43] dark:text-stone-300">Normal Forms (%):</span>
                       <span className={`font-mono font-bold ${isMorphSafe ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
                         {normalForms}% (min 4%)
                       </span>
@@ -899,16 +941,16 @@ export default function WindingLadderJourney({
                       step="1"
                       value={normalForms}
                       onChange={(e) => setNormalForms(parseInt(e.target.value, 10))}
-                      className="w-full accent-[#2E2922]"
+                      className="w-full accent-[#2E2922] dark:accent-[#F5F2EB]"
                     />
                   </div>
                 </div>
 
                 {/* Computed Total Sperm Result Bar */}
-                <div className="p-3 rounded-lg bg-white/90 dark:bg-[#22201D]/90 border border-[#DDD7C8]/70 dark:border-stone-800 flex items-center justify-between">
+                <div className="p-3 rounded-lg bg-white/90 dark:bg-stone-850 border border-[#DDD7C8]/70 dark:border-stone-800 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Microscope className="w-4 h-4 text-[#7A7163]" />
-                    <span className="text-xs font-semibold text-[#403B33] dark:text-[#DDD6C8]">
+                    <Microscope className="w-4 h-4 text-[#7A7163] dark:text-stone-400" />
+                    <span className="text-xs font-semibold text-[#403B33] dark:text-stone-200">
                       Total Sperm Count (Vol × Conc):
                     </span>
                   </div>
@@ -942,28 +984,34 @@ export default function WindingLadderJourney({
 
         {/* =====================================================================
             SECTION 05 (LEFT): Accredited Abu Dhabi Care Network & Cold-Chain
-            Curve Peak 3: Ladder bends Right (y=3700) -> Content on the LEFT
+            Reveals when ladder reaches y=3680
             ===================================================================== */}
         <section
           id="section-care"
           className="relative min-h-[780px] flex items-center mb-32 pt-8"
         >
           <div className="w-full lg:w-1/2 lg:pr-14">
-            <div className="relative">
+            <div
+              className={`relative transition-all duration-700 ease-out ${
+                isSection5Visible
+                  ? 'opacity-100 translate-y-0 pointer-events-auto'
+                  : 'opacity-0 translate-y-6 pointer-events-none'
+              }`}
+            >
               {/* Giant Pale Serif Watermark Number */}
-              <div className="absolute -top-16 -left-6 font-editorial-serif text-[180px] lg:text-[240px] italic font-light text-[#7C7365]/[0.06] dark:text-[#E8E4DA]/[0.05] select-none pointer-events-none leading-none">
+              <div className="absolute -top-16 -left-6 font-editorial-serif text-[180px] lg:text-[240px] italic font-light text-[#7C7365]/[0.06] dark:text-[#E8E4DA]/[0.04] select-none pointer-events-none leading-none">
                 05
               </div>
 
               {/* Editorial Category Label */}
-              <div className="flex items-center gap-2 mb-3 text-[11px] font-semibold tracking-[0.24em] uppercase text-[#736B5E] dark:text-[#B0A99C]">
-                <span className="font-editorial-serif italic text-sm text-[#4A443A] dark:text-[#E0DACF]">05</span>
+              <div className="flex items-center gap-2 mb-3 text-[11px] font-semibold tracking-[0.24em] uppercase text-[#736B5E] dark:text-stone-300">
+                <span className="font-editorial-serif italic text-sm text-[#4A443A] dark:text-stone-200">05</span>
                 <span>/</span>
                 <span>{isAr ? 'شبكة الرعاية المعتمدة' : 'Care Network'}</span>
               </div>
 
               {/* Editorial Serif Heading */}
-              <h2 className="font-editorial-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#22201D] dark:text-[#F2EEE6] leading-[1.15] mb-5">
+              <h2 className="font-editorial-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#22201D] dark:text-[#F5F2EB] leading-[1.15] mb-5">
                 {isAr ? (
                   <>شبكة الرعاية المعتمدة بأبوظبي <span className="italic font-light">والفحص المنزلي المبرد</span></>
                 ) : (
@@ -971,7 +1019,7 @@ export default function WindingLadderJourney({
                 )}
               </h2>
 
-              <p className="text-[#5A544A] dark:text-[#B8B1A3] text-sm lg:text-[15px] leading-relaxed mb-6 max-w-lg">
+              <p className="text-[#5A544A] dark:text-[#C5BEB2] text-sm lg:text-[15px] leading-relaxed mb-6 max-w-lg">
                 {isAr
                   ? 'ربط مباشر وسلس مع أرقى المستشفيات والمراكز المتخصصة في إمارة أبوظبي (كليفلاند كلينك، مدينة شخبوط الطبية، برجيل، هيلث بلس)، مع خيار إرسال طرد فحص منزلي مبرد بدرجة حرارة مراقبة.'
                   : 'Direct routing to accredited Abu Dhabi tertiary centers (Cleveland Clinic Abu Dhabi, Sheikh Shakhbout Medical City, Burjeel Medical City, HealthPlus Fertility) paired with temperature-controlled at-home specimen collection.'}
@@ -979,29 +1027,29 @@ export default function WindingLadderJourney({
 
               {/* Accredited Medical Facilities Grid */}
               <div className="grid grid-cols-2 gap-2.5 mb-6 max-w-lg">
-                <div className="p-3 rounded-lg bg-[#FAF8F3] dark:bg-[#1A1916] border border-[#DDD7C8] dark:border-stone-800">
-                  <div className="font-serif font-bold text-xs text-[#22201D] dark:text-[#F2EEE6] mb-0.5">
+                <div className="p-3 rounded-lg bg-[#FAF8F3] dark:bg-stone-900 border border-[#DDD7C8] dark:border-stone-800">
+                  <div className="font-serif font-bold text-xs text-[#22201D] dark:text-[#F5F2EB] mb-0.5">
                     Cleveland Clinic Abu Dhabi
                   </div>
-                  <div className="text-[10px] text-[#7A7163] dark:text-[#9E9587]">Al Maryah Island · Andrology & Urology</div>
+                  <div className="text-[10px] text-[#7A7163] dark:text-stone-400">Al Maryah Island · Andrology & Urology</div>
                 </div>
-                <div className="p-3 rounded-lg bg-[#FAF8F3] dark:bg-[#1A1916] border border-[#DDD7C8] dark:border-stone-800">
-                  <div className="font-serif font-bold text-xs text-[#22201D] dark:text-[#F2EEE6] mb-0.5">
+                <div className="p-3 rounded-lg bg-[#FAF8F3] dark:bg-stone-900 border border-[#DDD7C8] dark:border-stone-800">
+                  <div className="font-serif font-bold text-xs text-[#22201D] dark:text-[#F5F2EB] mb-0.5">
                     Sheikh Shakhbout Medical City
                   </div>
-                  <div className="text-[10px] text-[#7A7163] dark:text-[#9E9587]">Al Mafraq · Tertiary Male Fertility</div>
+                  <div className="text-[10px] text-[#7A7163] dark:text-stone-400">Al Mafraq · Tertiary Male Fertility</div>
                 </div>
-                <div className="p-3 rounded-lg bg-[#FAF8F3] dark:bg-[#1A1916] border border-[#DDD7C8] dark:border-stone-800">
-                  <div className="font-serif font-bold text-xs text-[#22201D] dark:text-[#F2EEE6] mb-0.5">
+                <div className="p-3 rounded-lg bg-[#FAF8F3] dark:bg-stone-900 border border-[#DDD7C8] dark:border-stone-800">
+                  <div className="font-serif font-bold text-xs text-[#22201D] dark:text-[#F5F2EB] mb-0.5">
                     HealthPlus Fertility Center
                   </div>
-                  <div className="text-[10px] text-[#7A7163] dark:text-[#9E9587]">Al Bateen · Advanced Andrology Lab</div>
+                  <div className="text-[10px] text-[#7A7163] dark:text-stone-400">Al Bateen · Advanced Andrology Lab</div>
                 </div>
-                <div className="p-3 rounded-lg bg-[#FAF8F3] dark:bg-[#1A1916] border border-[#DDD7C8] dark:border-stone-800">
-                  <div className="font-serif font-bold text-xs text-[#22201D] dark:text-[#F2EEE6] mb-0.5">
+                <div className="p-3 rounded-lg bg-[#FAF8F3] dark:bg-stone-900 border border-[#DDD7C8] dark:border-stone-800">
+                  <div className="font-serif font-bold text-xs text-[#22201D] dark:text-[#F5F2EB] mb-0.5">
                     Burjeel Medical City
                   </div>
-                  <div className="text-[10px] text-[#7A7163] dark:text-[#9E9587]">Mohamed Bin Zayed City · Endocrine Care</div>
+                  <div className="text-[10px] text-[#7A7163] dark:text-stone-400">Mohamed Bin Zayed City · Endocrine Care</div>
                 </div>
               </div>
 
@@ -1010,7 +1058,7 @@ export default function WindingLadderJourney({
                 <button
                   type="button"
                   onClick={onOpenAtHomeKit}
-                  className="group inline-flex items-center gap-3 px-6 py-3 rounded-sm bg-[#2E2922] dark:bg-[#EFEAE0] text-[#F7F4EB] dark:text-[#22201D] text-xs font-semibold tracking-[0.18em] uppercase hover:bg-[#453E34] dark:hover:bg-white transition-all shadow-sm"
+                  className="group inline-flex items-center gap-3 px-6 py-3 rounded-sm bg-[#2E2922] dark:bg-[#F5F2EB] text-[#F7F4EB] dark:text-[#141311] text-xs font-semibold tracking-[0.18em] uppercase hover:bg-[#453E34] dark:hover:bg-white transition-all shadow-sm"
                 >
                   <Package className="w-3.5 h-3.5" />
                   <span>{isAr ? 'طلب طرد الفحص المنزلي' : 'Order Cold-Chain At-Home Kit'}</span>
@@ -1037,28 +1085,34 @@ export default function WindingLadderJourney({
 
         {/* =====================================================================
             SECTION 06 (RIGHT): Autonomous Event Runtime & Clinician Console
-            Curve Trough 3: Ladder bends Left (y=4450) -> Content on the RIGHT
+            Reveals when ladder reaches y=4420
             ===================================================================== */}
         <section
           id="section-telemetry"
           className="relative min-h-[820px] flex items-center justify-end mb-32 pt-8"
         >
           <div className="w-full lg:w-1/2 lg:pl-14">
-            <div className="relative">
+            <div
+              className={`relative transition-all duration-700 ease-out ${
+                isSection6Visible
+                  ? 'opacity-100 translate-y-0 pointer-events-auto'
+                  : 'opacity-0 translate-y-6 pointer-events-none'
+              }`}
+            >
               {/* Giant Pale Serif Watermark Number */}
-              <div className="absolute -top-16 -left-6 font-editorial-serif text-[180px] lg:text-[240px] italic font-light text-[#7C7365]/[0.06] dark:text-[#E8E4DA]/[0.05] select-none pointer-events-none leading-none">
+              <div className="absolute -top-16 -left-6 font-editorial-serif text-[180px] lg:text-[240px] italic font-light text-[#7C7365]/[0.06] dark:text-[#E8E4DA]/[0.04] select-none pointer-events-none leading-none">
                 06
               </div>
 
               {/* Editorial Category Label */}
-              <div className="flex items-center gap-2 mb-3 text-[11px] font-semibold tracking-[0.24em] uppercase text-[#736B5E] dark:text-[#B0A99C]">
-                <span className="font-editorial-serif italic text-sm text-[#4A443A] dark:text-[#E0DACF]">06</span>
+              <div className="flex items-center gap-2 mb-3 text-[11px] font-semibold tracking-[0.24em] uppercase text-[#736B5E] dark:text-stone-300">
+                <span className="font-editorial-serif italic text-sm text-[#4A443A] dark:text-stone-200">06</span>
                 <span>/</span>
                 <span>{isAr ? 'الأتمتة والرقابة الطبية' : 'Autonomous Telemetry'}</span>
               </div>
 
               {/* Editorial Serif Heading */}
-              <h2 className="font-editorial-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#22201D] dark:text-[#F2EEE6] leading-[1.15] mb-5">
+              <h2 className="font-editorial-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#22201D] dark:text-[#F5F2EB] leading-[1.15] mb-5">
                 {isAr ? (
                   <>أتمتة سير العمل السريري <span className="italic font-light">وبوابة مراجعة الطبيب الاستشاري</span></>
                 ) : (
@@ -1066,15 +1120,15 @@ export default function WindingLadderJourney({
                 )}
               </h2>
 
-              <p className="text-[#5A544A] dark:text-[#B8B1A3] text-sm lg:text-[15px] leading-relaxed mb-6 max-w-lg">
+              <p className="text-[#5A544A] dark:text-[#C5BEB2] text-sm lg:text-[15px] leading-relaxed mb-6 max-w-lg">
                 {isAr
                   ? 'عشرة تدفقات عمل نشطة على منصة n8n تعالج الأحداث غير المتزامنة وتراقب اتفاقيات مستوى الخدمة (SLA). الحالات المعقدة أو الحدودية تتطلب توقيعاً إلزامياً من استشاري مسالك وأندورلوجيا مرخص.'
                   : 'Ten production event workflows coordinate async intake processing, escalation sweeps, and consent cascades. Complex or borderline assessments require mandatory human-in-the-loop review by licensed andrologists before clinical dispatch.'}
               </p>
 
               {/* Live Workflows Badge Grid */}
-              <div className="p-4 rounded-xl bg-[#FAF8F3] dark:bg-[#1A1916] border border-[#DDD7C8] dark:border-stone-800 mb-6 shadow-xs max-w-lg">
-                <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#DDD7C8]/70 dark:border-stone-800 text-xs font-bold text-[#4A443A] dark:text-[#DDD6C8]">
+              <div className="p-4 rounded-xl bg-[#FAF8F3] dark:bg-stone-900 border border-[#DDD7C8] dark:border-stone-800 mb-6 shadow-xs max-w-lg">
+                <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#DDD7C8]/70 dark:border-stone-800 text-xs font-bold text-[#4A443A] dark:text-stone-200">
                   <span>10 Active n8n Workflows:</span>
                   <span className="font-mono text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase">
                     All Systems Operational
@@ -1082,27 +1136,27 @@ export default function WindingLadderJourney({
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-[11px] mb-3">
-                  <div className="flex items-center gap-1.5 text-[#544E43] dark:text-[#B8B1A3]">
+                  <div className="flex items-center gap-1.5 text-[#544E43] dark:text-stone-300">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     <span>w01 Intake Completed</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[#544E43] dark:text-[#B8B1A3]">
+                  <div className="flex items-center gap-1.5 text-[#544E43] dark:text-stone-300">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     <span>w02 Red-Flag SLA</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[#544E43] dark:text-[#B8B1A3]">
+                  <div className="flex items-center gap-1.5 text-[#544E43] dark:text-stone-300">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     <span>w03 Referral Dispatch</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[#544E43] dark:text-[#B8B1A3]">
+                  <div className="flex items-center gap-1.5 text-[#544E43] dark:text-stone-300">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     <span>w04 Kit Logistics</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[#544E43] dark:text-[#B8B1A3]">
+                  <div className="flex items-center gap-1.5 text-[#544E43] dark:text-stone-300">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     <span>w07 Consent Revocation</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[#544E43] dark:text-[#B8B1A3]">
+                  <div className="flex items-center gap-1.5 text-[#544E43] dark:text-stone-300">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     <span>w09 Clinician Review</span>
                   </div>
@@ -1114,7 +1168,7 @@ export default function WindingLadderJourney({
                 <button
                   type="button"
                   onClick={onOpenClinician}
-                  className="group inline-flex items-center gap-3 px-6 py-3 rounded-sm bg-[#2E2922] dark:bg-[#EFEAE0] text-[#F7F4EB] dark:text-[#22201D] text-xs font-semibold tracking-[0.18em] uppercase hover:bg-[#453E34] dark:hover:bg-white transition-all shadow-sm"
+                  className="group inline-flex items-center gap-3 px-6 py-3 rounded-sm bg-[#2E2922] dark:bg-[#F5F2EB] text-[#F7F4EB] dark:text-[#141311] text-xs font-semibold tracking-[0.18em] uppercase hover:bg-[#453E34] dark:hover:bg-white transition-all shadow-sm"
                 >
                   <Stethoscope className="w-3.5 h-3.5" />
                   <span>{isAr ? 'فتح بوابة مراجعة الأطباء' : 'Launch Clinician Review Portal'}</span>
@@ -1141,75 +1195,83 @@ export default function WindingLadderJourney({
 
         {/* =====================================================================
             SECTION 07 (CENTER DESTINATION): Protocol Specification & Grand Launch
-            Ladder finishes centered at y=5000 -> Grand Editorial Anchor Hub
+            Reveals when ladder reaches y=4950
             ===================================================================== */}
         <section
           id="section-architecture"
           className="relative pt-16 pb-28 text-center flex flex-col items-center justify-center"
         >
-          {/* Subtle Circular Radial Glow behind Beacon */}
-          <div className="w-20 h-20 rounded-full bg-[#EFEAE0] dark:bg-stone-800 border-2 border-[#8C8375] shadow-lg flex items-center justify-center mb-6">
-            <Shield className="w-9 h-9 text-[#2E2922] dark:text-[#F7F4EB]" />
-          </div>
+          <div
+            className={`relative flex flex-col items-center justify-center transition-all duration-700 ease-out ${
+              isSection7Visible
+                ? 'opacity-100 translate-y-0 pointer-events-auto'
+                : 'opacity-0 translate-y-6 pointer-events-none'
+            }`}
+          >
+            {/* Subtle Circular Radial Glow behind Beacon */}
+            <div className="w-20 h-20 rounded-full bg-[#EFEAE0] dark:bg-stone-900 border-2 border-[#8C8375] dark:border-stone-700 shadow-lg flex items-center justify-center mb-6">
+              <Shield className="w-9 h-9 text-[#2E2922] dark:text-[#F5F2EB]" />
+            </div>
 
-          <div className="flex items-center gap-2 mb-3 text-[11px] font-semibold tracking-[0.24em] uppercase text-[#736B5E] dark:text-[#B0A99C]">
-            <span className="font-editorial-serif italic text-sm text-[#4A443A] dark:text-[#E0DACF]">07</span>
-            <span>/</span>
-            <span>{isAr ? 'المواصفة السريرية والتشغيلية' : 'Protocol Specification'}</span>
-          </div>
+            <div className="flex items-center gap-2 mb-3 text-[11px] font-semibold tracking-[0.24em] uppercase text-[#736B5E] dark:text-stone-300">
+              <span className="font-editorial-serif italic text-sm text-[#4A443A] dark:text-stone-200">07</span>
+              <span>/</span>
+              <span>{isAr ? 'المواصفة السريرية والتشغيلية' : 'Protocol Specification'}</span>
+            </div>
 
-          <h2 className="font-editorial-serif text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-[#22201D] dark:text-[#F2EEE6] leading-[1.12] mb-5 max-w-2xl">
-            {isAr ? (
-              <>ابدأ تقييمك السريري <span className="italic font-light">بسرية وأمان تام</span></>
-            ) : (
-              <>Begin Your Confidential <span className="italic font-light">Male Health Evaluation</span></>
-            )}
-          </h2>
+            <h2 className="font-editorial-serif text-3xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-[#22201D] dark:text-[#F5F2EB] leading-[1.12] mb-5 max-w-2xl">
+              {isAr ? (
+                <>ابدأ تقييمك السريري <span className="italic font-light">بسرية وأمان تام</span></>
+              ) : (
+                <>Begin Your Confidential <span className="italic font-light">Male Health Evaluation</span></>
+              )}
+            </h2>
 
-          <p className="text-[#5A544A] dark:text-[#B8B1A3] text-sm lg:text-base leading-relaxed mb-8 max-w-xl">
-            {isAr
-              ? 'بوابة سريرية رائدة تجمع بين الخصوصية الرقمية التامة والحوكمة الطبية الصارمة وفق معايير منظمة الصحة العالمية وهيئة الصحة بأبوظبي.'
-              : 'A clinical gateway bridging digital anonymity with deterministic medical safety, governed under WHO 2021 protocols and Abu Dhabi healthcare standards.'}
-          </p>
+            <p className="text-[#5A544A] dark:text-[#C5BEB2] text-sm lg:text-base leading-relaxed mb-8 max-w-xl">
+              {isAr
+                ? 'بوابة سريرية رائدة تجمع بين الخصوصية الرقمية التامة والحوكمة الطبية الصارمة وفق معايير منظمة الصحة العالمية وهيئة الصحة بأبوظبي.'
+                : 'A clinical gateway bridging digital anonymity with deterministic medical safety, governed under WHO 2021 protocols and Abu Dhabi healthcare standards.'}
+            </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button
-              type="button"
-              onClick={onOpenIntake}
-              className="group inline-flex items-center gap-3 px-8 py-4 rounded-sm bg-[#2E2922] dark:bg-[#EFEAE0] text-[#F7F4EB] dark:text-[#22201D] text-xs font-bold tracking-[0.2em] uppercase hover:bg-[#453E34] dark:hover:bg-white transition-all shadow-md"
-            >
-              <span>{isAr ? 'ابدأ الفحص المجهول الفوري' : 'Start Anonymous Assessment'}</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
-            </button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={onOpenIntake}
+                className="group inline-flex items-center gap-3 px-8 py-4 rounded-sm bg-[#2E2922] dark:bg-[#F5F2EB] text-[#F7F4EB] dark:text-[#141311] text-xs font-bold tracking-[0.2em] uppercase hover:bg-[#453E34] dark:hover:bg-white transition-all shadow-md"
+              >
+                <span>{isAr ? 'ابدأ الفحص المجهول الفوري' : 'Start Anonymous Assessment'}</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
+              </button>
 
-            <button
-              type="button"
-              onClick={onOpenArchitecture}
-              className="inline-flex items-center gap-2 px-6 py-4 rounded-sm bg-[#EFECE3] dark:bg-stone-800 text-[#2E2922] dark:text-[#F7F4EB] text-xs font-bold tracking-[0.18em] uppercase hover:bg-[#DDD7C8] transition-colors"
-            >
-              <Layers className="w-4 h-4" />
-              <span>{isAr ? 'مخطط البنية التحتية والبيانات' : 'Inspect Architecture'}</span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={onOpenArchitecture}
+                className="inline-flex items-center gap-2 px-6 py-4 rounded-sm bg-[#EFECE3] dark:bg-stone-800 text-[#2E2922] dark:text-[#F5F2EB] text-xs font-bold tracking-[0.18em] uppercase hover:bg-[#DDD7C8] dark:hover:bg-stone-700 transition-colors"
+              >
+                <Layers className="w-4 h-4" />
+                <span>{isAr ? 'مخطط البنية التحتية والبيانات' : 'Inspect Architecture'}</span>
+              </button>
+            </div>
 
-          {/* Emergency 999 Advisory */}
-          <div className="mt-12 text-[11px] text-[#7A7163] dark:text-[#9E9587] max-w-md border-t border-[#DDD7C8]/70 dark:border-stone-800 pt-4">
-            {isAr
-              ? 'تنبيه طبي: في حال الشعور بألم حاد ومفاجئ في الخصية، يرجى التوجه فوراً لأقرب قسم طوارئ أو الاتصال بالرقم 999.'
-              : 'Emergency Notice: Sudden severe testicular pain is a medical emergency. Seek immediate emergency care or dial 999.'}
+            {/* Emergency 999 Advisory */}
+            <div className="mt-12 text-[11px] text-[#7A7163] dark:text-stone-400 max-w-md border-t border-[#DDD7C8]/70 dark:border-stone-800 pt-4">
+              {isAr
+                ? 'تنبيه طبي: في حال الشعور بألم حاد ومفاجئ في الخصية، يرجى التوجه فوراً لأقرب قسم طوارئ أو الاتصال بالرقم 999.'
+                : 'Emergency Notice: Sudden severe testicular pain is a medical emergency. Seek immediate emergency care or dial 999.'}
+            </div>
           </div>
         </section>
       </div>
 
       {/* =========================================================================
-          FLOATING MINIMAL SCROLL-TO-TOP BUTTON (Identical to Reference Video)
+          FLOATING MINIMAL SCROLL-TO-TOP BUTTON
           ========================================================================= */}
       {showScrollTop && (
         <button
           type="button"
           onClick={scrollToTop}
           aria-label="Scroll to top"
-          className="fixed bottom-8 right-8 z-40 w-11 h-11 rounded-full bg-[#3E382F]/85 dark:bg-[#EFEAE0]/85 text-[#F7F4EB] dark:text-[#22201D] shadow-lg backdrop-blur-md flex items-center justify-center hover:bg-[#22201D] dark:hover:bg-white hover:scale-105 transition-all"
+          className="fixed bottom-8 right-8 z-40 w-11 h-11 rounded-full bg-[#3E382F]/85 dark:bg-[#F5F2EB]/90 text-[#F7F4EB] dark:text-[#141311] shadow-lg backdrop-blur-md flex items-center justify-center hover:bg-[#22201D] dark:hover:bg-white hover:scale-105 transition-all"
         >
           <ArrowUp className="w-4 h-4" />
         </button>

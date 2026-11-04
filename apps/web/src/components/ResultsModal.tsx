@@ -58,7 +58,7 @@ export default function ResultsModal({
               {isUrgent ? <ShieldAlert className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
             </div>
             <div>
-              <h2 className="text-base font-bold text-blue-950">
+              <h2 className="text-base font-bold text-blue-950 dark:text-white">
                 {isAr ? 'نتائج الفرز السريري وشرح المخاطر' : 'Clinical Triage & Risk Breakdown'}
               </h2>
               <p className="text-[11px] text-blue-600 font-medium">
@@ -69,7 +69,7 @@ export default function ResultsModal({
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 dark:text-slate-200 hover:bg-slate-100 flex items-center justify-center transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -84,12 +84,12 @@ export default function ResultsModal({
                 ? 'bg-red-50/80 border-red-200'
                 : isAndrology
                 ? 'bg-blue-50/80 border-blue-200'
-                : 'bg-slate-50 border-blue-100'
+                : 'bg-slate-50 dark:bg-slate-800/60 border-blue-100'
             }`}
           >
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-3">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 block mb-1">
                   {isAr ? 'فئة التوجيه السريري المحسوبة' : 'Calculated Clinical Triage Tier'}
                 </span>
                 <div className="flex items-center gap-3">
@@ -99,7 +99,7 @@ export default function ResultsModal({
                         ? 'text-red-700'
                         : isAndrology
                         ? 'text-blue-900'
-                        : 'text-blue-950'
+                        : 'text-blue-950 dark:text-white'
                     }`}
                   >
                     {result.tier.replace('_', ' ')}
@@ -116,7 +116,7 @@ export default function ResultsModal({
               {/* Confidence Score Pill */}
               <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-blue-100 shadow-xs">
                 <Activity className="w-4 h-4 text-blue-600" />
-                <span className="text-xs font-bold text-blue-950">
+                <span className="text-xs font-bold text-blue-950 dark:text-white">
                   {Math.round(result.overall.confidence * 100)}% Confidence
                 </span>
               </div>
@@ -127,10 +127,10 @@ export default function ResultsModal({
               <p className="text-xs font-bold text-blue-900 uppercase tracking-wide mb-1">
                 {isAr ? 'الخدمة السريرية الموصى بها:' : 'Recommended Care Pathway:'}
               </p>
-              <p className="text-sm font-semibold text-slate-800 mb-2">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2">
                 {isAr ? result.recommendedServiceAr : result.recommendedService}
               </p>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                 {isAr ? result.actionGuidanceAr : result.actionGuidance}
               </p>
             </div>
@@ -156,7 +156,7 @@ export default function ResultsModal({
                       SLA: &le; {rf.slaMinutes} mins
                     </span>
                   </div>
-                  <p className="text-slate-700 leading-relaxed">{rf.reason}</p>
+                  <p className="text-slate-700 dark:text-slate-200 leading-relaxed">{rf.reason}</p>
                 </div>
               ))}
             </div>
@@ -164,7 +164,7 @@ export default function ResultsModal({
 
           {/* Domain Breakdown Cards */}
           <div>
-            <h4 className="text-xs font-bold text-blue-950 uppercase tracking-wider mb-3">
+            <h4 className="text-xs font-bold text-blue-950 dark:text-white uppercase tracking-wider mb-3">
               {isAr ? 'تفصيل درجات المخاطر حسب المحاور السريرية' : '5 Clinical Domain Scores & Drivers'}
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -174,7 +174,7 @@ export default function ResultsModal({
                   className="bg-white p-3.5 rounded-xl border border-blue-100 shadow-xs flex flex-col justify-between"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-blue-950">{dom.name}</span>
+                    <span className="text-xs font-bold text-blue-950 dark:text-white">{dom.name}</span>
                     <span
                       className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
                         dom.band === 'HIGH'
@@ -187,7 +187,7 @@ export default function ResultsModal({
                       {dom.band} ({dom.score}/100)
                     </span>
                   </div>
-                  <ul className="text-[11px] text-slate-600 space-y-1">
+                  <ul className="text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
                     {dom.drivers.map((drv, i) => (
                       <li key={i} className="flex items-start gap-1.5">
                         <span className="text-blue-500 font-bold">•</span>
@@ -212,19 +212,19 @@ export default function ResultsModal({
           )}
 
           {/* Mandatory Boundary Payload Display */}
-          <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 text-xs text-blue-950">
+          <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 text-xs text-blue-950 dark:text-white">
             <div className="flex items-center gap-2 font-bold mb-1">
               <ShieldCheck className="w-4 h-4 text-blue-700" />
               <span>Non-Negotiable Medical Boundary (Payload Invariant):</span>
             </div>
-            <p className="text-slate-600 leading-relaxed">
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
               {isAr ? result.boundary.statementAr : result.boundary.statement}
             </p>
           </div>
         </div>
 
         {/* Modal Actions */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-blue-50 flex flex-wrap items-center justify-between gap-3">
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/60 border-t border-blue-50 flex flex-wrap items-center justify-between gap-3">
           <button
             onClick={onOpenConsent}
             className="text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1.5 py-2 px-3 rounded-xl hover:bg-blue-50 transition-colors"

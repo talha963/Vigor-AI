@@ -159,7 +159,7 @@ export default function ConsentCentreModal({
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 dark:text-slate-200 hover:bg-slate-100 flex items-center justify-center transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -173,10 +173,10 @@ export default function ConsentCentreModal({
               <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 block mb-0.5">
                 {isAr ? 'المعرف المقنع المشفر (Pseudonym ID)' : 'Active Pseudonym ID (Cryptographic Salt HMAC)'}
               </span>
-              <span className="font-mono text-sm font-black text-blue-950 tracking-wide">
+              <span className="font-mono text-sm font-black text-blue-950 dark:text-white tracking-wide">
                 {pseudonymId || 'Generating anonymous session...'}
               </span>
-              <p className="text-[11px] text-slate-500 mt-1">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                 {isAr
                   ? 'يرتبط ملفك الطبي بهذا المعرف المشفر فقط، ولا تحفظ أسماء أو أرقام هاتف في جداول الفرز.'
                   : 'Clinical records link ONLY to this pseudonym. No personal identifiers are stored in clinical tables.'}
@@ -208,7 +208,7 @@ export default function ConsentCentreModal({
                   ? 'تم إبطال جميع رموز المشاركة الطبية فوراً، وأي محاولة وصول من المراكز ستواجه برفض (401 Unauthorized).'
                   : 'All facility share tokens have been immediately invalidated in MongoDB. Any access callback now fails with 401 Unauthorized.'}
               </p>
-              <div className="bg-white p-2.5 rounded-xl border border-emerald-100 font-mono text-[10px] text-slate-700 space-y-0.5">
+              <div className="bg-white p-2.5 rounded-xl border border-emerald-100 font-mono text-[10px] text-slate-700 dark:text-slate-200 space-y-0.5">
                 <p><strong>Receipt ID:</strong> {lastRevocationReceipt.receiptId}</p>
                 <p><strong>Revoked At:</strong> {lastRevocationReceipt.revokedAt}</p>
                 {lastRevocationReceipt.receiptSha256 && (
@@ -224,11 +224,11 @@ export default function ConsentCentreModal({
           {/* Active Consents Ledger */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h4 className="text-xs font-bold text-blue-950 uppercase tracking-wider flex items-center gap-2">
+              <h4 className="text-xs font-bold text-blue-950 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 <Server className="w-4 h-4 text-blue-600" />
                 <span>{isAr ? 'دفتر الموافقة المباشر (قاعدة Atlas)' : 'Live Consents in MongoDB Ledger'}</span>
               </h4>
-              <span className="text-[11px] text-slate-500 font-medium">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                 {consents.filter((c) => c.live).length} {isAr ? 'صلاحيات نشطة' : 'Active Scopes'}
               </span>
             </div>
@@ -239,7 +239,7 @@ export default function ConsentCentreModal({
                 <span>Querying Atlas ledger...</span>
               </div>
             ) : consents.length === 0 ? (
-              <div className="p-4 rounded-xl border border-dashed border-slate-200 text-center text-xs text-slate-500">
+              <div className="p-4 rounded-xl border border-dashed border-slate-200 text-center text-xs text-slate-500 dark:text-slate-400">
                 {isAr
                   ? 'لم يتم تسجيل موافقات بعد. تبدأ الموافقات عند ملء استمارة الفحص.'
                   : 'No consent records on file for this session yet. Granted automatically upon intake.'}
@@ -287,15 +287,15 @@ export default function ConsentCentreModal({
           {/* Active Referral Shares (if any) */}
           {shares.length > 0 && (
             <div>
-              <h4 className="text-xs font-bold text-blue-950 uppercase tracking-wider mb-2">
+              <h4 className="text-xs font-bold text-blue-950 dark:text-white uppercase tracking-wider mb-2">
                 {isAr ? 'رموز المشاركة المحالة للمراكز' : 'Dispatched Referral Share Tokens'}
               </h4>
               <div className="space-y-2">
                 {shares.map((s) => (
-                  <div key={s.referralId} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs flex items-center justify-between">
+                  <div key={s.referralId} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-800/60 text-xs flex items-center justify-between">
                     <div>
-                      <p className="font-bold text-blue-950">{s.facility || 'Accredited Facility'}</p>
-                      <p className="text-[10px] text-slate-500">Ref ID: {s.referralId}</p>
+                      <p className="font-bold text-blue-950 dark:text-white">{s.facility || 'Accredited Facility'}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Ref ID: {s.referralId}</p>
                     </div>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${s.revoked ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}`}>
                       {s.revoked ? 'REVOKED' : 'DISPATCHED'}
@@ -337,7 +337,7 @@ export default function ConsentCentreModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-blue-50 flex items-center justify-end">
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/60 border-t border-blue-50 flex items-center justify-end">
           <button
             onClick={onClose}
             className="px-5 py-2 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-colors"
