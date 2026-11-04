@@ -52,9 +52,26 @@ export default function WindingLadderJourney({
   const isAr = locale === 'ar';
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [scrollProgress, setScrollProgress] = useState<number>(0.08);
-  const [maxRevealedY, setMaxRevealedY] = useState<number>(380);
+  const [revealedY, setRevealedY] = useState<number>(350);
+  const [visibleSections, setVisibleSections] = useState<boolean[]>([
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+  ]);
   const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
+
+  // Dedicated section refs for bidirectional scroll tracking
+  const section1Ref = useRef<HTMLElement>(null);
+  const section2Ref = useRef<HTMLElement>(null);
+  const section3Ref = useRef<HTMLElement>(null);
+  const section4Ref = useRef<HTMLElement>(null);
+  const section5Ref = useRef<HTMLElement>(null);
+  const section6Ref = useRef<HTMLElement>(null);
+  const section7Ref = useRef<HTMLElement>(null);
 
   // Red-flag selector state (Section 02)
   const [selectedFlagIndex, setSelectedFlagIndex] = useState<number>(0);
@@ -76,54 +93,120 @@ export default function WindingLadderJourney({
     research: false,
   });
 
-  // Track page scroll to drive the progressive ladder drawing
+  // =========================================================================
+  // BIDIRECTIONAL SCROLL-SYNCHRONIZED PROGRESSIVE LADDER & CONTENT REVEAL
+  // =========================================================================
+  const RUNG_Y = useMemo(() => [700, 1450, 2200, 2950, 3700, 4450, 5000], []);
+
   useEffect(() => {
     let rafId: number;
+
     const handleScroll = () => {
       rafId = requestAnimationFrame(() => {
         if (!containerRef.current) return;
-        const rect = containerRef.current.getBoundingClientRect();
         const windowHeight = window.innerHeight;
-        // Total scrollable range of the ladder section
-        const totalHeight = rect.height;
-        // Current scroll offset relative to ladder top
-        const currentY = -rect.top + windowHeight * 0.45;
-        const progress = Math.max(0.06, Math.min(1, currentY / (totalHeight - windowHeight * 0.2)));
-        setScrollProgress(progress);
+        // Reveal line at 62% of viewport height (comfortable, direct eye-level reading zone)
+        const revealLine = windowHeight * 0.62;
+        // Hysteresis threshold at 66% prevents edge jitter on slow/micro scroll
+        const hideLine = windowHeight * 0.66;
+
+        const sectionEls = [
+          section1Ref.current,
+          section2Ref.current,
+          section3Ref.current,
+          section4Ref.current,
+          section5Ref.current,
+          section6Ref.current,
+          section7Ref.current,
+        ];
+
+        // Measure anchor points for each section relative to viewport
+        const anchors = sectionEls.map((el) => {
+          if (!el) return 999999;
+          const rect = el.getBoundingClientRect();
+          // Anchor point at 38% of section height (near the title/header)
+          return rect.top + rect.height * 0.38;
+        });
+
+        // 1. Bidirectional Reversible Section Visibility
+        setVisibleSections((prev) => {
+          return anchors.map((anchorY, i) => {
+            if (anchorY > 900000) return false;
+            const wasVisible = prev[i] || false;
+            if (wasVisible) {
+              // Hide only when scrolled back down below hide threshold
+              return anchorY <= hideLine;
+            } else {
+              // Reveal immediately when reaching reveal threshold
+              return anchorY <= revealLine;
+            }
+          });
+        });
+
+        // 2. Bidirectional Reversible Ladder Drawing Progress (revealedY)
+        if (anchors[0] > revealLine) {
+          // Above Section 01: ladder enters smoothly from top
+          const distToFirst = anchors[0] - revealLine;
+          const enterProgress = Math.max(0, Math.min(1, 1 - distToFirst / (windowHeight * 0.75)));
+          setRevealedY(320 + enterProgress * (RUNG_Y[0] - 320));
+        } else {
+          let computedY = RUNG_Y[0];
+          let matched = false;
+          for (let i = 0; i < anchors.length - 1; i++) {
+            const aCurrent = anchors[i];
+            const aNext = anchors[i + 1];
+            if (aCurrent <= revealLine && aNext > revealLine) {
+              const span = Math.max(1, aNext - aCurrent);
+              const t = Math.max(0, Math.min(1, (revealLine - aCurrent) / span));
+              computedY = RUNG_Y[i] + t * (RUNG_Y[i + 1] - RUNG_Y[i]);
+              matched = true;
+              break;
+            }
+          }
+          if (!matched && anchors[anchors.length - 1] <= revealLine) {
+            const aLast = anchors[anchors.length - 1];
+            const tLast = Math.max(0, Math.min(1, (revealLine - aLast) / (windowHeight * 0.4)));
+            computedY = RUNG_Y[RUNG_Y.length - 1] + tLast * (5100 - RUNG_Y[RUNG_Y.length - 1]);
+          }
+          setRevealedY(Math.min(5100, Math.max(320, computedY)));
+        }
+
         setShowScrollTop(window.scrollY > 400);
       });
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll, { passive: true });
     handleScroll();
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
       cancelAnimationFrame(rafId);
     };
-  }, []);
+  }, [RUNG_Y]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // =========================================================================
+  // =========================================================================
   // MATHEMATICAL PROCEDURAL LADDER GENERATOR (Smooth Winding 3D Ladder)
   // =========================================================================
-  const { leftRailPath, rightRailPath, rungs, totalHeight, revealedY, guideSketchPaths } = useMemo(() => {
-    const H = 5100;
-    const N = 400;
-    const W = 82; // Ladder width between rails
+  const H = 5100;
+  const N = 400;
+  const W = 82; // Ladder width between rails
 
-    // Centerline mathematical trajectory:
-    // Straight descending top -> Bends Right (y=700) -> Bends Left (y=1450) -> Bends Right (y=2200) -> Bends Left (y=2950) -> Bends Right (y=3700) -> Bends Left (y=4450) -> Straight Center (y=5000)
-    function getCenter(y: number) {
-      const damp = Math.min(1, Math.max(0, (y - 250) / 350));
-      const endDamp = Math.min(1, Math.max(0, (5100 - y) / 300));
-      const phase = (y - 325) * (2 * Math.PI / 1500);
-      const x = 500 + damp * endDamp * 140 * Math.sin(phase);
-      return { x, y };
-    }
+  function getCenter(y: number) {
+    const damp = Math.min(1, Math.max(0, (y - 250) / 350));
+    const endDamp = Math.min(1, Math.max(0, (5100 - y) / 300));
+    const phase = (y - 325) * (2 * Math.PI / 1500);
+    const x = 500 + damp * endDamp * 140 * Math.sin(phase);
+    return { x, y };
+  }
 
+  // Precompute static rails and rungs once
+  const { leftRailPath, rightRailPath, rungs } = useMemo(() => {
     const points: { x: number; y: number }[] = [];
     for (let i = 0; i <= N; i++) {
       points.push(getCenter((i / N) * H));
@@ -176,43 +259,32 @@ export default function WindingLadderJourney({
       }
     }
 
-    // Current revealed Y depth based on scroll progress
-    const revY = Math.min(H, Math.max(380, scrollProgress * H));
-
-    // Trailing sketch lines that extend slightly below the solid ladder
-    const sketchY = Math.min(H, revY + 80);
-    const p1 = getCenter(revY);
-    const p2 = getCenter(sketchY);
-    const guidePaths = [
-      `M ${(p1.x - 30).toFixed(1)} ${revY.toFixed(1)} Q ${(p1.x - 20).toFixed(1)} ${(revY + 40).toFixed(1)} ${(p2.x - 25).toFixed(1)} ${sketchY.toFixed(1)}`,
-      `M ${(p1.x + 30).toFixed(1)} ${revY.toFixed(1)} Q ${(p1.x + 40).toFixed(1)} ${(revY + 40).toFixed(1)} ${(p2.x + 25).toFixed(1)} ${sketchY.toFixed(1)}`,
-    ];
-
     return {
       leftRailPath: leftPath,
       rightRailPath: rightPath,
       rungs: computedRungs,
-      totalHeight: H,
-      revealedY: revY,
-      guideSketchPaths: guidePaths,
     };
-  }, [scrollProgress]);
+  }, []);
 
-  // Keep track of the highest point reached so revealed content stays visible
-  useEffect(() => {
-    if (revealedY > maxRevealedY) {
-      setMaxRevealedY(revealedY);
-    }
-  }, [revealedY, maxRevealedY]);
+  // Dynamic trailing sketch lines extending slightly below the revealed tip
+  const guideSketchPaths = useMemo(() => {
+    const sketchY = Math.min(H, revealedY + 80);
+    const p1 = getCenter(revealedY);
+    const p2 = getCenter(sketchY);
+    return [
+      `M ${(p1.x - 30).toFixed(1)} ${revealedY.toFixed(1)} Q ${(p1.x - 20).toFixed(1)} ${(revealedY + 40).toFixed(1)} ${(p2.x - 25).toFixed(1)} ${sketchY.toFixed(1)}`,
+      `M ${(p1.x + 30).toFixed(1)} ${revealedY.toFixed(1)} Q ${(p1.x + 40).toFixed(1)} ${(revealedY + 40).toFixed(1)} ${(p2.x + 25).toFixed(1)} ${sketchY.toFixed(1)}`,
+    ];
+  }, [revealedY]);
 
-  // Synchronized text reveal triggers (exact designated rungs)
-  const isSection1Visible = maxRevealedY >= 680;
-  const isSection2Visible = maxRevealedY >= 1420;
-  const isSection3Visible = maxRevealedY >= 2180;
-  const isSection4Visible = maxRevealedY >= 2920;
-  const isSection5Visible = maxRevealedY >= 3680;
-  const isSection6Visible = maxRevealedY >= 4420;
-  const isSection7Visible = maxRevealedY >= 4950;
+  // Synchronized bidirectional visibility flags
+  const isSection1Visible = visibleSections[0];
+  const isSection2Visible = visibleSections[1];
+  const isSection3Visible = visibleSections[2];
+  const isSection4Visible = visibleSections[3];
+  const isSection5Visible = visibleSections[4];
+  const isSection6Visible = visibleSections[5];
+  const isSection7Visible = visibleSections[6];
 
   // Derived WHO calculations
   const totalSperm = Math.round(volume * concentration * 10) / 10;
@@ -329,7 +401,7 @@ export default function WindingLadderJourney({
         <svg
           viewBox="0 0 1000 5100"
           className="w-full max-w-6xl h-full"
-          preserveAspectRatio="xMidYMin meet"
+          preserveAspectRatio="none"
         >
           <defs>
             {/* 3D Drop Shadow for the Ladder */}
@@ -490,13 +562,14 @@ export default function WindingLadderJourney({
       {/* =========================================================================
           EDITORIAL CONTENT SECTIONS ALONG THE LADDER (Alternating Left & Right)
           ========================================================================= */}
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 z-20">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 lg:pt-36 pb-20 z-20">
         
         {/* =====================================================================
             SECTION 01 (LEFT): Anonymous-First Male Reproductive Intake
             Reveals when ladder reaches y=680
             ===================================================================== */}
         <section
+          ref={section1Ref}
           id="section-intake"
           className="relative min-h-[750px] flex items-center mb-32 pt-8"
         >
@@ -589,6 +662,7 @@ export default function WindingLadderJourney({
             Reveals when ladder reaches y=1420
             ===================================================================== */}
         <section
+          ref={section2Ref}
           id="section-safety"
           className="relative min-h-[850px] flex items-center justify-end mb-32 pt-8"
         >
@@ -688,6 +762,7 @@ export default function WindingLadderJourney({
             Reveals when ladder reaches y=2180
             ===================================================================== */}
         <section
+          ref={section3Ref}
           id="section-consent"
           className="relative min-h-[750px] flex items-center mb-32 pt-8"
         >
@@ -804,6 +879,7 @@ export default function WindingLadderJourney({
             Reveals when ladder reaches y=2920
             ===================================================================== */}
         <section
+          ref={section4Ref}
           id="section-who"
           className="relative min-h-[920px] flex items-center justify-end mb-32 pt-8"
         >
@@ -987,6 +1063,7 @@ export default function WindingLadderJourney({
             Reveals when ladder reaches y=3680
             ===================================================================== */}
         <section
+          ref={section5Ref}
           id="section-care"
           className="relative min-h-[780px] flex items-center mb-32 pt-8"
         >
@@ -1088,6 +1165,7 @@ export default function WindingLadderJourney({
             Reveals when ladder reaches y=4420
             ===================================================================== */}
         <section
+          ref={section6Ref}
           id="section-telemetry"
           className="relative min-h-[820px] flex items-center justify-end mb-32 pt-8"
         >
@@ -1198,6 +1276,7 @@ export default function WindingLadderJourney({
             Reveals when ladder reaches y=4950
             ===================================================================== */}
         <section
+          ref={section7Ref}
           id="section-architecture"
           className="relative pt-16 pb-28 text-center flex flex-col items-center justify-center"
         >
