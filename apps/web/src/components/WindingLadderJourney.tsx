@@ -72,6 +72,8 @@ export default function WindingLadderJourney({
   const section5Ref = useRef<HTMLElement>(null);
   const section6Ref = useRef<HTMLElement>(null);
   const section7Ref = useRef<HTMLElement>(null);
+  const section7CardRef = useRef<HTMLDivElement>(null);
+  const [cutRegion, setCutRegion] = useState<{ top: number; height: number }>({ top: 4120, height: 560 });
 
   // Red-flag selector state (Section 02)
   const [selectedFlagIndex, setSelectedFlagIndex] = useState<number>(0);
@@ -96,6 +98,33 @@ export default function WindingLadderJourney({
   // =========================================================================
   // BIDIRECTIONAL SCROLL-SYNCHRONIZED PROGRESSIVE LADDER & CONTENT REVEAL
   // =========================================================================
+  // Ladder rungs and terminal hub apex (H=4750 terminates cleanly before Section 07 text)
+  // Dynamically calculate the exact SVG cutout region for the blur container
+  useEffect(() => {
+    const updateCut = () => {
+      if (!containerRef.current || !section7CardRef.current) return;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const cardRect = section7CardRef.current.getBoundingClientRect();
+      if (containerRect.height > 0) {
+        const topY = ((cardRect.top - containerRect.top) / containerRect.height) * 4750;
+        const heightY = (cardRect.height / containerRect.height) * 4750;
+        setCutRegion({
+          top: Math.round(Math.max(3800, topY)),
+          height: Math.round(Math.max(400, heightY)),
+        });
+      }
+    };
+
+    updateCut();
+
+    if (typeof ResizeObserver !== 'undefined' && containerRef.current && section7CardRef.current) {
+      const ro = new ResizeObserver(updateCut);
+      ro.observe(containerRef.current);
+      ro.observe(section7CardRef.current);
+      return () => ro.disconnect();
+    }
+  }, []);
+
   // Ladder rungs and terminal hub apex (H=4750 terminates cleanly before Section 07 text)
   const RUNG_Y = useMemo(() => [700, 1450, 2200, 2950, 3700, 4450, 4750], []);
 
@@ -412,9 +441,22 @@ export default function WindingLadderJourney({
               <feDropShadow dx="-10" dy="16" stdDeviation="14" floodColor="#2A241C" floodOpacity="0.14" />
             </filter>
 
-            {/* Scroll-driven progressive reveal mask */}
+            {/* Scroll-driven progressive reveal mask with blur container cutout */}
             <mask id="ladder-scroll-mask">
+              {/* White reveals the ladder progressively */}
               <rect x="-600" y="0" width="2200" height={revealedY} fill="white" />
+
+              {/* Black cuts out the ladder behind the blur container so it is 100% hidden */}
+              {cutRegion.top > 0 && (
+                <rect
+                  x="80"
+                  y={cutRegion.top - 2}
+                  width="840"
+                  height={cutRegion.height + 4}
+                  rx="28"
+                  fill="black"
+                />
+              )}
             </mask>
           </defs>
 
@@ -538,6 +580,14 @@ export default function WindingLadderJourney({
               <line x1="473" y1="4450" x2="590" y2="4450" stroke="#8A8172" strokeWidth="1.2" strokeDasharray="3 3" className="dark:stroke-stone-500" />
               <circle cx="590" cy="4450" r="4.5" fill="#FAF8F5" stroke="#665F52" strokeWidth="1.8" className="dark:fill-stone-900 dark:stroke-stone-400" />
             </g>
+
+            {/* Interface end caps where ladder cuts at top of blur container */}
+            <ellipse cx="462" cy={cutRegion.top} rx="3.5" ry="3.5" fill="#EFEAE0" stroke="#8C8375" strokeWidth="1" />
+            <ellipse cx="538" cy={cutRegion.top} rx="3.5" ry="3.5" fill="#EFEAE0" stroke="#8C8375" strokeWidth="1" />
+
+            {/* Interface end caps where ladder starts again when blur block ends */}
+            <ellipse cx="462" cy={cutRegion.top + cutRegion.height} rx="3.5" ry="3.5" fill="#EFEAE0" stroke="#8C8375" strokeWidth="1" />
+            <ellipse cx="538" cy={cutRegion.top + cutRegion.height} rx="3.5" ry="3.5" fill="#EFEAE0" stroke="#8C8375" strokeWidth="1" />
 
             {/* Bottom Rounded End Caps of the Ladder at Terminus (y=4750) */}
             <ellipse cx="462" cy="4750" rx="3.5" ry="3.5" fill="#EFEAE0" stroke="#8C8375" strokeWidth="1" />
@@ -1288,6 +1338,7 @@ export default function WindingLadderJourney({
           className="relative pt-12 pb-28 text-center flex flex-col items-center justify-center z-20"
         >
           <div
+            ref={section7CardRef}
             className={`relative z-20 max-w-3xl mx-auto p-8 sm:p-12 rounded-3xl bg-[#FAF8F5]/94 dark:bg-[#181715]/94 backdrop-blur-md border border-[#DDD7C8]/70 dark:border-stone-800/70 shadow-sm flex flex-col items-center justify-center transition-all duration-700 ease-out ${
               isSection7Visible
                 ? 'opacity-100 translate-y-0 pointer-events-auto'
