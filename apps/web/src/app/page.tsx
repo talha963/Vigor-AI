@@ -99,6 +99,7 @@ export default function Home() {
         onOpenClinician={() => setIsClinicianOpen(true)}
         onOpenArchitecture={() => setIsArchitectureOpen(true)}
         onOpenAtHomeKit={() => setIsAtHomeKitOpen(true)}
+        onOpenBooking={() => setIsBookingOpen(true)}
       />
 
       {/* Main Page Surfaces with pt-16 offset for fixed header */}
