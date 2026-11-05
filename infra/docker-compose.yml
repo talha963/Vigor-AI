@@ -146,6 +146,11 @@ services:
       VIGOR_INTERNAL_TOKEN: ${VIGOR_INTERNAL_TOKEN}
       VIGOR_PSEUDONYM_SALT: ${VIGOR_PSEUDONYM_SALT}
       VIGOR_CLINICIAN_ACCESS_KEY: ${VIGOR_CLINICIAN_ACCESS_KEY:-vigor-doctor-demo}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      NOTIFY_FROM: ${NOTIFY_FROM:-tk706051@gmail.com}
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
