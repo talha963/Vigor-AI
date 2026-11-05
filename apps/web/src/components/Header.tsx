@@ -173,95 +173,120 @@ export default function Header({
 
                 {/* Dropdown Floating Popover */}
                 {protocolsDropdownOpen && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-72 rounded-2xl bg-[#FAF8F5]/98 dark:bg-[#1A1815]/98 backdrop-blur-2xl border border-[#DDD7C8] dark:border-stone-800 p-2 shadow-2xl z-50 text-left rtl:text-right normal-case tracking-normal animate-in fade-in slide-in-from-top-2 duration-150">
-                    <div className="p-1.5 space-y-1 text-xs">
-                      <a
-                        href="#section-safety"
-                        onClick={() => setProtocolsDropdownOpen(false)}
-                        className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800/80 transition-colors group"
-                      >
-                        <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
-                        <div>
-                          <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs">
-                            {isAr ? 'قواعد السلامة (16 علامة حمراء)' : 'Safety Gates (16 Red Flags)'}
-                          </p>
-                          <p className="text-[10px] text-stone-500 dark:text-stone-400">
-                            {isAr ? 'تحديد وتوجيه حالات الطوارئ الحادة' : 'Zero-miss deterministic triage'}
-                          </p>
-                        </div>
-                      </a>
+                  <>
+                    {/* Fixed invisible click shield to handle clicks outside */}
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setProtocolsDropdownOpen(false)}
+                    />
+                    <div
+                      style={{
+                        backgroundColor: isDark ? '#181614' : '#FAF8F5',
+                        boxShadow: isDark
+                          ? '0 25px 60px -15px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.1)'
+                          : '0 25px 60px -15px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.08)',
+                      }}
+                      className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-80 rounded-2xl border border-[#DDD7C8] dark:border-stone-700 p-2 z-50 text-left rtl:text-right normal-case tracking-normal font-sans animate-in fade-in slide-in-from-top-2 duration-150"
+                    >
+                      <div className="p-1 space-y-1 text-xs">
+                        <a
+                          href="#section-safety"
+                          onClick={() => setProtocolsDropdownOpen(false)}
+                          className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#EFECE3]/80 dark:hover:bg-[#25221E] transition-colors group"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-800 flex items-center justify-center shrink-0">
+                            <Shield className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs">
+                              {isAr ? 'قواعد السلامة (16 علامة حمراء)' : 'Safety Gates (16 Red Flags)'}
+                            </p>
+                            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-tight">
+                              {isAr ? 'تحديد وتوجيه حالات الطوارئ الحادة' : 'Zero-miss deterministic triage'}
+                            </p>
+                          </div>
+                        </a>
 
-                      <a
-                        href="#section-who"
-                        onClick={() => setProtocolsDropdownOpen(false)}
-                        className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800/80 transition-colors group"
-                      >
-                        <Microscope className="w-4 h-4 text-blue-600 dark:text-sky-400 mt-0.5 shrink-0" />
-                        <div>
-                          <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs">
-                            {isAr ? 'معايير WHO 2021' : 'WHO 2021 Reference'}
-                          </p>
-                          <p className="text-[10px] text-stone-500 dark:text-stone-400">
-                            {isAr ? 'النسخة السادسة لتحليل السائل المنوي' : '6th Edition Semen Analysis Limits'}
-                          </p>
-                        </div>
-                      </a>
+                        <a
+                          href="#section-who"
+                          onClick={() => setProtocolsDropdownOpen(false)}
+                          className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#EFECE3]/80 dark:hover:bg-[#25221E] transition-colors group"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950/80 border border-blue-300 dark:border-blue-800 flex items-center justify-center shrink-0">
+                            <Microscope className="w-4 h-4 text-blue-700 dark:text-sky-400" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs">
+                              {isAr ? 'معايير WHO 2021' : 'WHO 2021 Reference'}
+                            </p>
+                            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-tight">
+                              {isAr ? 'النسخة السادسة لتحليل السائل المنوي' : '6th Edition Semen Analysis Limits'}
+                            </p>
+                          </div>
+                        </a>
 
-                      <a
-                        href="#section-care"
-                        onClick={() => setProtocolsDropdownOpen(false)}
-                        className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800/80 transition-colors group"
-                      >
-                        <Activity className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                        <div>
-                          <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs">
-                            {isAr ? 'شبكة الرعاية بأبوظبي' : 'Care Delivery Network'}
-                          </p>
-                          <p className="text-[10px] text-stone-500 dark:text-stone-400">
-                            {isAr ? 'كليفلاند كلينك ومراكز الإخصاب المعتمدة' : 'Cleveland Clinic & Partner Hubs'}
-                          </p>
-                        </div>
-                      </a>
+                        <a
+                          href="#section-care"
+                          onClick={() => setProtocolsDropdownOpen(false)}
+                          className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#EFECE3]/80 dark:hover:bg-[#25221E] transition-colors group"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-800 flex items-center justify-center shrink-0">
+                            <Activity className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs">
+                              {isAr ? 'شبكة الرعاية بأبوظبي' : 'Care Delivery Network'}
+                            </p>
+                            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-tight">
+                              {isAr ? 'كليفلاند كلينك ومراكز الإخصاب المعتمدة' : 'Cleveland Clinic & Partner Hubs'}
+                            </p>
+                          </div>
+                        </a>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProtocolsDropdownOpen(false);
-                          onOpenConsent();
-                        }}
-                        className="w-full flex items-start gap-2.5 p-2 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800/80 transition-colors text-left rtl:text-right"
-                      >
-                        <Lock className="w-4 h-4 text-stone-600 dark:text-stone-400 mt-0.5 shrink-0" />
-                        <div>
-                          <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs">
-                            {isAr ? 'سجل الموافقة المشفر' : 'Zero-PII Consent Ledger'}
-                          </p>
-                          <p className="text-[10px] text-stone-500 dark:text-stone-400">
-                            {isAr ? 'إيصالات إلغاء المعالجة الفورية' : 'Sovereign cryptographically bound'}
-                          </p>
-                        </div>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProtocolsDropdownOpen(false);
+                            onOpenConsent();
+                          }}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#EFECE3]/80 dark:hover:bg-[#25221E] transition-colors text-left rtl:text-right"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-stone-200 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 flex items-center justify-center shrink-0">
+                            <Lock className="w-4 h-4 text-stone-700 dark:text-stone-300" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs">
+                              {isAr ? 'سجل الموافقة المشفر' : 'Zero-PII Consent Ledger'}
+                            </p>
+                            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-tight">
+                              {isAr ? 'إيصالات إلغاء المعالجة الفورية' : 'Sovereign cryptographically bound'}
+                            </p>
+                          </div>
+                        </button>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProtocolsDropdownOpen(false);
-                          onOpenArchitecture();
-                        }}
-                        className="w-full flex items-start gap-2.5 p-2 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800/80 transition-colors text-left rtl:text-right"
-                      >
-                        <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400 mt-0.5 shrink-0" />
-                        <div>
-                          <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs">
-                            {isAr ? 'معمارية النظام ومحرك n8n' : 'Engine Architecture'}
-                          </p>
-                          <p className="text-[10px] text-stone-500 dark:text-stone-400">
-                            {isAr ? '10 مسارات عمل ذاتية التشغيل' : '10 Sovereign n8n Workflows'}
-                          </p>
-                        </div>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProtocolsDropdownOpen(false);
+                            onOpenArchitecture();
+                          }}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#EFECE3]/80 dark:hover:bg-[#25221E] transition-colors text-left rtl:text-right"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 border border-indigo-300 dark:border-indigo-800 flex items-center justify-center shrink-0">
+                            <Layers className="w-4 h-4 text-indigo-700 dark:text-indigo-400" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs">
+                              {isAr ? 'معمارية النظام ومحرك n8n' : 'Engine Architecture'}
+                            </p>
+                            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-tight">
+                              {isAr ? '10 مسارات عمل ذاتية التشغيل' : '10 Sovereign n8n Workflows'}
+                            </p>
+                          </div>
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
 
