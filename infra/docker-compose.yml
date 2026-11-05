@@ -83,6 +83,7 @@ services:
   n8n-init:
     image: *n8n-image
     container_name: vigor-n8n-init
+    profiles: ["docker-n8n"]
     restart: "no"
     user: node
     environment:
@@ -99,6 +100,7 @@ services:
   n8n:
     image: *n8n-image
     container_name: vigor-n8n
+    profiles: ["docker-n8n"]
     restart: unless-stopped
     depends_on:
       n8n-init:
@@ -137,15 +139,15 @@ services:
     environment:
       PORT: "3000"
       NODE_ENV: production
-      N8N_INTERNAL_URL: "http://n8n:5678/webhook/:path*"
-      N8N_WEBHOOK_URL: "http://n8n:5678"
+      N8N_INTERNAL_URL: "${N8N_INTERNAL_URL:-http://host.docker.internal:5678/webhook/:path*}"
+      N8N_WEBHOOK_URL: "${N8N_WEBHOOK_URL:-http://host.docker.internal:5678}"
       MONGODB_URI: ${MONGODB_URI:-mongodb://vigor:vigor@mongo:27017/?authSource=admin}
       MONGODB_DB: ${MONGODB_DB:-vigor}
       VIGOR_INTERNAL_TOKEN: ${VIGOR_INTERNAL_TOKEN}
       VIGOR_PSEUDONYM_SALT: ${VIGOR_PSEUDONYM_SALT}
       VIGOR_CLINICIAN_ACCESS_KEY: ${VIGOR_CLINICIAN_ACCESS_KEY:-vigor-doctor-demo}
-    depends_on:
-      - n8n
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # -------------------------------------------------------------------------
   # The repo tooling, in the same image, so nothing has to be installed on the
