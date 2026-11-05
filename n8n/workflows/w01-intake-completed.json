@@ -627,6 +627,7 @@
       ],
       "notes": "Deliberately a webhook call, not a sub-workflow: the escalation becomes its own execution record with its own retry and SLA clock.",
       "notesInFlow": false,
+      "onError": "continueRegularOutput",
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,

@@ -412,6 +412,7 @@ return [{ json: {
     headers: { "Content-Type": "application/json" },
     body: "={{ JSON.stringify($json) }}",
     retry: { tries: 3, waitMs: 2000 },
+    onError: "continueRegularOutput",
     notes:
       "Deliberately a webhook call, not a sub-workflow: the escalation becomes its own " +
       "execution record with its own retry and SLA clock.",

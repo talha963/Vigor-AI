@@ -1,0 +1,1119 @@
+{
+  "name": "Vigor 01 · Intake Completed → Risk & Triage",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 01 · Intake → Risk → Triage\nThe entry point for every assessment.\n\n**Order matters.** Consent gate → deterministic red-flag gate → agent service → reconcile (escalate-only) → persist → route.\n\nIf the agent service is down the red-flag gate still routes urgent cases. A model result can raise the tier, never lower it.",
+        "height": 260,
+        "width": 520,
+        "color": 4
+      },
+      "id": "d972d5b0-5607-4c88-9907-914158078fae",
+      "name": "Note 13d76f76",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -180,
+        -380
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vigor/intake-completed",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "7bd0adca-5c4a-488e-9b4a-a6fb5a4aa568",
+      "name": "Webhook intake.completed",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -180,
+        -40
+      ],
+      "notes": "POST /webhook/vigor/intake-completed — see packages/contracts/events.schema.json",
+      "notesInFlow": false,
+      "webhookId": "5fd73b3e-94ac-4622-93ac-f48f92acf2fc"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ffce96b7-55a6-40b7-96a6-024a57a603dd",
+              "name": "vigorConfig",
+              "type": "object",
+              "value": "={{ (() => { const d = { agentServiceUrl: 'http://host.docker.internal:8000', internalToken: '', notifyMode: 'DEMO', oncallEmail: 'oncall@example-clinic.ae', escalationSlaMinutes: 60, quietHoursStart: 21, quietHoursEnd: 8, webhookBase: 'http://localhost:5678', envBlocked: true }; try { return { agentServiceUrl: $env.VIGOR_AGENT_SERVICE_URL || d.agentServiceUrl, internalToken: $env.VIGOR_INTERNAL_TOKEN || '', notifyMode: $env.VIGOR_NOTIFY_MODE || 'DEMO', oncallEmail: $env.VIGOR_ONCALL_EMAIL || d.oncallEmail, escalationSlaMinutes: Number($env.VIGOR_ESCALATION_SLA_MINUTES || 60), quietHoursStart: Number($env.VIGOR_QUIET_HOURS_START || 21), quietHoursEnd: Number($env.VIGOR_QUIET_HOURS_END || 8), webhookBase: ($env.WEBHOOK_URL || 'http://localhost:5678/').replace(/\\/$/, ''), envBlocked: false }; } catch (e) { return d; } })() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "17a32b0e-87da-4f12-86da-3d7f85da3bec",
+      "name": "Vigor config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -60,
+        -176
+      ],
+      "notes": "The only node that reads $env. Needs N8N_BLOCK_ENV_ACCESS_IN_NODE=false, and falls back to defaults with envBlocked:true if that is missing.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst body = $json.body ?? $json;\n\nconst problems = [];\nconst need = (k, v) => { if (v === undefined || v === null || v === '') problems.push('missing:' + k); };\n\nneed('eventType', body.eventType);\nneed('pseudonymId', body.pseudonymId);\nneed('assessmentId', body.assessmentId);\nneed('consentId', body.consentId);\n\nif (body.eventType && body.eventType !== 'intake.completed') {\n  problems.push('eventType:expected intake.completed');\n}\nif (!body.answers || typeof body.answers !== 'object') {\n  problems.push('missing:answers');\n}\n\nconst locale = body.locale === 'ar' ? 'ar' : 'en';\n\nreturn [{\n  json: {\n    ok: problems.length === 0,\n    problems,\n    receivedAt: nowIso(),\n    runId: $execution.id,\n    idempotencyKey: body.idempotencyKey ?? (body.assessmentId + ':intake.completed'),\n    pseudonymId: body.pseudonymId ?? null,\n    assessmentId: body.assessmentId ?? null,\n    consentId: body.consentId ?? null,\n    locale,\n    startedAt: body.startedAt ?? null,\n    durationSec: body.durationSec ?? null,\n    answers: body.answers ?? {},\n    answeredItemCount: body.answers ? Object.keys(body.answers).length : 0,\n    skippedSensitive: body.skippedSensitive ?? [],\n  },\n}];"
+      },
+      "id": "5129c1c8-6560-4a40-a860-3ef967603d66",
+      "name": "Validate envelope",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        -40
+      ],
+      "notes": "Rejects anything that does not match the event contract. No clinical logic here.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "53e6ec90-10ea-4d68-93ea-b22112eab08e",
+              "leftValue": "={{ $json.ok }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "86e19bff-c787-4fff-8887-e192c987e325",
+      "name": "Envelope valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        300,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst v = $('Validate envelope').first().json;\nreturn [{ json: { accepted: false, error: 'invalid_event', problems: v.problems, runId: v.runId } }];"
+      },
+      "id": "5d5259f7-823d-45f7-833d-978a843d991d",
+      "name": "Build 400 response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        -210
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "90b6a973-6b3b-47d3-ac3b-49666d3b4af9",
+      "name": "Respond 400",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        780,
+        -210
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "find",
+        "collection": "consents",
+        "query": "={{ JSON.stringify({ pseudonymId: $json.pseudonymId }) }}",
+        "options": {
+          "limit": 50,
+          "sort": "{\"grantedAt\":-1}"
+        }
+      },
+      "id": "00e5c6ae-28f7-44b2-a7f7-531f26f7518c",
+      "name": "Load consent ledger",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        540,
+        130
+      ],
+      "notes": "The ledger is append-only, so we read it all and let the gate decide.",
+      "notesInFlow": false,
+      "alwaysOutputData": true,
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nfunction evaluateConsent(consentDocs, requiredScope) {\n  const now = Date.now();\n  const superseded = new Set(\n    (consentDocs || []).map((c) => c.supersedes).filter(Boolean)\n  );\n  const live = (consentDocs || [])\n    .filter((c) => c.scope === requiredScope)\n    .filter((c) => c.granted === true)\n    .filter((c) => !c.revokedAt)\n    .filter((c) => !superseded.has(c.consentId))\n    .filter((c) => !c.expiresAt || new Date(c.expiresAt).getTime() > now)\n    .sort((x, y) => new Date(y.grantedAt) - new Date(x.grantedAt));\n\n  if (live.length === 0) {\n    const reason = (consentDocs || []).some((c) => c.scope === requiredScope)\n      ? 'consent_expired_or_revoked'\n      : 'consent_absent';\n    return { authorised: false, reason, consentId: null, version: null };\n  }\n  return {\n    authorised: true,\n    reason: 'consent_live',\n    consentId: live[0].consentId,\n    version: live[0].version,\n    expiresAt: live[0].expiresAt ?? null,\n  };\n}\n\n\nconst intake = $('Validate envelope').first().json;\nconst docs = $('Load consent ledger').all().map((i) => i.json).filter((d) => d && d.scope);\nconst verdict = evaluateConsent(docs, 'ASSESSMENT');\n\nreturn [{ json: { ...intake, consent: verdict } }];"
+      },
+      "id": "88da4384-6611-4abc-a911-3f7568113de2",
+      "name": "Consent gate · ASSESSMENT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        130
+      ],
+      "notes": "No consent, no processing. The refusal itself is audited.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c41a6dd4-9c2c-47ec-9f2c-eca59e2ceb12",
+              "leftValue": "={{ $json.consent.authorised }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "0b670261-85d7-4975-82d7-44bc83d7464f",
+      "name": "Consent authorised?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1020,
+        130
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Consent gate · ASSESSMENT').first().json;\nreturn [{ json: auditDoc({\n  actor: 'workflow:01-intake-completed',\n  action: 'PROCESSING_REFUSED_NO_CONSENT',\n  pseudonymId: s.pseudonymId,\n  subjectRef: { collection: 'assessments', id: s.assessmentId },\n  runId: s.runId,\n  outcome: 'refused',\n  meta: { requiredScope: 'ASSESSMENT', reason: s.consent.reason },\n}) }];"
+      },
+      "id": "eedc8b50-6ad0-4a28-add0-4ee16cd04d4e",
+      "name": "Doc · audit consent refusal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        470
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "audit_log",
+        "fields": "at,actor,action,pseudonymId,subjectRef,consentId,workflowRunId,outcome,meta",
+        "options": {}
+      },
+      "id": "b02dfe78-dbca-4b50-9ecb-0009ddcafe76",
+      "name": "Write audit · refusal",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        1500,
+        470
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst s = $('Consent gate · ASSESSMENT').first().json;\nreturn [{ json: {\n  accepted: false,\n  error: 'consent_required',\n  reason: s.consent.reason,\n  requiredScope: 'ASSESSMENT',\n  runId: s.runId,\n} }];"
+      },
+      "id": "f9def258-d1f5-47b0-94f5-fc69d3f5fad6",
+      "name": "Build 403 response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        470
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 403
+        }
+      },
+      "id": "8c06fae6-04e8-446a-83e8-d2d702e8d144",
+      "name": "Respond 403",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1980,
+        470
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst RED_FLAGS = [\n  { code: 'RF_ACUTE_SCROTAL_PAIN', severity: 'URGENT',\n    test: (a) => (a.symptoms || []).includes('acute_scrotal_pain')\n                 || ((a.symptoms || []).includes('scrotal_swelling') && a.painOnsetHours != null && a.painOnsetHours <= 6),\n    reason: 'Acute scrotal pain or swelling of sudden onset. Testicular torsion must be excluded within hours.' },\n\n  { code: 'RF_TESTICULAR_MASS', severity: 'URGENT',\n    test: (a) => (a.symptoms || []).includes('testicular_lump'),\n    reason: 'A testicular lump requires urgent assessment to exclude malignancy.' },\n\n  { code: 'RF_PRIAPISM', severity: 'URGENT',\n    test: (a) => (a.symptoms || []).includes('prolonged_erection'),\n    reason: 'A prolonged painful erection is an emergency.' },\n\n  { code: 'RF_GU_TRAUMA', severity: 'URGENT',\n    test: (a) => (a.symptoms || []).includes('recent_genital_trauma'),\n    reason: 'Recent significant genital trauma requires immediate assessment.' },\n\n  { code: 'RF_ACUTE_URINARY_RETENTION', severity: 'URGENT',\n    test: (a) => (a.symptoms || []).includes('cannot_pass_urine'),\n    reason: 'Inability to pass urine requires immediate assessment.' },\n\n  { code: 'RF_FEBRILE_GU_INFECTION', severity: 'SAME_DAY',\n    test: (a) => (a.symptoms || []).includes('fever')\n                 && ((a.symptoms || []).includes('dysuria')\n                     || (a.symptoms || []).includes('urethral_discharge')\n                     || (a.symptoms || []).includes('scrotal_ache')),\n    reason: 'Fever with urinary or genital symptoms suggests infection needing same-day care.' },\n\n  { code: 'RF_PITUITARY_SUSPICION', severity: 'SAME_DAY',\n    test: (a) => (a.symptoms || []).includes('visual_field_loss')\n                 && ((a.symptoms || []).includes('gynaecomastia') || a.libidoChange === 'absent'),\n    reason: 'Visual change with endocrine symptoms raises the possibility of a pituitary lesion.' },\n\n  { code: 'RF_BILATERAL_UNDESCENDED', severity: 'ROUTINE_REVIEW',\n    test: (a) => a.undescendedTestis === 'bilateral_uncorrected',\n    reason: 'Uncorrected bilateral undescended testes need specialist review.' },\n\n  { code: 'RF_ABSENT_VAS', severity: 'ROUTINE_REVIEW',\n    test: (a) => a.absentVas === true,\n    reason: 'Absent vas deferens warrants genetic counselling and specialist review.' },\n];\n\nconst SEVERITY_SLA_MINUTES = { URGENT: 60, SAME_DAY: 480, ROUTINE_REVIEW: 2880 };\nconst SEVERITY_TIER = {\n  URGENT: 'URGENT',\n  SAME_DAY: 'URGENT',\n  ROUTINE_REVIEW: 'ANDROLOGY_UROLOGY',\n};\n\nfunction runRedFlagGate(answers) {\n  const a = answers || {};\n  const hits = RED_FLAGS.filter((f) => {\n    try { return f.test(a); } catch (e) { return false; }\n  });\n  if (hits.length === 0) {\n    return { redFlags: [], severity: null, minimumTier: null, reasons: [] };\n  }\n  const order = ['URGENT', 'SAME_DAY', 'ROUTINE_REVIEW'];\n  const severity = order.find((s) => hits.some((h) => h.severity === s));\n  return {\n    redFlags: hits.map((h) => h.code),\n    severity,\n    slaMinutes: SEVERITY_SLA_MINUTES[severity],\n    minimumTier: SEVERITY_TIER[severity],\n    reasons: hits.map((h) => ({ code: h.code, severity: h.severity, reason: h.reason })),\n  };\n}\n\n\nconst s = $('Consent gate · ASSESSMENT').first().json;\nconst gate = runRedFlagGate(s.answers);\n\nreturn [{ json: {\n  ...s,\n  gate,\n  agentRequest: {\n    assessmentId: s.assessmentId,\n    pseudonymId: s.pseudonymId,\n    locale: s.locale,\n    answers: s.answers,\n    // The service is told what the gate found so its narration cannot contradict it.\n    deterministicGate: gate,\n  },\n} }];"
+      },
+      "id": "97f22208-2bee-4480-aeee-39392dee37a6",
+      "name": "Red-flag gate (deterministic)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        130
+      ],
+      "notes": "Runs before any model call. Pure functions over the submitted answers. Defined in n8n/src/shared.mjs and reviewed in docs/06-clinical-safety.md.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Vigor config').first().json.vigorConfig.agentServiceUrl }}/internal/v1/score-and-triage",
+        "options": {
+          "timeout": 25000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Vigor-Signature",
+              "value": "={{ $('Vigor config').first().json.vigorConfig.internalToken }}"
+            },
+            {
+              "name": "X-Vigor-Run-Id",
+              "value": "={{ $execution.id }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.agentRequest) }}"
+      },
+      "id": "c18ba681-79f4-4995-b6f4-d4dc77f4d66f",
+      "name": "Agent service · score & triage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1500,
+        130
+      ],
+      "notes": "Unavailability is expected, not exceptional. onError continues so the reconcile step can fall back to the deterministic gate.",
+      "notesInFlow": false,
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1500,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst RED_FLAGS = [\n  { code: 'RF_ACUTE_SCROTAL_PAIN', severity: 'URGENT',\n    test: (a) => (a.symptoms || []).includes('acute_scrotal_pain')\n                 || ((a.symptoms || []).includes('scrotal_swelling') && a.painOnsetHours != null && a.painOnsetHours <= 6),\n    reason: 'Acute scrotal pain or swelling of sudden onset. Testicular torsion must be excluded within hours.' },\n\n  { code: 'RF_TESTICULAR_MASS', severity: 'URGENT',\n    test: (a) => (a.symptoms || []).includes('testicular_lump'),\n    reason: 'A testicular lump requires urgent assessment to exclude malignancy.' },\n\n  { code: 'RF_PRIAPISM', severity: 'URGENT',\n    test: (a) => (a.symptoms || []).includes('prolonged_erection'),\n    reason: 'A prolonged painful erection is an emergency.' },\n\n  { code: 'RF_GU_TRAUMA', severity: 'URGENT',\n    test: (a) => (a.symptoms || []).includes('recent_genital_trauma'),\n    reason: 'Recent significant genital trauma requires immediate assessment.' },\n\n  { code: 'RF_ACUTE_URINARY_RETENTION', severity: 'URGENT',\n    test: (a) => (a.symptoms || []).includes('cannot_pass_urine'),\n    reason: 'Inability to pass urine requires immediate assessment.' },\n\n  { code: 'RF_FEBRILE_GU_INFECTION', severity: 'SAME_DAY',\n    test: (a) => (a.symptoms || []).includes('fever')\n                 && ((a.symptoms || []).includes('dysuria')\n                     || (a.symptoms || []).includes('urethral_discharge')\n                     || (a.symptoms || []).includes('scrotal_ache')),\n    reason: 'Fever with urinary or genital symptoms suggests infection needing same-day care.' },\n\n  { code: 'RF_PITUITARY_SUSPICION', severity: 'SAME_DAY',\n    test: (a) => (a.symptoms || []).includes('visual_field_loss')\n                 && ((a.symptoms || []).includes('gynaecomastia') || a.libidoChange === 'absent'),\n    reason: 'Visual change with endocrine symptoms raises the possibility of a pituitary lesion.' },\n\n  { code: 'RF_BILATERAL_UNDESCENDED', severity: 'ROUTINE_REVIEW',\n    test: (a) => a.undescendedTestis === 'bilateral_uncorrected',\n    reason: 'Uncorrected bilateral undescended testes need specialist review.' },\n\n  { code: 'RF_ABSENT_VAS', severity: 'ROUTINE_REVIEW',\n    test: (a) => a.absentVas === true,\n    reason: 'Absent vas deferens warrants genetic counselling and specialist review.' },\n];\n\nconst SEVERITY_SLA_MINUTES = { URGENT: 60, SAME_DAY: 480, ROUTINE_REVIEW: 2880 };\nconst SEVERITY_TIER = {\n  URGENT: 'URGENT',\n  SAME_DAY: 'URGENT',\n  ROUTINE_REVIEW: 'ANDROLOGY_UROLOGY',\n};\n\nfunction runRedFlagGate(answers) {\n  const a = answers || {};\n  const hits = RED_FLAGS.filter((f) => {\n    try { return f.test(a); } catch (e) { return false; }\n  });\n  if (hits.length === 0) {\n    return { redFlags: [], severity: null, minimumTier: null, reasons: [] };\n  }\n  const order = ['URGENT', 'SAME_DAY', 'ROUTINE_REVIEW'];\n  const severity = order.find((s) => hits.some((h) => h.severity === s));\n  return {\n    redFlags: hits.map((h) => h.code),\n    severity,\n    slaMinutes: SEVERITY_SLA_MINUTES[severity],\n    minimumTier: SEVERITY_TIER[severity],\n    reasons: hits.map((h) => ({ code: h.code, severity: h.severity, reason: h.reason })),\n  };\n}\n\n\nconst s = $('Red-flag gate (deterministic)').first().json;\nconst raw = $('Agent service · score & triage').first().json ?? {};\nconst engine = raw && raw.overall ? raw : (raw.body && raw.body.overall ? raw.body : null);\n\nconst engineAvailable = Boolean(engine && engine.triage && engine.triage.tier);\nconst degraded = !engineAvailable;\n\n// Baseline tier when we have no engine output at all.\nconst fallbackTier = s.gate.minimumTier\n  ?? (Number(s.answers.monthsTrying) >= 12 ? 'ANDROLOGY_UROLOGY' : 'PRIMARY_CARE');\n\nlet tier = engineAvailable ? engine.triage.tier : fallbackTier;\nconst tierBeforeClamp = tier;\n\nif (s.gate.minimumTier) tier = escalateOnly(tier, s.gate.minimumTier);\n\nconst redFlags = Array.from(new Set([\n  ...(s.gate.redFlags || []),\n  ...((engineAvailable && engine.triage.redFlags) || []),\n]));\n\nconst requiresHumanReview =\n  redFlags.length > 0\n  || tier === 'URGENT'\n  || (engineAvailable ? Boolean(engine.triage.requiresHumanReview) : true);\n\nconst scoreId = newId('scr');\nconst decisionId = newId('trg');\n\nconst riskScore = {\n  scoreId,\n  assessmentId: s.assessmentId,\n  pseudonymId: s.pseudonymId,\n  modelVersion: engineAvailable ? (engine.modelVersion ?? 'unknown') : 'fallback-gate-only',\n  computedAt: nowIso(),\n  domains: engineAvailable ? (engine.domains ?? []) : [],\n  overall: engineAvailable\n    ? engine.overall\n    : { score: null, band: 'unscored', confidence: 0 },\n  missingInputs: engineAvailable ? (engine.missingInputs ?? []) : ['risk_engine_unavailable'],\n  degraded,\n};\n\nconst triage = {\n  decisionId,\n  assessmentId: s.assessmentId,\n  pseudonymId: s.pseudonymId,\n  scoreId,\n  tier,\n  redFlags,\n  rationale: engineAvailable\n    ? (engine.triage.rationale ?? '')\n    : 'Routed by the deterministic safety gate because the risk engine was unavailable.',\n  rationaleLocale: s.locale,\n  requiresHumanReview,\n  source: engineAvailable ? 'engine' : 'fallback_gate',\n  clamped: tier !== tierBeforeClamp,\n  tierBeforeClamp,\n  reviewedBy: null,\n  reviewedAt: null,\n  reviewOutcome: null,\n  reviewNote: null,\n  status: requiresHumanReview ? 'pending_review' : 'final',\n  createdAt: nowIso(),\n};\n\nconst assessment = {\n  assessmentId: s.assessmentId,\n  pseudonymId: s.pseudonymId,\n  locale: s.locale,\n  consentId: s.consent.consentId,\n  status: 'completed',\n  startedAt: s.startedAt,\n  completedAt: nowIso(),\n  durationSec: s.durationSec,\n  answers: s.answers,\n  answeredItemCount: s.answeredItemCount,\n  skippedSensitive: s.skippedSensitive,\n  idempotencyKey: s.idempotencyKey,\n};\n\nreturn [{ json: {\n  runId: s.runId,\n  pseudonymId: s.pseudonymId,\n  locale: s.locale,\n  consentId: s.consent.consentId,\n  gate: s.gate,\n  assessment,\n  riskScore,\n  triage,\n  degraded,\n} }];"
+      },
+      "id": "70dba4b9-0cbb-4f8d-89bb-cad40abbcc67",
+      "name": "Reconcile · escalate only",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        130
+      ],
+      "notes": "The safety rule in one place: take the engine tier, then clamp it upward to the deterministic minimum. Never downward. Record which source won.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\nreturn [{ json: $('Reconcile · escalate only').first().json.assessment }];"
+      },
+      "id": "3a50b60b-8f39-4c6b-9039-7dfe91397f91",
+      "name": "Doc · assessment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        130
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "assessments",
+        "fields": "assessmentId,pseudonymId,locale,consentId,status,startedAt,completedAt,durationSec,answers,answeredItemCount,skippedSensitive,idempotencyKey",
+        "options": {}
+      },
+      "id": "c22b731c-883c-4014-8b3c-34cd8a3c333a",
+      "name": "Write assessment",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        2220,
+        130
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\nreturn [{ json: $('Reconcile · escalate only').first().json.riskScore }];"
+      },
+      "id": "98b99098-e58b-4ff0-a88b-64a9e78b6316",
+      "name": "Doc · risk score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2460,
+        130
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "risk_scores",
+        "fields": "scoreId,assessmentId,pseudonymId,modelVersion,computedAt,domains,overall,missingInputs,degraded",
+        "options": {}
+      },
+      "id": "d2669e21-ac67-4b35-a967-a67caa67a80f",
+      "name": "Write risk score",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        2700,
+        130
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\nreturn [{ json: $('Reconcile · escalate only').first().json.triage }];"
+      },
+      "id": "46eaa6a7-ffa1-4147-80a1-82da01a1846d",
+      "name": "Doc · triage decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2940,
+        130
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "triage_decisions",
+        "fields": "decisionId,assessmentId,pseudonymId,scoreId,tier,redFlags,rationale,rationaleLocale,requiresHumanReview,source,clamped,tierBeforeClamp,reviewedBy,reviewedAt,reviewOutcome,reviewNote,status,createdAt",
+        "options": {}
+      },
+      "id": "185407d0-5727-4aa8-9a27-5f6159275dce",
+      "name": "Write triage decision",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        3180,
+        130
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "2984db78-bfbd-4050-82bd-a509c1bda376",
+                    "leftValue": "={{ $('Reconcile · escalate only').first().json.triage.tier }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "URGENT"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "URGENT"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "469d8173-b9d9-4fd3-bad9-e166bbd9e2f9",
+                    "leftValue": "={{ ['ANDROLOGY_UROLOGY','FERTILITY_SERVICES'].includes($('Reconcile · escalate only').first().json.triage.tier) }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "rightValue": ""
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "SPECIALIST"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b4e87a53-a393-42b3-a493-b446a593b5d9",
+                    "leftValue": "={{ $('Reconcile · escalate only').first().json.triage.tier }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "PRIMARY_CARE"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "PRIMARY_CARE"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "SELF_CARE"
+        }
+      },
+      "id": "ad190f59-5c9b-4a2d-999b-c5745a9bc707",
+      "name": "Route by tier",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        3420,
+        130
+      ],
+      "notes": "Acuity routing. URGENT hands off to workflow 02 immediately.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst CFG = $('Vigor config').first().json.vigorConfig;\nconst r = $('Reconcile · escalate only').first().json;\nreturn [{ json: {\n  eventId: newId('evt'),\n  eventType: 'triage.red_flag',\n  occurredAt: nowIso(),\n  pseudonymId: r.pseudonymId,\n  locale: r.locale,\n  decisionId: r.triage.decisionId,\n  assessmentId: r.triage.assessmentId,\n  redFlags: r.triage.redFlags,\n  severity: r.gate.severity ?? 'URGENT',\n  slaMinutes: r.gate.slaMinutes ?? CFG.escalationSlaMinutes,\n  reasons: r.gate.reasons ?? [],\n  sourceRunId: r.runId,\n} }];"
+      },
+      "id": "a7603c15-3096-4b49-ad96-b6902e96b823",
+      "name": "Build escalation event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3660,
+        -210
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Vigor config').first().json.vigorConfig.webhookBase }}/webhook/vigor/red-flag-escalation",
+        "options": {
+          "timeout": 20000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "3e5df86b-0e6d-404b-8f6d-41de106d4371",
+      "name": "Hand off to 02 · escalation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3900,
+        -210
+      ],
+      "notes": "Deliberately a webhook call, not a sub-workflow: the escalation becomes its own execution record with its own retry and SLA clock.",
+      "notesInFlow": false,
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst r = $('Reconcile · escalate only').first().json;\nreturn [{ json: { ...r, nextStep: {\n  kind: 'specialist_referral_offer',\n  tier: r.triage.tier,\n  // The referral is NOT created here. It needs its own explicit consent, which\n  // the user gives on the results screen; workflow 03 then dispatches it.\n  requiresConsentScope: r.triage.tier === 'FERTILITY_SERVICES'\n    ? 'SHARE_WITH_FERTILITY_SERVICE'\n    : 'SHARE_WITH_CLINICIAN',\n  atHomeKitOffered: true,\n} } }];"
+      },
+      "id": "08956599-5035-4a6d-8d35-a5b44e35a747",
+      "name": "Next step · specialist",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3660,
+        130
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst r = $('Reconcile · escalate only').first().json;\nreturn [{ json: { ...r, nextStep: {\n  kind: 'primary_care',\n  tier: r.triage.tier,\n  requiresConsentScope: 'SHARE_WITH_CLINICIAN',\n  atHomeKitOffered: true,\n} } }];"
+      },
+      "id": "681dbea7-2706-4947-a806-5ada29065c6d",
+      "name": "Next step · primary care",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst r = $('Reconcile · escalate only').first().json;\nreturn [{ json: { ...r, nextStep: {\n  kind: 'self_care',\n  tier: 'SELF_CARE',\n  requiresConsentScope: null,\n  atHomeKitOffered: false,\n  // Modifiable drivers are what self-care advice is built from, so the user sees\n  // something actionable rather than a reassuring dead end.\n  modifiableDrivers: (r.riskScore.domains || [])\n    .flatMap((d) => d.drivers || [])\n    .filter((x) => x.modifiable)\n    .map((x) => x.code),\n} } }];"
+      },
+      "id": "d181cc51-1f8e-44c5-9c8e-e00c1d8ee19f",
+      "name": "Next step · self care",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3660,
+        470
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst r = $('Reconcile · escalate only').first().json;\nreturn [{ json: auditDoc({\n  actor: 'workflow:01-intake-completed',\n  action: 'TRIAGE_DECIDED',\n  pseudonymId: r.pseudonymId,\n  subjectRef: { collection: 'triage_decisions', id: r.triage.decisionId },\n  consentId: r.consentId,\n  runId: r.runId,\n  meta: {\n    tier: r.triage.tier,\n    tierBeforeClamp: r.triage.tierBeforeClamp,\n    clamped: r.triage.clamped,\n    redFlagCount: (r.triage.redFlags || []).length,\n    source: r.triage.source,\n    degraded: r.degraded,\n  },\n}) }];"
+      },
+      "id": "4d3bc140-6b71-4738-ae71-9bf16d719a5e",
+      "name": "Doc · audit triage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4140,
+        130
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "audit_log",
+        "fields": "at,actor,action,pseudonymId,subjectRef,consentId,workflowRunId,outcome,meta",
+        "options": {}
+      },
+      "id": "3ace18ec-50f8-4a84-93f8-ef3d52f8edaa",
+      "name": "Write audit · triage",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        4380,
+        130
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "VigorAtlas",
+          "name": "Vigor Atlas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ---- Vigor shared helpers (generated, see n8n/src/shared.mjs) --------------\nconst nowIso = () => new Date().toISOString();\n\nconst newId = (prefix) => {\n  const rand = Array.from({ length: 12 }, () =>\n    'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]\n  ).join('');\n  return prefix + '_' + rand;\n};\n\n// Acuity ranking. Used only to clamp a decision upward; nothing may move down.\nconst TIER_ACUITY = {\n  SELF_CARE: 0,\n  PRIMARY_CARE: 1,\n  FERTILITY_SERVICES: 2,\n  ANDROLOGY_UROLOGY: 3,\n  URGENT: 4,\n};\n\nconst escalateOnly = (current, proposed) =>\n  (TIER_ACUITY[proposed] ?? -1) > (TIER_ACUITY[current] ?? -1) ? proposed : current;\n\nconst auditDoc = (ctx) => ({\n  at: nowIso(),\n  actor: ctx.actor,\n  action: ctx.action,\n  pseudonymId: ctx.pseudonymId ?? null,\n  subjectRef: ctx.subjectRef ?? null,\n  consentId: ctx.consentId ?? null,\n  workflowRunId: ctx.runId ?? null,\n  outcome: ctx.outcome ?? 'ok',\n  meta: ctx.meta ?? {},\n});\n\n// Discreet by default: nothing clinical ever appears in a subject line or preview.\nconst DISCREET_SUBJECT = {\n  en: 'Your Vigor update',\n  ar: 'تحديث من فيجور',\n};\n// ---------------------------------------------------------------------------\n\n\nconst r = $('Reconcile · escalate only').first().json;\n// Whichever branch ran is the one that set nextStep.\nconst branches = ['Next step · specialist', 'Next step · primary care', 'Next step · self care'];\nlet nextStep = { kind: 'urgent', tier: 'URGENT', requiresConsentScope: null, atHomeKitOffered: false };\nfor (const b of branches) {\n  try {\n    const v = $(b).first().json;\n    if (v && v.nextStep) { nextStep = v.nextStep; break; }\n  } catch (e) { /* branch did not run */ }\n}\n\nreturn [{ json: {\n  accepted: true,\n  assessmentId: r.triage.assessmentId,\n  decisionId: r.triage.decisionId,\n  tier: r.triage.tier,\n  redFlags: r.triage.redFlags,\n  requiresHumanReview: r.triage.requiresHumanReview,\n  explanation: {\n    rationale: r.triage.rationale,\n    domains: r.riskScore.domains,\n    overall: r.riskScore.overall,\n    missingInputs: r.riskScore.missingInputs,\n  },\n  nextStep,\n  boundary: {\n    isDiagnosis: false,\n    statement: 'This is a screening result, not a diagnosis. A clinician makes the diagnosis.',\n    humanOversight: r.triage.requiresHumanReview\n      ? 'A clinician will review this result before any referral is sent.'\n      : 'You can ask for a clinician to review this at any time.',\n  },\n  degraded: r.degraded,\n  runId: r.runId,\n} }];"
+      },
+      "id": "3fb7a269-b73c-4a5d-b43c-85a4b53c8737",
+      "name": "Build 200 response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4620,
+        130
+      ],
+      "notes": "The response is what the results screen renders. Screening, not diagnosis.",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "98a81d31-b1f2-4b25-aef2-966caff297ff",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        4860,
+        130
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook intake.completed": {
+      "main": [
+        [
+          {
+            "node": "Vigor config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vigor config": {
+      "main": [
+        [
+          {
+            "node": "Validate envelope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate envelope": {
+      "main": [
+        [
+          {
+            "node": "Envelope valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envelope valid?": {
+      "main": [
+        [
+          {
+            "node": "Load consent ledger",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build 400 response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build 400 response": {
+      "main": [
+        [
+          {
+            "node": "Respond 400",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load consent ledger": {
+      "main": [
+        [
+          {
+            "node": "Consent gate · ASSESSMENT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consent gate · ASSESSMENT": {
+      "main": [
+        [
+          {
+            "node": "Consent authorised?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consent authorised?": {
+      "main": [
+        [
+          {
+            "node": "Red-flag gate (deterministic)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Doc · audit consent refusal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · audit consent refusal": {
+      "main": [
+        [
+          {
+            "node": "Write audit · refusal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write audit · refusal": {
+      "main": [
+        [
+          {
+            "node": "Build 403 response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build 403 response": {
+      "main": [
+        [
+          {
+            "node": "Respond 403",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Red-flag gate (deterministic)": {
+      "main": [
+        [
+          {
+            "node": "Agent service · score & triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent service · score & triage": {
+      "main": [
+        [
+          {
+            "node": "Reconcile · escalate only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reconcile · escalate only": {
+      "main": [
+        [
+          {
+            "node": "Doc · assessment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · assessment": {
+      "main": [
+        [
+          {
+            "node": "Write assessment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write assessment": {
+      "main": [
+        [
+          {
+            "node": "Doc · risk score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · risk score": {
+      "main": [
+        [
+          {
+            "node": "Write risk score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write risk score": {
+      "main": [
+        [
+          {
+            "node": "Doc · triage decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · triage decision": {
+      "main": [
+        [
+          {
+            "node": "Write triage decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write triage decision": {
+      "main": [
+        [
+          {
+            "node": "Route by tier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by tier": {
+      "main": [
+        [
+          {
+            "node": "Build escalation event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Next step · specialist",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Next step · primary care",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Next step · self care",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build escalation event": {
+      "main": [
+        [
+          {
+            "node": "Hand off to 02 · escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hand off to 02 · escalation": {
+      "main": [
+        [
+          {
+            "node": "Doc · audit triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Next step · specialist": {
+      "main": [
+        [
+          {
+            "node": "Doc · audit triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Next step · primary care": {
+      "main": [
+        [
+          {
+            "node": "Doc · audit triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Next step · self care": {
+      "main": [
+        [
+          {
+            "node": "Doc · audit triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc · audit triage": {
+      "main": [
+        [
+          {
+            "node": "Write audit · triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write audit · triage": {
+      "main": [
+        [
+          {
+            "node": "Build 200 response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build 200 response": {
+      "main": [
+        [
+          {
+            "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": false,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "meta": {
+    "instanceId": "vigor-local"
+  },
+  "id": "vigor01"
+}
