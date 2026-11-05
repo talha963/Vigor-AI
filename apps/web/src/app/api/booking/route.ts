@@ -172,3 +172,120 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export async function GET(request: Request) {
+  try {
+    const database = await db();
+    let bookings = await database
+      .collection('bookings')
+      .find({})
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .toArray();
+
+    // If no bookings yet, seed realistic demonstration cases so the doctor portal is immediately active
+    if (bookings.length === 0) {
+      const demoBookings = [
+        {
+          bookingId: 'bk_auh_7821',
+          pseudonymId: 'psd_9281a8b2',
+          assessmentId: 'asm_7821_live',
+          facility: {
+            facilityId: 'spec_01',
+            name: 'HealthPlus Fertility & Andrology Center',
+            department: 'Andrology & Male Fertility',
+            doctor: 'Dr. Tariq Al-Hashimi',
+            location: 'Al Bateen, Abu Dhabi',
+          },
+          consultType: 'TELEHEALTH_VIDEO',
+          slotTime: 'Today · 6:30 PM (GST)',
+          status: 'IN_WAITING_ROOM',
+          triageTier: 'ANDROLOGY_UROLOGY',
+          telehealthRoomUrl: 'http://localhost:3000/telehealth/bk_auh_7821',
+          shareToken: { token: 'shr_7821', accessCount: 1 },
+          contact: { email: 'patient.auh@example.ae', phone: '+971 50 882 1923' },
+          whoParameters: { concentration: '14 M/ml (Sub-ref)', progressiveMotility: '28% (Sub-ref)', normalForms: '3%' },
+          redFlags: [],
+          chiefComplaint: '14 months primary infertility, sub-normal progressive sperm motility',
+          createdAt: new Date().toISOString(),
+        },
+        {
+          bookingId: 'bk_auh_9430',
+          pseudonymId: 'psd_3190ffbc',
+          assessmentId: 'asm_9430_live',
+          facility: {
+            facilityId: 'spec_02',
+            name: 'Cleveland Clinic Abu Dhabi',
+            department: 'Urological Microsurgery',
+            doctor: 'Dr. Ziad Al-Khafaji',
+            location: 'Al Maryah Island, Abu Dhabi',
+          },
+          consultType: 'TELEHEALTH_VIDEO',
+          slotTime: 'Today · 7:15 PM (GST)',
+          status: 'CONFIRMED',
+          triageTier: 'ANDROLOGY_UROLOGY',
+          telehealthRoomUrl: 'http://localhost:3000/telehealth/bk_auh_9430',
+          shareToken: { token: 'shr_9430', accessCount: 0 },
+          contact: { email: 'patient.dxb@example.ae', phone: '+971 55 412 9901' },
+          whoParameters: { concentration: '22 M/ml', progressiveMotility: '35%', normalForms: '4%' },
+          redFlags: [],
+          chiefComplaint: 'Left-sided varicocele ache, considering microsurgical repair',
+          createdAt: new Date(Date.now() - 3600000).toISOString(),
+        },
+        {
+          bookingId: 'bk_auh_1102',
+          pseudonymId: 'psd_8831ccaa',
+          assessmentId: 'asm_1102_urg',
+          facility: {
+            facilityId: 'spec_04',
+            name: 'Sheikh Shakhbout Medical City (SSMC)',
+            department: '24/7 Urgent Urology ED Escalation',
+            doctor: 'SSMC Acute Urology Team',
+            location: 'Al Mafraq, Abu Dhabi',
+          },
+          consultType: 'TELEHEALTH_VIDEO',
+          slotTime: 'Immediate Dispatch (15 Mins)',
+          status: 'CONFIRMED',
+          triageTier: 'URGENT',
+          telehealthRoomUrl: 'http://localhost:3000/telehealth/bk_auh_1102',
+          shareToken: { token: 'shr_1102', accessCount: 0 },
+          contact: { email: 'urgent.patient@example.ae', phone: '+971 50 119 2200' },
+          whoParameters: { concentration: 'N/A', progressiveMotility: 'N/A', normalForms: 'N/A' },
+          redFlags: [{ code: 'RF_ACUTE_SCROTAL_PAIN', severity: 'URGENT', slaMinutes: 60 }],
+          chiefComplaint: 'Acute sudden scrotal onset (possible torsion), immediate SLA clock active',
+          createdAt: new Date(Date.now() - 1800000).toISOString(),
+        },
+      ];
+      await database.collection('bookings').insertMany(demoBookings);
+      bookings = demoBookings as any;
+    }
+
+    return NextResponse.json({ ok: true, bookings });
+  } catch (err) {
+    console.error('[Booking GET API] Error:', err);
+    return NextResponse.json({ error: 'Failed to fetch bookings' }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const { bookingId, status, clinicalNotes, prescription } = body;
+    if (!bookingId) return NextResponse.json({ error: 'missing_booking_id' }, { status: 400 });
+
+    const database = await db();
+    const updateFields: Record<string, any> = { updatedAt: new Date().toISOString() };
+    if (status) updateFields.status = status;
+    if (clinicalNotes) updateFields.clinicalNotes = clinicalNotes;
+    if (prescription) updateFields.prescription = prescription;
+
+    const res = await database.collection('bookings').updateOne(
+      { bookingId },
+      { $set: updateFields }
+    );
+
+    return NextResponse.json({ ok: true, updated: res.modifiedCount > 0, bookingId });
+  } catch (err) {
+    return NextResponse.json({ error: 'Failed to update booking' }, { status: 500 });
+  }
+}

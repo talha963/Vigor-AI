@@ -21,6 +21,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import VigorLogo from './VigorLogo';
+import Link from 'next/link';
 import { Locale } from '@/types/vigor';
 
 interface HeaderProps {
@@ -168,6 +169,13 @@ export default function Header({
               >
                 {isAr ? 'البنية' : 'Architecture'}
               </button>
+              <Link
+                href="/doctor"
+                className="px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300/80 dark:border-emerald-700/80 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-all font-bold tracking-wider inline-flex items-center gap-1.5 text-[10px]"
+              >
+                <Stethoscope className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                <span>{isAr ? 'بوابة الأطباء' : 'Doctor Portal'}</span>
+              </Link>
             </nav>
 
             {/* ========================================================
@@ -311,6 +319,15 @@ export default function Header({
           </div>
 
           <div className="pt-4 border-t border-[#DDD7C8]/70 dark:border-stone-800 flex flex-col gap-2.5">
+            <Link
+              href="/doctor"
+              onClick={() => setMobileMenuOpen(false)}
+              className="w-full py-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-300 text-xs font-bold uppercase tracking-[0.16em] flex items-center justify-center gap-2"
+            >
+              <Stethoscope className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>{isAr ? 'بوابة الأطباء المرخصين (DoH)' : 'Licensed Doctor Portal (DoH)'}</span>
+            </Link>
+
             {onOpenBooking && (
               <button
                 type="button"

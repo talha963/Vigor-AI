@@ -18,6 +18,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import VigorLogo from './VigorLogo';
+import Link from 'next/link';
 import { Locale } from '@/types/vigor';
 
 interface FooterProps {
@@ -174,6 +175,16 @@ export default function Footer({
                   >
                     <span>{isAr ? 'عرض دفتر الموافقة النشط' : 'Live Consent Ledger'}</span>
                   </button>
+                </li>
+                <li>
+                  <Link
+                    href="/doctor"
+                    className="hover:text-emerald-300 text-emerald-400 font-bold transition-colors text-left rtl:text-right flex items-center gap-1.5"
+                  >
+                    <Stethoscope className="w-3.5 h-3.5" />
+                    <span>{isAr ? 'بوابة الأطباء المرخصين (DoH)' : 'Doctor Portal & Queue (DoH)'}</span>
+                    <ArrowUpRight className="w-3 h-3 text-emerald-400" />
+                  </Link>
                 </li>
                 <li>
                   <button
