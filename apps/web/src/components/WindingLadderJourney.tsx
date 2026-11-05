@@ -26,6 +26,7 @@ import {
   KeyRound,
   ShieldAlert,
   Compass,
+  Calendar,
 } from 'lucide-react';
 import VigorLogo from './VigorLogo';
 import { Locale } from '@/types/vigor';
@@ -38,6 +39,7 @@ interface WindingLadderJourneyProps {
   onOpenClinician: () => void;
   onOpenArchitecture: () => void;
   onOpenAtHomeKit: () => void;
+  onOpenBooking?: () => void;
   onSelectGoldenCase: (caseId: string) => void;
 }
 
@@ -48,6 +50,7 @@ export default function WindingLadderJourney({
   onOpenClinician,
   onOpenArchitecture,
   onOpenAtHomeKit,
+  onOpenBooking,
   onSelectGoldenCase,
 }: WindingLadderJourneyProps) {
   const isAr = locale === 'ar';
@@ -1188,16 +1191,26 @@ export default function WindingLadderJourney({
                 </div>
               </div>
 
-              {/* At-Home Kit Modal Trigger */}
-              <div className="flex items-center gap-4">
+              {/* At-Home Kit Modal Trigger & Book Specialist */}
+              <div className="flex flex-wrap items-center gap-3">
+                {onOpenBooking && (
+                  <button
+                    type="button"
+                    onClick={onOpenBooking}
+                    className="group inline-flex items-center gap-2.5 px-5 py-3 rounded-sm bg-[#1E3A8A] dark:bg-sky-600 text-white text-xs font-semibold tracking-[0.16em] uppercase hover:bg-blue-900 dark:hover:bg-sky-500 transition-all shadow-sm"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-sky-200" />
+                    <span>{isAr ? 'حجز طبيب / استشارة عن بُعد' : 'Book Specialist / Telehealth'}</span>
+                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={onOpenAtHomeKit}
-                  className="group inline-flex items-center gap-3 px-6 py-3 rounded-sm bg-[#2E2922] dark:bg-[#F5F2EB] text-[#F7F4EB] dark:text-[#141311] text-xs font-semibold tracking-[0.18em] uppercase hover:bg-[#453E34] dark:hover:bg-white transition-all shadow-sm"
+                  className="group inline-flex items-center gap-2.5 px-5 py-3 rounded-sm bg-[#2E2922] dark:bg-[#F5F2EB] text-[#F7F4EB] dark:text-[#141311] text-xs font-semibold tracking-[0.16em] uppercase hover:bg-[#453E34] dark:hover:bg-white transition-all shadow-sm"
                 >
                   <Package className="w-3.5 h-3.5" />
-                  <span>{isAr ? 'طلب طرد الفحص المنزلي' : 'Order Cold-Chain At-Home Kit'}</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                  <span>{isAr ? 'طلب طرد الفحص المنزلي' : 'Order At-Home Kit'}</span>
                 </button>
               </div>
 

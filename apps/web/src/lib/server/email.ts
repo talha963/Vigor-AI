@@ -364,3 +364,176 @@ export async function sendClinicalReportEmail(options: SendReportOptions): Promi
     mode: sentViaSmtp ? 'SMTP_LIVE' : 'DEMO_AUDIT_LOGGED',
   };
 }
+
+export interface BookingConfirmationEmailOptions {
+  recipientEmail: string;
+  bookingId: string;
+  facilityName: string;
+  doctorName: string;
+  consultType: 'TELEHEALTH_VIDEO' | 'IN_PERSON';
+  slotTime: string;
+  telehealthRoomUrl?: string;
+  location?: string;
+  locale?: Locale;
+}
+
+export async function sendBookingConfirmationEmail(options: BookingConfirmationEmailOptions): Promise<{
+  success: boolean;
+  messageId?: string;
+  mode: string;
+}> {
+  const {
+    recipientEmail,
+    bookingId,
+    facilityName,
+    doctorName,
+    consultType,
+    slotTime,
+    telehealthRoomUrl,
+    location,
+    locale = 'en',
+  } = options;
+
+  const isAr = locale === 'ar';
+  const isVideo = consultType === 'TELEHEALTH_VIDEO';
+  const subject = isAr
+    ? `تأكيد موعد استشارة سريرية خاصة فيجور [${bookingId}]`
+    : `Vigor AI - Confirmed Clinical Consultation & Telehealth [${bookingId}]`;
+
+  const html = `<!DOCTYPE html>
+<html lang="${locale}" dir="${isAr ? 'rtl' : 'ltr'}">
+<head>
+  <meta charset="utf-8">
+  <title>${subject}</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #F5F3EA; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #2E2922; }
+    .wrapper { width: 100%; background-color: #F5F3EA; padding: 32px 16px; }
+    .container { max-width: 600px; margin: 0 auto; background-color: #FAF8F5; border: 1px solid #DDD7C8; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(46, 41, 34, 0.06); }
+    .header { background-color: #181614; color: #FAF8F5; padding: 24px 32px; text-align: center; }
+    .content { padding: 32px; }
+    .btn { display: inline-block; background-color: #1E40AF; color: #ffffff !important; padding: 14px 28px; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 14px; text-align: center; }
+    .card { background-color: #FFFFFF; border: 1px solid #E5E0D5; border-radius: 12px; padding: 20px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <p style="margin: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase;">V I G O R &nbsp; A I</p>
+        <p style="margin: 4px 0 0; font-size: 11px; letter-spacing: 0.1em; color: #C5BEB2; text-transform: uppercase;">
+          ${isAr ? 'شبكة الرعاية السريرية والاستشارات عن بُعد · أبوظبي' : 'Abu Dhabi Clinical Care & Telehealth Network'}
+        </p>
+      </div>
+      <div class="content">
+        <div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 12px; padding: 16px; margin-bottom: 24px; text-align: center;">
+          <p style="margin: 0; font-size: 15px; font-weight: bold; color: #065F46;">
+            ✓ ${isAr ? 'تم تأكيد حجز موعدك السريري بنجاح' : 'Confidential Consultation Confirmed'}
+          </p>
+          <p style="margin: 4px 0 0; font-size: 12px; color: #047857;">
+            ${isAr ? 'المرجع السريري' : 'Booking Reference'}: <strong>${bookingId}</strong>
+          </p>
+        </div>
+
+        <p style="font-size: 14px; line-height: 1.6; margin-bottom: 16px;">
+          ${
+            isAr
+              ? 'تم ترتيب استشارتك السريرية بنجاح مع أخصائي معتمد في أبوظبي. تم تشفير ملخص تقييمك السريري ليكون جاهزاً أمام الطبيب عند بدء الاستشارة.'
+              : 'Your clinical consultation has been successfully scheduled with a certified specialist in Abu Dhabi. Your pre-consultation risk summary has been cryptographically loaded for the physician.'
+          }
+        </p>
+
+        <div class="card">
+          <p style="margin: 0 0 8px; font-size: 11px; font-weight: bold; color: #78716C; text-transform: uppercase; letter-spacing: 0.05em;">
+            ${isAr ? 'تفاصيل الاستشارة' : 'Consultation Details'}
+          </p>
+          <p style="margin: 0 0 6px; font-size: 16px; font-weight: bold; color: #181614;">
+            ${doctorName}
+          </p>
+          <p style="margin: 0 0 12px; font-size: 13px; color: #57534E;">
+            🏥 ${facilityName} ${location ? `· ${location}` : ''}
+          </p>
+          <div style="border-top: 1px solid #F0EDE5; padding-top: 12px; margin-top: 12px;">
+            <p style="margin: 0 0 6px; font-size: 13px;">
+              🗓️ <strong>${isAr ? 'الموعد' : 'Scheduled Time'}:</strong> ${slotTime}
+            </p>
+            <p style="margin: 0; font-size: 13px;">
+              ${isVideo ? '📹' : '🏥'} <strong>${isAr ? 'طريقة الاستشارة' : 'Modality'}:</strong> ${
+                isVideo
+                  ? isAr
+                    ? 'استشارة افتراضية مرئية خاصة (عن بُعد)'
+                    : 'Private Telehealth Video Consultation'
+                  : isAr
+                  ? 'زيارة حضورية بالعيادة'
+                  : 'In-Clinic Hospital Visit'
+              }
+            </p>
+          </div>
+        </div>
+
+        ${
+          isVideo && telehealthRoomUrl
+            ? `
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${telehealthRoomUrl}" class="btn">
+            ${isAr ? 'انضم إلى غرفة الاستشارة المرئية الآن' : 'Launch Virtual Consultation Room'} &rarr;
+          </a>
+          <p style="margin: 8px 0 0; font-size: 11px; color: #78716C;">
+            ${isAr ? 'مكالمة مشفرة بالكامل بين الطبيب والمريض دون كشف هويتك' : 'End-to-end encrypted room. Zero software install required.'}
+          </p>
+        </div>`
+            : ''
+        }
+
+        <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; margin-top: 24px; font-size: 11px; color: #475569;">
+          <strong>🔒 ${isAr ? 'ضمان الخصوصية وسرية البيانات' : 'Privacy Floor & Zero-PII Protocol'}:</strong>
+          ${
+            isAr
+              ? 'تتم الاستشارة بسرية تامة تحت معايير دائرة الصحة - أبوظبي. لا يتم طلب أي معلومات شخصية قبل المكالمة.'
+              : 'Governed under Abu Dhabi Department of Health (DoH) telehealth standards. No direct identity disclosure is required prior to speaking with your clinician.'
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASSWORD;
+  const fromAddress = process.env.NOTIFY_FROM || 'no-reply@vigor.health';
+
+  let sentViaSmtp = false;
+  let messageId: string | undefined;
+
+  if (smtpHost && smtpUser && smtpPass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: { user: smtpUser, pass: smtpPass },
+      });
+
+      const info = await transporter.sendMail({
+        from: `"Vigor AI Abu Dhabi Care Network" <${fromAddress}>`,
+        to: recipientEmail,
+        subject,
+        html,
+      });
+
+      sentViaSmtp = true;
+      messageId = info.messageId;
+      console.log(`[Vigor Booking Email] Sent live confirmation to ${recipientEmail} (ID: ${info.messageId})`);
+    } catch (err) {
+      console.error('[Vigor Booking Email] SMTP dispatch error:', err);
+    }
+  }
+
+  return {
+    success: true,
+    messageId: messageId || `sim_bk_${Date.now()}`,
+    mode: sentViaSmtp ? 'SMTP_LIVE' : 'DEMO_AUDIT_LOGGED',
+  };
+}

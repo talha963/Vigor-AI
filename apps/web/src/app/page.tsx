@@ -12,6 +12,7 @@ import ConsentCentreModal from '@/components/ConsentCentreModal';
 import ClinicianReviewModal from '@/components/ClinicianReviewModal';
 import AtHomeKitModal from '@/components/AtHomeKitModal';
 import ArchitectureModal from '@/components/ArchitectureModal';
+import BookingModal from '@/components/BookingModal';
 import { Locale, IntakeAnswers, TriageResult } from '@/types/vigor';
 import { GOLDEN_CASES } from '@/lib/golden-cases';
 
@@ -23,6 +24,7 @@ export default function Home() {
   const [isClinicianOpen, setIsClinicianOpen] = useState(false);
   const [isArchitectureOpen, setIsArchitectureOpen] = useState(false);
   const [isAtHomeKitOpen, setIsAtHomeKitOpen] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
 
   const [triageResult, setTriageResult] = useState<TriageResult | null>(null);
   const [selectedInitialAnswers, setSelectedInitialAnswers] = useState<IntakeAnswers | undefined>(undefined);
@@ -117,6 +119,7 @@ export default function Home() {
           onOpenClinician={() => setIsClinicianOpen(true)}
           onOpenArchitecture={() => setIsArchitectureOpen(true)}
           onOpenAtHomeKit={() => setIsAtHomeKitOpen(true)}
+          onOpenBooking={() => setIsBookingOpen(true)}
           onSelectGoldenCase={handleSelectGoldenCase}
         />
       </main>
@@ -147,6 +150,7 @@ export default function Home() {
         locale={locale}
         onOpenConsent={() => setIsConsentOpen(true)}
         onOpenAtHomeKit={() => setIsAtHomeKitOpen(true)}
+        onOpenBooking={() => setIsBookingOpen(true)}
         recipientEmail={recipientEmail}
         answers={completedAnswers}
       />
@@ -172,6 +176,14 @@ export default function Home() {
       <ArchitectureModal
         isOpen={isArchitectureOpen}
         onClose={() => setIsArchitectureOpen(false)}
+        locale={locale}
+      />
+
+      <BookingModal
+        isOpen={isBookingOpen}
+        onClose={() => setIsBookingOpen(false)}
+        triageResult={triageResult}
+        initialEmail={recipientEmail}
         locale={locale}
       />
     </div>

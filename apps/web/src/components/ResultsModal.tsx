@@ -18,6 +18,8 @@ import {
   HelpCircle,
   Mail,
   Send,
+  Video,
+  ArrowRight,
 } from 'lucide-react';
 import { TriageResult, Locale, IntakeAnswers } from '@/types/vigor';
 
@@ -28,6 +30,7 @@ interface ResultsModalProps {
   locale: Locale;
   onOpenConsent: () => void;
   onOpenAtHomeKit: () => void;
+  onOpenBooking?: () => void;
   recipientEmail?: string;
   answers?: IntakeAnswers;
 }
@@ -39,6 +42,7 @@ export default function ResultsModal({
   locale,
   onOpenConsent,
   onOpenAtHomeKit,
+  onOpenBooking,
   recipientEmail,
   answers,
 }: ResultsModalProps) {
@@ -197,6 +201,32 @@ export default function ResultsModal({
               <p className="text-xs text-slate-700 dark:text-[#DDD7C8] leading-relaxed">
                 {isAr ? result.actionGuidanceAr : result.actionGuidance}
               </p>
+
+              {/* Direct 1-Click Clinic Booking & Telehealth Action */}
+              <div className="mt-3.5 pt-3 border-t border-stone-200/80 dark:border-stone-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white/80 dark:bg-[#151413] p-3 rounded-xl border border-blue-100 dark:border-stone-700">
+                <div>
+                  <span className="text-[10px] font-black uppercase text-blue-700 dark:text-sky-300 block">
+                    {isAr ? 'الخطوة السريرية الموصى بها:' : 'Recommended Care Action:'}
+                  </span>
+                  <p className="text-xs font-bold text-stone-900 dark:text-[#FAF7F2]">
+                    {isAr ? 'حجز استشارة خاصة مع أخصائي أمراض الذكورة أو طبيب عن بُعد' : 'Connect with Abu Dhabi Specialist via Video or In-Clinic'}
+                  </p>
+                </div>
+                {onOpenBooking && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenBooking();
+                    }}
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-colors shrink-0"
+                  >
+                    <Video className="w-3.5 h-3.5 text-sky-200" />
+                    <span>{isAr ? 'حجز موعد استشارة (1-Click)' : 'Book Consultation (1-Click)'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -370,7 +400,20 @@ export default function ResultsModal({
             <span>Manage Consent / View Ledger</span>
           </button>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {onOpenBooking && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenBooking();
+                }}
+                className="px-4 py-2 text-xs font-bold rounded-xl bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-sky-300 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors flex items-center gap-1.5 shadow-xs"
+              >
+                <Calendar className="w-4 h-4 text-blue-600 dark:text-sky-400" />
+                <span>{isAr ? 'حجز طبيب / استشارة عن بُعد' : 'Book Specialist / Telehealth'}</span>
+              </button>
+            )}
+
             <button
               onClick={() => {
                 onClose();
