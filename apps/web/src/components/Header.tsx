@@ -136,11 +136,11 @@ export default function Header({
             {/* ========================================================
                2. CENTER: Clean Understated Editorial Navigation Links
                ======================================================== */}
-            <nav className="hidden lg:flex items-center justify-center gap-1.5 xl:gap-2 font-editorial-sans text-[11px] font-semibold tracking-[0.16em] uppercase text-[#6B6355] dark:text-[#A8A092] whitespace-nowrap">
+            <nav className="hidden lg:flex shrink-0 items-center justify-center gap-1 xl:gap-2 font-editorial-sans text-[11px] font-semibold tracking-[0.16em] uppercase text-[#6B6355] dark:text-[#A8A092] whitespace-nowrap">
               {/* Home */}
               <a
                 href="#"
-                className="px-3 py-1.5 rounded-full hover:bg-[#EFECE3]/80 dark:hover:bg-stone-800/70 hover:text-[#1E1C1A] dark:hover:text-white transition-all"
+                className="shrink-0 px-2.5 xl:px-3 py-1.5 rounded-full hover:bg-[#EFECE3]/80 dark:hover:bg-stone-800/70 hover:text-[#1E1C1A] dark:hover:text-white transition-all"
               >
                 {isAr ? 'الرئيسية' : 'Home'}
               </a>
@@ -148,17 +148,17 @@ export default function Header({
               {/* Intake */}
               <a
                 href="#section-intake"
-                className="px-3 py-1.5 rounded-full hover:bg-[#EFECE3]/80 dark:hover:bg-stone-800/70 hover:text-[#1E1C1A] dark:hover:text-white transition-all"
+                className="shrink-0 px-2.5 xl:px-3 py-1.5 rounded-full hover:bg-[#EFECE3]/80 dark:hover:bg-stone-800/70 hover:text-[#1E1C1A] dark:hover:text-white transition-all"
               >
                 {isAr ? 'الاستقبال' : 'Intake'}
               </a>
 
               {/* Clinical Suite Dropdown */}
-              <div className="relative" ref={dropdownRef}>
+              <div className="relative shrink-0" ref={dropdownRef}>
                 <button
                   type="button"
                   onClick={() => setProtocolsDropdownOpen(!protocolsDropdownOpen)}
-                  className={`px-3 py-1.5 rounded-full hover:bg-[#EFECE3]/80 dark:hover:bg-stone-800/70 hover:text-[#1E1C1A] dark:hover:text-white transition-all flex items-center gap-1 ${
+                  className={`shrink-0 px-2.5 xl:px-3 py-1.5 rounded-full hover:bg-[#EFECE3]/80 dark:hover:bg-stone-800/70 hover:text-[#1E1C1A] dark:hover:text-white transition-all flex items-center gap-1 ${
                     protocolsDropdownOpen ? 'bg-[#EFECE3]/90 dark:bg-stone-800 text-[#1E1C1A] dark:text-white' : ''
                   }`}
                   aria-expanded={protocolsDropdownOpen}
@@ -171,34 +171,48 @@ export default function Header({
                   />
                 </button>
 
-                {/* Dropdown Floating Popover */}
+                {/* Dropdown Floating Popover - 100% Solid Opaque Background */}
                 {protocolsDropdownOpen && (
                   <>
                     {/* Fixed invisible click shield to handle clicks outside */}
                     <div
-                      className="fixed inset-0 z-40"
+                      className="fixed inset-0 z-40 bg-black/10 dark:bg-black/30 backdrop-blur-[1px]"
                       onClick={() => setProtocolsDropdownOpen(false)}
                     />
                     <div
                       style={{
-                        backgroundColor: isDark ? '#181614' : '#FAF8F5',
+                        backgroundColor: isDark ? '#161513' : '#FAF8F5',
                         boxShadow: isDark
-                          ? '0 25px 60px -15px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.1)'
-                          : '0 25px 60px -15px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.08)',
+                          ? '0 25px 60px -10px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.1)'
+                          : '0 25px 60px -10px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.08)',
                       }}
-                      className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-80 rounded-2xl border border-[#DDD7C8] dark:border-stone-700 p-2 z-50 text-left rtl:text-right normal-case tracking-normal font-sans animate-in fade-in slide-in-from-top-2 duration-150"
+                      className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-88 sm:w-96 rounded-2xl bg-[#FAF8F5] dark:bg-[#161513] border border-[#DDD7C8] dark:border-stone-700 shadow-2xl z-50 text-left rtl:text-right normal-case tracking-normal font-sans animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden"
                     >
-                      <div className="p-1 space-y-1 text-xs">
+                      {/* Dropdown Header Pill */}
+                      <div className="px-3.5 py-2.5 bg-stone-100/70 dark:bg-stone-900/80 border-b border-[#E5E0D5] dark:border-stone-800 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-stone-700 dark:text-stone-300">
+                            {isAr ? 'المعايير والبروتوكولات السريرية' : 'Clinical Standards & Governance'}
+                          </span>
+                        </div>
+                        <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-bold tracking-wider">
+                          WHO 2021
+                        </span>
+                      </div>
+
+                      {/* Dropdown Cards List - Individual Solid Cards */}
+                      <div className="p-2 space-y-1.5 text-xs bg-[#FAF8F5] dark:bg-[#161513]">
                         <a
                           href="#section-safety"
                           onClick={() => setProtocolsDropdownOpen(false)}
-                          className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#EFECE3]/80 dark:hover:bg-[#25221E] transition-colors group"
+                          className="flex items-center gap-3 p-2.5 rounded-xl bg-white/80 dark:bg-stone-900/60 hover:bg-[#EFECE3] dark:hover:bg-stone-800/90 border border-stone-200/60 dark:border-stone-800/80 transition-all group shadow-2xs"
                         >
-                          <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-800 flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/90 border border-emerald-300 dark:border-emerald-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                             <Shield className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
                           </div>
-                          <div>
-                            <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs truncate">
                               {isAr ? 'قواعد السلامة (16 علامة حمراء)' : 'Safety Gates (16 Red Flags)'}
                             </p>
                             <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-tight">
@@ -210,13 +224,13 @@ export default function Header({
                         <a
                           href="#section-who"
                           onClick={() => setProtocolsDropdownOpen(false)}
-                          className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#EFECE3]/80 dark:hover:bg-[#25221E] transition-colors group"
+                          className="flex items-center gap-3 p-2.5 rounded-xl bg-white/80 dark:bg-stone-900/60 hover:bg-[#EFECE3] dark:hover:bg-stone-800/90 border border-stone-200/60 dark:border-stone-800/80 transition-all group shadow-2xs"
                         >
-                          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950/80 border border-blue-300 dark:border-blue-800 flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950/90 border border-blue-300 dark:border-blue-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                             <Microscope className="w-4 h-4 text-blue-700 dark:text-sky-400" />
                           </div>
-                          <div>
-                            <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs truncate">
                               {isAr ? 'معايير WHO 2021' : 'WHO 2021 Reference'}
                             </p>
                             <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-tight">
@@ -228,13 +242,13 @@ export default function Header({
                         <a
                           href="#section-care"
                           onClick={() => setProtocolsDropdownOpen(false)}
-                          className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#EFECE3]/80 dark:hover:bg-[#25221E] transition-colors group"
+                          className="flex items-center gap-3 p-2.5 rounded-xl bg-white/80 dark:bg-stone-900/60 hover:bg-[#EFECE3] dark:hover:bg-stone-800/90 border border-stone-200/60 dark:border-stone-800/80 transition-all group shadow-2xs"
                         >
-                          <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-800 flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/90 border border-amber-300 dark:border-amber-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                             <Activity className="w-4 h-4 text-amber-700 dark:text-amber-400" />
                           </div>
-                          <div>
-                            <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs truncate">
                               {isAr ? 'شبكة الرعاية بأبوظبي' : 'Care Delivery Network'}
                             </p>
                             <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-tight">
@@ -249,13 +263,13 @@ export default function Header({
                             setProtocolsDropdownOpen(false);
                             onOpenConsent();
                           }}
-                          className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#EFECE3]/80 dark:hover:bg-[#25221E] transition-colors text-left rtl:text-right"
+                          className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-white/80 dark:bg-stone-900/60 hover:bg-[#EFECE3] dark:hover:bg-stone-800/90 border border-stone-200/60 dark:border-stone-800/80 transition-all text-left rtl:text-right group shadow-2xs"
                         >
-                          <div className="w-8 h-8 rounded-lg bg-stone-200 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-lg bg-stone-200 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                             <Lock className="w-4 h-4 text-stone-700 dark:text-stone-300" />
                           </div>
-                          <div>
-                            <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs truncate">
                               {isAr ? 'سجل الموافقة المشفر' : 'Zero-PII Consent Ledger'}
                             </p>
                             <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-tight">
@@ -270,13 +284,13 @@ export default function Header({
                             setProtocolsDropdownOpen(false);
                             onOpenArchitecture();
                           }}
-                          className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#EFECE3]/80 dark:hover:bg-[#25221E] transition-colors text-left rtl:text-right"
+                          className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-white/80 dark:bg-stone-900/60 hover:bg-[#EFECE3] dark:hover:bg-stone-800/90 border border-stone-200/60 dark:border-stone-800/80 transition-all text-left rtl:text-right group shadow-2xs"
                         >
-                          <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 border border-indigo-300 dark:border-indigo-800 flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950/90 border border-indigo-300 dark:border-indigo-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                             <Layers className="w-4 h-4 text-indigo-700 dark:text-indigo-400" />
                           </div>
-                          <div>
-                            <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs truncate">
                               {isAr ? 'معمارية النظام ومحرك n8n' : 'Engine Architecture'}
                             </p>
                             <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-tight">
@@ -285,15 +299,21 @@ export default function Header({
                           </div>
                         </button>
                       </div>
+
+                      {/* Dropdown Footer Strip */}
+                      <div className="px-3.5 py-2 bg-stone-100/50 dark:bg-stone-900/60 border-t border-[#E5E0D5] dark:border-stone-800 flex items-center justify-between text-[10px] text-stone-500 dark:text-stone-400">
+                        <span>{isAr ? 'متوافق مع معايير دائرة الصحة أبوظبي' : 'DoH Abu Dhabi Aligned'}</span>
+                        <span className="font-mono text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">100% Deterministic</span>
+                      </div>
                     </div>
                   </>
                 )}
               </div>
 
-              {/* Elevated Doctor Portal Button */}
+              {/* Elevated Doctor Portal Button - Guaranteed No-Wrap & No-Truncate */}
               <Link
                 href="/doctor"
-                className="px-3.5 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700/80 text-emerald-900 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/80 transition-all font-bold tracking-wider inline-flex items-center gap-1.5 text-[10px] shadow-2xs group"
+                className="shrink-0 whitespace-nowrap px-3 xl:px-3.5 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700/80 text-emerald-900 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/80 transition-all font-bold tracking-wider inline-flex items-center gap-1.5 text-[10px] shadow-2xs group"
               >
                 <Stethoscope className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform" />
                 <span>{isAr ? 'بوابة الأطباء' : 'Doctor Portal'}</span>
@@ -303,13 +323,13 @@ export default function Header({
             {/* ========================================================
                3. RIGHT: Actions, Telehealth Pill, Switchers & CTA
                ======================================================== */}
-            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 whitespace-nowrap">
+            <div className="shrink-0 flex items-center gap-1.5 sm:gap-2 xl:gap-2.5 whitespace-nowrap">
               {/* Telehealth 1-Click Consultation Shortcut */}
               {onOpenBooking && (
                 <button
                   type="button"
                   onClick={onOpenBooking}
-                  className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50/90 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/80 text-blue-900 dark:text-sky-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-all text-[10px] font-bold uppercase tracking-wider shadow-2xs group"
+                  className="hidden md:inline-flex shrink-0 items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-full bg-blue-50/90 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/80 text-blue-900 dark:text-sky-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-all text-[10px] font-bold uppercase tracking-wider shadow-2xs group"
                 >
                   <Video className="w-3.5 h-3.5 text-blue-600 dark:text-sky-400 group-hover:scale-110 transition-transform" />
                   <span>{isAr ? 'حجز طبيب' : 'Telehealth'}</span>
@@ -320,7 +340,7 @@ export default function Header({
               <button
                 type="button"
                 onClick={() => setLocale(locale === 'en' ? 'ar' : 'en')}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-[#DDD7C8] dark:border-stone-700 bg-white/70 dark:bg-stone-900/70 text-[10px] font-bold uppercase tracking-wider text-[#5A544A] dark:text-[#DDD7C8] hover:border-stone-400 dark:hover:border-stone-500 hover:bg-white dark:hover:bg-stone-800 transition-all shadow-2xs"
+                className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full border border-[#DDD7C8] dark:border-stone-700 bg-white/70 dark:bg-stone-900/70 text-[10px] font-bold uppercase tracking-wider text-[#5A544A] dark:text-[#DDD7C8] hover:border-stone-400 dark:hover:border-stone-500 hover:bg-white dark:hover:bg-stone-800 transition-all shadow-2xs"
                 title="Toggle Language"
               >
                 <Globe className="w-3 h-3 text-[#7A7163] dark:text-stone-400" />
@@ -332,7 +352,7 @@ export default function Header({
                 <button
                   type="button"
                   onClick={onToggleTheme}
-                  className="p-1.5 sm:p-2 rounded-full border border-[#DDD7C8] dark:border-stone-700 bg-white/70 dark:bg-stone-900/70 text-[#5A544A] dark:text-[#DDD7C8] hover:border-stone-400 dark:hover:border-stone-500 hover:bg-white dark:hover:bg-stone-800 transition-all shadow-2xs"
+                  className="shrink-0 p-1.5 sm:p-2 rounded-full border border-[#DDD7C8] dark:border-stone-700 bg-white/70 dark:bg-stone-900/70 text-[#5A544A] dark:text-[#DDD7C8] hover:border-stone-400 dark:hover:border-stone-500 hover:bg-white dark:hover:bg-stone-800 transition-all shadow-2xs"
                   aria-label="Toggle Dark Mode"
                 >
                   {isDark ? (
@@ -347,7 +367,7 @@ export default function Header({
               <button
                 type="button"
                 onClick={onOpenIntake}
-                className="group inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-full bg-[#22201D] dark:bg-[#FAF7F2] text-[#FAF7F2] dark:text-[#181614] text-[10px] font-bold tracking-[0.18em] uppercase hover:bg-[#3D3830] dark:hover:bg-white transition-all shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+                className="shrink-0 group inline-flex items-center gap-1.5 xl:gap-2 px-3 sm:px-3.5 xl:px-4 py-2 rounded-full bg-[#22201D] dark:bg-[#FAF7F2] text-[#FAF7F2] dark:text-[#181614] text-[10px] font-bold tracking-[0.18em] uppercase hover:bg-[#3D3830] dark:hover:bg-white transition-all shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
               >
                 <span>{isAr ? 'ابدأ الفحص' : 'Start Intake'}</span>
                 <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
@@ -375,9 +395,9 @@ export default function Header({
         </div>
       </div>
 
-      {/* Mobile Menu Dropdown Card */}
+      {/* Mobile Menu Dropdown Card - 100% Solid Opaque Background */}
       {mobileMenuOpen && (
-        <div className="lg:hidden mt-2 max-w-7xl mx-auto rounded-3xl bg-[#FAF8F5]/98 dark:bg-[#181715]/98 backdrop-blur-2xl border border-[#DDD7C8] dark:border-stone-800 p-6 space-y-4 shadow-2xl animate-in slide-in-from-top-2">
+        <div className="lg:hidden mt-2 max-w-7xl mx-auto rounded-3xl bg-[#FAF8F5] dark:bg-[#161513] border border-[#DDD7C8] dark:border-stone-800 p-6 space-y-4 shadow-2xl animate-in slide-in-from-top-2">
           {/* Section 1: Patient Navigation */}
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-2 px-2">

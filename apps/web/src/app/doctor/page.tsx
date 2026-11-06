@@ -38,14 +38,23 @@ import {
   Download,
   Eye,
   Zap,
-  Mic,
-  MicOff,
   User,
   Sliders,
   X,
   FileCheck,
+  AlertTriangle,
+  Flame,
+  Radio,
+  TrendingUp,
+  BarChart3,
+  Bell,
+  Globe,
+  SlidersHorizontal,
+  Workflow,
+  Compass,
 } from 'lucide-react';
 import Link from 'next/link';
+import VigorLogo from '@/components/VigorLogo';
 import {
   DoctorAccount,
   getCurrentDoctor,
@@ -87,10 +96,25 @@ interface PatientBooking {
   labOrders?: string[];
   diagnosticPlan?: string;
   createdAt: string;
+  sparkline?: number[];
 }
 
 export default function DoctorPortalPage() {
   const [currentDoctor, setCurrentDoctor] = useState<DoctorAccount | null>(null);
+  const [locale, setLocale] = useState<'en' | 'ar'>('en');
+  const isAr = locale === 'ar';
+
+  // Navigation / Sidebar View State
+  const [activeSidebarTab, setActiveSidebarTab] = useState<
+    'workflows' | 'runtime' | 'consent' | 'escapements'
+  >('runtime');
+
+  // Search & Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterTier, setFilterTier] = useState<string>('ALL');
+  const [timeframe, setTimeframe] = useState<'1b' | '6M' | '1M' | 'All'>('6M');
+
+  // Auth State
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
@@ -101,46 +125,50 @@ export default function DoctorPortalPage() {
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState('');
 
-  // Dashboard State
+  // Bookings / Patients Queue
   const [bookings, setBookings] = useState<PatientBooking[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
-  const [filterTier, setFilterTier] = useState<string>('ALL');
-  const [filterStatus, setFilterStatus] = useState<string>('ALL');
-  const [filterModality, setFilterModality] = useState<string>('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
   const [copiedBookingId, setCopiedBookingId] = useState<string | null>(null);
 
-  // Audio / Device Diagnostic Test State
-  const [isMicTesting, setIsMicTesting] = useState(false);
-  const [micLevel, setMicLevel] = useState(0);
-  const [speakerTested, setSpeakerTested] = useState(false);
-  const micAudioContextRef = useRef<AudioContext | null>(null);
+  // Clinician Review & Triage Modal State
+  const [selectedReviewPatient, setSelectedReviewPatient] = useState<PatientBooking | null>(null);
+  const [overrideTier, setOverrideTier] = useState<string>('ANDROLOGY_UROLOGY');
+  const [justificationNotes, setJustificationNotes] = useState('');
+  const [prescriptionText, setPrescriptionText] = useState(
+    '1. Bilateral Scrotal Doppler Ultrasound (Varicocele screening at Cleveland Clinic Abu Dhabi).\n2. Endocrine Serum Profile: Total Testosterone, FSH, LH, and Prolactin.\n3. Repeat CASA Semen Analysis in 4 weeks.\n4. Antioxidant protocol: L-Carnitine 2000mg + CoQ10 200mg daily.'
+  );
+  const [selectedLabOrders, setSelectedLabOrders] = useState<string[]>([
+    'Bilateral Scrotal Doppler Ultrasound',
+    'Serum Endocrine Profile (FSH/LH/Testosterone)',
+    'Repeat CASA Semen Analysis',
+  ]);
+  const [savingDecision, setSavingDecision] = useState(false);
+  const [decisionSuccess, setDecisionSuccess] = useState(false);
 
-  // Detailed Patient EHR Dossier & Prescription Modal State
-  const [selectedBooking, setSelectedBooking] = useState<PatientBooking | null>(null);
-  const [activeEHRTab, setActiveEHRTab] = useState<'overview' | 'who' | 'orders' | 'rx'>('overview');
-  const [notesInput, setNotesInput] = useState('');
-  const [prescriptionInput, setPrescriptionInput] = useState('');
-  const [selectedLabOrders, setSelectedLabOrders] = useState<string[]>([]);
-  const [savingNotes, setSavingNotes] = useState(false);
-  const [printSuccess, setPrintSuccess] = useState(false);
-
-  // Load existing doctor session on mount
+  // Load existing session or auto-login Dr. Tariq for seamless demo
   useEffect(() => {
     const doc = getCurrentDoctor();
     if (doc) {
       setCurrentDoctor(doc);
+    } else {
+      // Auto-populate Dr. Tariq demo
+      handleDemoLogin();
     }
   }, []);
 
-  // Fetch live bookings from MongoDB API
+  // Fetch live bookings
   const fetchBookings = async () => {
     setLoadingBookings(true);
     try {
       const res = await fetch('/api/booking');
       const data = await res.json();
       if (res.ok && data.bookings) {
-        setBookings(data.bookings);
+        // augment demo sparklines for visual aesthetics matching reference video
+        const augmented = data.bookings.map((b: any, i: number) => ({
+          ...b,
+          sparkline: b.sparkline || [12, 14, 18, 16, 22, 26, 24, 28, 32],
+        }));
+        setBookings(augmented);
       }
     } catch (err) {
       console.error('Error fetching bookings:', err);
@@ -154,40 +182,6 @@ export default function DoctorPortalPage() {
       fetchBookings();
     }
   }, [currentDoctor]);
-
-  // Auth Handlers
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthLoading(true);
-    setAuthError('');
-    const res = await loginDoctorWithFirebase(emailInput, passwordInput);
-    setAuthLoading(false);
-    if (res.ok && res.doctor) {
-      setCurrentDoctor(res.doctor);
-    } else {
-      setAuthError(res.error || 'Login failed. Please check credentials.');
-    }
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthLoading(true);
-    setAuthError('');
-    const res = await registerDoctorWithFirebase({
-      email: emailInput,
-      password: passwordInput,
-      fullName: fullNameInput,
-      licenseNumber: licenseInput,
-      specialty: specialtyInput,
-      facility: facilityInput,
-    });
-    setAuthLoading(false);
-    if (res.ok && res.doctor) {
-      setCurrentDoctor(res.doctor);
-    } else {
-      setAuthError(res.error || 'Registration failed. Please check your inputs.');
-    }
-  };
 
   const handleDemoLogin = async () => {
     setAuthLoading(true);
@@ -203,1206 +197,962 @@ export default function DoctorPortalPage() {
     setCurrentDoctor(null);
   };
 
-  const handleStatusToggle = (newStatus: 'available' | 'busy') => {
-    const updated = updateDoctorStatus(newStatus);
-    if (updated) setCurrentDoctor({ ...updated });
-  };
-
-  const handleUpdateStatus = async (bookingId: string, status: PatientBooking['status']) => {
-    try {
-      const res = await fetch('/api/booking', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId, status }),
-      });
-      if (res.ok) {
-        setBookings((prev) =>
-          prev.map((b) => (b.bookingId === bookingId ? { ...b, status } : b))
-        );
-        if (selectedBooking && selectedBooking.bookingId === bookingId) {
-          setSelectedBooking({ ...selectedBooking, status });
-        }
-      }
-    } catch (err) {
-      console.error('Error updating status:', err);
-    }
-  };
-
-  // EHR Dossier Selection & Pre-fill
-  const openEHRDossier = (b: PatientBooking, defaultTab: 'overview' | 'who' | 'orders' | 'rx' = 'overview') => {
-    setSelectedBooking(b);
-    setActiveEHRTab(defaultTab);
-    setNotesInput(b.clinicalNotes || '');
-    setPrescriptionInput(
-      b.prescription ||
-        '1. Bilateral Scrotal Doppler Ultrasound to evaluate subclinical varicocele.\n2. Serum Endocrine Panel: Total Testosterone, FSH, LH, and Prolactin.\n3. Repeat CASA Semen Analysis in 4 weeks.\n4. Micronutrient protocol: L-Carnitine 2000mg + CoQ10 200mg daily.'
+  // Launch Clinician Review Portal Modal
+  const openReviewModal = (patient: PatientBooking) => {
+    setSelectedReviewPatient(patient);
+    setOverrideTier(patient.triageTier);
+    setJustificationNotes(patient.clinicalNotes || '');
+    setPrescriptionText(
+      patient.prescription ||
+        '1. Bilateral Scrotal Doppler Ultrasound (Varicocele screening at Cleveland Clinic Abu Dhabi).\n2. Endocrine Serum Profile: Total Testosterone, FSH, LH, and Prolactin.\n3. Repeat CASA Semen Analysis in 4 weeks.\n4. Antioxidant protocol: L-Carnitine 2000mg + CoQ10 200mg daily.'
     );
     setSelectedLabOrders(
-      b.labOrders || ['Scrotal Doppler Ultrasound', 'Serum Hormone Panel (FSH/LH/Testosterone)', 'Repeat CASA Semen Analysis']
+      patient.labOrders || [
+        'Bilateral Scrotal Doppler Ultrasound',
+        'Serum Endocrine Profile (FSH/LH/Testosterone)',
+        'Repeat CASA Semen Analysis',
+      ]
     );
-    setPrintSuccess(false);
+    setDecisionSuccess(false);
   };
 
-  const handleSaveEHRAndRx = async () => {
-    if (!selectedBooking) return;
-    setSavingNotes(true);
+  // Save Clinician Human-In-The-Loop Decision
+  const handleSaveDecision = async () => {
+    if (!selectedReviewPatient) return;
+    setSavingDecision(true);
     try {
       const res = await fetch('/api/booking', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          bookingId: selectedBooking.bookingId,
-          clinicalNotes: notesInput,
-          prescription: prescriptionInput,
-          labOrders: selectedLabOrders,
+          bookingId: selectedReviewPatient.bookingId,
           status: 'COMPLETED',
+          clinicalNotes: justificationNotes,
+          prescription: prescriptionText,
+          labOrders: selectedLabOrders,
         }),
       });
+
       if (res.ok) {
         setBookings((prev) =>
           prev.map((b) =>
-            b.bookingId === selectedBooking.bookingId
+            b.bookingId === selectedReviewPatient.bookingId
               ? {
                   ...b,
-                  clinicalNotes: notesInput,
-                  prescription: prescriptionInput,
-                  labOrders: selectedLabOrders,
                   status: 'COMPLETED',
+                  triageTier: overrideTier as any,
+                  clinicalNotes: justificationNotes,
+                  prescription: prescriptionText,
+                  labOrders: selectedLabOrders,
                 }
               : b
           )
         );
-        setSelectedBooking((prev) =>
-          prev
-            ? {
-                ...prev,
-                clinicalNotes: notesInput,
-                prescription: prescriptionInput,
-                labOrders: selectedLabOrders,
-                status: 'COMPLETED',
-              }
-            : null
-        );
-        setPrintSuccess(true);
-        setTimeout(() => setPrintSuccess(false), 3000);
+        setDecisionSuccess(true);
+        setTimeout(() => {
+          setSelectedReviewPatient(null);
+          setDecisionSuccess(false);
+        }, 1200);
       }
     } catch (err) {
-      console.error('Error saving clinical notes:', err);
+      console.error(err);
     } finally {
-      setSavingNotes(false);
+      setSavingDecision(false);
     }
   };
 
-  // Mic Diagnostic Tester
-  const startMicTest = async () => {
-    if (isMicTesting) {
-      setIsMicTesting(false);
-      if (micAudioContextRef.current) micAudioContextRef.current.close();
-      setMicLevel(0);
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      micAudioContextRef.current = ctx;
-      const src = ctx.createMediaStreamSource(stream);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      src.connect(analyser);
-
-      const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-      setIsMicTesting(true);
-
-      const loop = () => {
-        analyser.getByteFrequencyData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
-        const avg = sum / bufferLength;
-        setMicLevel(Math.min(100, Math.round((avg / 128) * 100)));
-        if (ctx.state !== 'closed') requestAnimationFrame(loop);
-      };
-      loop();
-    } catch (e) {
-      console.warn('Mic permission error:', e);
-    }
-  };
-
-  const playSpeakerTestSound = () => {
-    try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-      osc.frequency.exponentialRampToValueAtTime(783.99, ctx.currentTime + 0.3); // G5
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.45);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.5);
-      setSpeakerTested(true);
-      setTimeout(() => setSpeakerTested(false), 2000);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const copyPatientTelehealthLink = (bId: string) => {
+  const copyPatientLink = (bId: string) => {
     const url = `${window.location.origin}/telehealth/${bId}`;
     navigator.clipboard.writeText(url);
     setCopiedBookingId(bId);
     setTimeout(() => setCopiedBookingId(null), 2500);
   };
 
-  // Filter Bookings
-  const filteredBookings = bookings.filter((b) => {
-    const matchesTier = filterTier === 'ALL' || b.triageTier === filterTier;
-    const matchesStatus = filterStatus === 'ALL' || b.status === filterStatus;
-    const matchesModality = filterModality === 'ALL' || b.consultType === filterModality;
+  // Filter Bookings for the central console
+  const displayedPatients = bookings.filter((b) => {
+    if (activeSidebarTab === 'escapements') {
+      return b.triageTier === 'URGENT' || (b.redFlags && b.redFlags.length > 0);
+    }
     const matchesSearch =
       searchQuery.trim() === '' ||
-      b.bookingId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       b.pseudonymId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.bookingId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (b.chiefComplaint && b.chiefComplaint.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    return matchesTier && matchesStatus && matchesModality && matchesSearch;
+    const matchesTier = filterTier === 'ALL' || b.triageTier === filterTier;
+    return matchesSearch && matchesTier;
   });
 
-  // KPI Metrics
-  const totalBookings = bookings.length;
-  const urgentCount = bookings.filter((b) => b.triageTier === 'URGENT').length;
-  const waitingRoomCount = bookings.filter((b) => b.status === 'IN_WAITING_ROOM').length;
-  const completedCount = bookings.filter((b) => b.status === 'COMPLETED').length;
+  const urgentPatients = bookings.filter(
+    (b) => b.triageTier === 'URGENT' || (b.redFlags && b.redFlags.length > 0)
+  );
 
   return (
-    <div className="min-h-screen bg-[#F5F3EA] dark:bg-[#121110] text-stone-900 dark:text-[#FAF7F2] font-sans transition-colors duration-200">
+    <div className="min-h-screen bg-[#F9F8F6] text-[#1A1816] font-editorial-sans antialiased selection:bg-[#1A1816] selection:text-white relative overflow-x-hidden">
+      {/* Decorative Warm Arcs & Ambient Radial Gradients (Matching Reference Video) */}
+      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+        <svg
+          className="absolute -top-40 -right-40 w-[1000px] h-[1000px] opacity-[0.045] text-[#22201D]"
+          viewBox="0 0 1000 1000"
+          fill="none"
+          stroke="currentColor"
+        >
+          <circle cx="500" cy="500" r="450" strokeWidth="1" strokeDasharray="4 8" />
+          <circle cx="500" cy="500" r="320" strokeWidth="1.5" />
+          <circle cx="500" cy="500" r="180" strokeWidth="1" />
+        </svg>
+        <div className="absolute top-1/4 -left-48 w-[700px] h-[700px] rounded-full bg-[#EFE8DC]/50 blur-3xl pointer-events-none" />
+      </div>
+
       {/* ========================================================
-          1. TOP HOSPITAL-GRADE EXECUTIVE HEADER
+          1. TOP NAVIGATION BAR (Clean, Luxury, Brand Identity)
           ======================================================== */}
-      <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#181715]/95 backdrop-blur-xl border-b border-[#DDD7C8] dark:border-stone-800 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
-          {/* Left: Brand & Abu Dhabi Clinical Identity */}
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="flex items-center gap-3 p-2 rounded-2xl hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors group"
-            >
-              <div className="w-10 h-10 rounded-xl bg-[#22201D] dark:bg-[#FAF7F2] text-white dark:text-[#181614] flex items-center justify-center font-bold shadow-sm">
-                <Stethoscope className="w-5 h-5 text-emerald-400 dark:text-emerald-600" />
+      <header className="sticky top-0 z-40 bg-[#F9F8F6]/90 backdrop-blur-md border-b border-[#EBE7DF]">
+        <div className="max-w-[1520px] mx-auto px-6 h-18 flex items-center justify-between gap-6">
+          {/* Left: VIGOR AI Brand Emblem */}
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2.5 group focus:outline-none">
+              <div className="w-9 h-9 rounded-xl bg-[#1A1816] flex items-center justify-center text-white shadow-xs transition-transform duration-300 group-hover:scale-105">
+                <VigorLogo className="w-5 h-5 text-current" size={20} />
               </div>
-              <div className="text-left">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-editorial-serif text-lg tracking-wider font-bold uppercase text-stone-900 dark:text-white">
+              <div className="flex flex-col">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-editorial-serif text-lg tracking-[0.2em] font-bold text-[#1A1816] uppercase">
                     Vigor
                   </span>
-                  <span className="text-[10px] font-black tracking-widest text-[#00A884] uppercase bg-emerald-50 dark:bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                    Clinician Hub
+                  <span className="text-[10px] tracking-[0.24em] font-black text-[#8A8172] uppercase">
+                    AI
                   </span>
                 </div>
-                <p className="text-[11px] text-stone-500 dark:text-stone-400">
-                  Abu Dhabi DoH Malaffi Provider Portal
-                </p>
+                <span className="text-[9px] font-bold tracking-wider text-emerald-800 uppercase -mt-0.5">
+                  Doctor Portal
+                </span>
               </div>
             </Link>
-
-            {/* Department of Health Verification Seal */}
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 text-[10px] font-bold text-emerald-800 dark:text-emerald-300">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>DoH Licensed Telehealth Operator</span>
-            </div>
           </div>
 
-          {/* Right: Doctor Profile & Actions */}
-          {currentDoctor && (
-            <div className="flex items-center gap-3">
-              {/* Doctor Status Badge */}
-              <button
-                onClick={() =>
-                  handleStatusToggle(currentDoctor.status === 'available' ? 'busy' : 'available')
-                }
-                className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all shadow-2xs ${
-                  currentDoctor.status === 'available'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
-                    : 'bg-amber-50 dark:bg-amber-950/80 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300'
-                }`}
-                title="Click to toggle availability"
-              >
-                <span
-                  className={`w-2 h-2 rounded-full ${
-                    currentDoctor.status === 'available'
-                      ? 'bg-emerald-500 animate-pulse'
-                      : 'bg-amber-500'
-                  }`}
-                />
-                <span>
-                  {currentDoctor.status === 'available' ? 'Available for Video' : 'In Procedure'}
-                </span>
-              </button>
+          {/* Center: Standard Navigation Links */}
+          <nav className="hidden md:flex items-center gap-6 text-[12px] font-semibold tracking-wider uppercase text-[#6B6355]">
+            <Link href="/" className="hover:text-[#1A1816] transition-colors">
+              Home
+            </Link>
+            <Link href="/#section-intake" className="hover:text-[#1A1816] transition-colors">
+              Intake
+            </Link>
+            <Link href="/#section-safety" className="hover:text-[#1A1816] transition-colors">
+              Clinical Standards
+            </Link>
+            <Link
+              href="/doctor"
+              className="text-[#1A1816] font-bold relative after:absolute after:-bottom-1 after:left-0 after:right-0 after:h-0.5 after:bg-[#1A1816]"
+            >
+              Doctor Portal
+            </Link>
+          </nav>
 
-              {/* Doctor Details Pill */}
-              <div className="hidden md:flex flex-col text-right">
-                <span className="text-xs font-bold text-stone-900 dark:text-white">
-                  {currentDoctor.fullName}
-                </span>
-                <span className="text-[10px] text-stone-500 dark:text-stone-400 font-mono">
-                  {currentDoctor.licenseNumber}
-                </span>
-              </div>
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="p-2.5 rounded-xl border border-stone-300 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-400 transition-colors"
-                title="Logout"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
+          {/* Right Cluster: Search, Telehealth Pill, Lang, Profile */}
+          <div className="flex items-center gap-3.5">
+            {/* Search input */}
+            <div className="hidden lg:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#E5E0D5] text-xs text-[#6B6355] shadow-2xs w-48">
+              <Search className="w-3.5 h-3.5 text-[#9E9587]" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-transparent border-none focus:outline-none text-xs text-[#1A1816] placeholder-[#9E9587]"
+              />
             </div>
-          )}
+
+            {/* TELEHEALTH LIVE Pill Button (Requested) */}
+            <Link
+              href={`/telehealth/bk_auh_7821?role=doctor`}
+              target="_blank"
+              className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#1A1816] hover:bg-[#2A2724] text-white text-[11px] font-bold tracking-widest uppercase transition-all shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <span className="w-2 h-2 rounded-full bg-[#00A884] animate-pulse" />
+              <span>TELEHEALTH LIVE</span>
+            </Link>
+
+            {/* Language Switcher */}
+            <button
+              onClick={() => setLocale(locale === 'en' ? 'ar' : 'en')}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-[#E5E0D5] bg-white text-[10px] font-bold tracking-wider uppercase text-[#6B6355] hover:border-stone-400 transition-all shadow-2xs"
+            >
+              <Globe className="w-3 h-3 text-[#8A8172]" />
+              <span>{locale === 'en' ? 'عربي' : 'EN'}</span>
+            </button>
+
+            {/* Notifications Bell */}
+            <div className="relative p-2 rounded-full bg-white border border-[#E5E0D5] text-[#6B6355] shadow-2xs cursor-pointer">
+              <Bell className="w-4 h-4" />
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#D32F2F] text-white text-[9px] font-black flex items-center justify-center">
+                2
+              </span>
+            </div>
+
+            {/* Clinician Profile Avatar */}
+            {currentDoctor && (
+              <div className="flex items-center gap-2 pl-1 border-l border-[#E5E0D5]">
+                <div className="w-8 h-8 rounded-full bg-[#2A2724] text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                  👨‍⚕️
+                </div>
+                <div className="hidden xl:flex flex-col text-left">
+                  <span className="text-[11px] font-bold text-[#1A1816] leading-tight">
+                    {currentDoctor.fullName}
+                  </span>
+                  <span className="text-[9px] text-[#8A8172]">Consultant Andrologist</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
       {/* ========================================================
-          2. MAIN CONTENT AREA
+          2. CRITICAL EMERGENCY WARNING BANNER (Top of Console)
           ======================================================== */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {!currentDoctor ? (
-          /* ========================================================
-             DOCTOR AUTHENTICATION CARD (LOGIN / REGISTER)
-             ======================================================== */
-          <div className="max-w-lg mx-auto bg-white dark:bg-[#181715] rounded-3xl border border-[#DDD7C8] dark:border-stone-800 p-8 shadow-xl space-y-6 animate-fade-in">
-            <div className="text-center space-y-2">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 text-[#00A884] flex items-center justify-center mx-auto shadow-sm">
-                <Stethoscope className="w-8 h-8" />
+      {urgentPatients.length > 0 && (
+        <div className="bg-[#B71C1C] text-white py-3 px-6 shadow-md transition-colors animate-in fade-in duration-300">
+          <div className="max-w-[1520px] mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-center md:text-left">
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-4 h-4 text-white animate-pulse" />
               </div>
-              <h2 className="text-2xl font-black text-stone-900 dark:text-[#FAF7F2]">
-                Physician & Specialist Portal
-              </h2>
-              <p className="text-xs text-stone-500 dark:text-stone-400">
-                Department of Health Abu Dhabi (DoH) Malaffi Telehealth Integration
+              <div>
+                <span className="text-xs sm:text-sm font-bold tracking-wide">
+                  Clinical Emergency Warning: 2 Patients require immediate review.
+                </span>
+                <span className="hidden lg:inline text-xs text-rose-200 ml-2">
+                  (Acute Scrotal Pain Gate GC01 · Solitary Lump Gate GC02 · SLA Window: 42m active)
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setActiveSidebarTab('escapements');
+                  if (urgentPatients[0]) openReviewModal(urgentPatients[0]);
+                }}
+                className="px-4 py-1.5 rounded-full bg-white text-[#B71C1C] hover:bg-rose-50 text-[11px] font-black uppercase tracking-wider shadow-sm transition-transform active:scale-95 flex items-center gap-1.5"
+              >
+                <span>Review Immediate Cases</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          3. MAIN LAYOUT: CURVED TIMELINE SIDEBAR + CONSOLE
+          ======================================================== */}
+      <div className="max-w-[1520px] mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* ========================================================
+            LEFT SIDEBAR: CURVED SEGMENTED TIMELINE GRAPHIC
+            (Matching Reference Video Frame 01 & 03)
+            ======================================================== */}
+        <aside className="lg:col-span-3 bg-white/80 backdrop-blur-md rounded-3xl p-6 border border-[#EBE7DF] shadow-[0_8px_30px_rgb(0,0,0,0.03)] relative overflow-hidden">
+          <div className="flex items-center justify-between mb-6 pb-3 border-b border-[#F0ECE1]">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8A8172]">
+              Clinical Navigation
+            </span>
+            <span className="text-[10px] font-mono text-emerald-700 bg-[#E8F5E9] px-2 py-0.5 rounded-full font-bold">
+              60.0 fps
+            </span>
+          </div>
+
+          {/* Timeline graphic wrapper with SVG arc */}
+          <div className="relative pl-6 space-y-8">
+            {/* The Subtle Curved Connecting Timeline Graphic (From Video) */}
+            <div className="absolute top-3 left-2.5 bottom-6 w-8 pointer-events-none">
+              <svg className="w-full h-full" viewBox="0 0 32 300" fill="none">
+                <path
+                  d="M 6 10 C 26 60, 26 120, 6 160 C -8 200, 18 240, 6 290"
+                  stroke="#DDD7C8"
+                  strokeWidth="2"
+                  strokeDasharray="4 4"
+                />
+              </svg>
+            </div>
+
+            {/* Menu Item 1: Active Workflows */}
+            <div
+              onClick={() => setActiveSidebarTab('workflows')}
+              className={`relative cursor-pointer group transition-all ${
+                activeSidebarTab === 'workflows' ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+              }`}
+            >
+              <div
+                className={`absolute -left-[19px] top-1.5 w-3 h-3 rounded-full border-2 transition-all ${
+                  activeSidebarTab === 'workflows'
+                    ? 'bg-[#1A1816] border-white ring-2 ring-[#1A1816]'
+                    : 'bg-[#DDD7C8] border-white group-hover:bg-[#1A1816]'
+                }`}
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#1A1816]">
+                  Active Workflows
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-stone-100 text-[#6B6355] font-bold">
+                  10 n8n
+                </span>
+              </div>
+              <p className="text-[11px] text-[#8A8172] mt-0.5">
+                Autonomous screening, red-flag triage, and lab dispatch loops.
               </p>
             </div>
 
-            {/* Auth Mode Tabs */}
-            <div className="flex rounded-2xl bg-stone-100 dark:bg-stone-900 p-1 border border-stone-200 dark:border-stone-800">
-              <button
-                type="button"
-                onClick={() => setAuthMode('login')}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
-                  authMode === 'login'
-                    ? 'bg-white dark:bg-[#25221E] text-stone-900 dark:text-white shadow-xs'
-                    : 'text-stone-500 hover:text-stone-900 dark:hover:text-white'
+            {/* Menu Item 2: Runtime Review (Clinician Console) */}
+            <div
+              onClick={() => setActiveSidebarTab('runtime')}
+              className={`relative cursor-pointer group transition-all ${
+                activeSidebarTab === 'runtime' ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+              }`}
+            >
+              <div
+                className={`absolute -left-[19px] top-1.5 w-3 h-3 rounded-full border-2 transition-all ${
+                  activeSidebarTab === 'runtime'
+                    ? 'bg-[#1A1816] border-white ring-2 ring-[#1A1816]'
+                    : 'bg-[#DDD7C8] border-white group-hover:bg-[#1A1816]'
                 }`}
-              >
-                Clinician Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => setAuthMode('register')}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
-                  authMode === 'register'
-                    ? 'bg-white dark:bg-[#25221E] text-stone-900 dark:text-white shadow-xs'
-                    : 'text-stone-500 hover:text-stone-900 dark:hover:text-white'
-                }`}
-              >
-                Register License (DoH)
-              </button>
-            </div>
-
-            {authError && (
-              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{authError}</span>
-              </div>
-            )}
-
-            {/* Auth Forms */}
-            {authMode === 'login' ? (
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
-                    Hospital / Clinician Email
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="dr.tariq@healthplus.ae"
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={passwordInput}
-                    onChange={(e) => setPasswordInput(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={authLoading}
-                  className="w-full py-3 rounded-xl bg-[#22201D] dark:bg-[#FAF7F2] text-[#FAF7F2] dark:text-[#181614] font-bold text-xs uppercase tracking-wider shadow-sm hover:scale-[1.01] transition-transform"
-                >
-                  {authLoading ? 'Verifying with DoH Malaffi...' : 'Sign In to Clinical Suite'}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleRegister} className="space-y-3.5">
-                <div>
-                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
-                    Full Name & Title
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={fullNameInput}
-                    onChange={(e) => setFullNameInput(e.target.value)}
-                    placeholder="Dr. Tariq Al-Hashimi, MD, FRCS"
-                    className="w-full text-xs px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
-                      DoH License #
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={licenseInput}
-                      onChange={(e) => setLicenseInput(e.target.value)}
-                      placeholder="DOH-AUH-2018-0924"
-                      className="w-full text-xs px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
-                      Specialty
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={specialtyInput}
-                      onChange={(e) => setSpecialtyInput(e.target.value)}
-                      placeholder="Consultant Andrologist"
-                      className="w-full text-xs px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
-                    Primary Facility / Hospital
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={facilityInput}
-                    onChange={(e) => setFacilityInput(e.target.value)}
-                    placeholder="HealthPlus Fertility & Andrology Center"
-                    className="w-full text-xs px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                      placeholder="doctor@healthplus.ae"
-                      className="w-full text-xs px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
-                      Password
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      value={passwordInput}
-                      onChange={(e) => setPasswordInput(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full text-xs px-3.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={authLoading}
-                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-colors mt-2"
-                >
-                  {authLoading ? 'Registering with DoH...' : 'Complete Clinician Registration'}
-                </button>
-              </form>
-            )}
-
-            {/* Instant 1-Click Demo Login */}
-            <div className="pt-4 border-t border-stone-200 dark:border-stone-800 text-center">
-              <button
-                type="button"
-                onClick={handleDemoLogin}
-                className="text-xs font-bold text-emerald-700 dark:text-[#00A884] hover:underline flex items-center justify-center gap-1.5 mx-auto"
-              >
-                <Sparkles className="w-4 h-4 text-emerald-500" />
-                <span>Instant Demo: Login as Dr. Tariq (No password needed)</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* ========================================================
-             DOCTOR COMMAND DASHBOARD & PATIENT APPOINTMENTS QUEUE
-             ======================================================== */
-          <div className="space-y-6">
-            {/* Top Doctor Profile & Diagnostics Ribbon */}
-            <div className="p-6 rounded-3xl bg-white dark:bg-[#181715] border border-[#DDD7C8] dark:border-stone-800 shadow-sm flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center text-2xl shadow-md font-bold">
-                  👨‍⚕️
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-black text-stone-900 dark:text-[#FAF7F2]">
-                      {currentDoctor.fullName}
-                    </h2>
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold border border-emerald-300 dark:border-emerald-800">
-                      DoH Verified
-                    </span>
-                  </div>
-                  <p className="text-xs text-stone-600 dark:text-stone-300 mt-0.5 font-medium">
-                    {currentDoctor.specialty} · {currentDoctor.facility}
-                  </p>
-                  <p className="text-[11px] text-stone-400 font-mono mt-0.5">
-                    Licence: {currentDoctor.licenseNumber} · Malaffi Provider ID: PRV-882190
-                  </p>
-                </div>
-              </div>
-
-              {/* Hardware Diagnostic Suite: Mic VU Meter & Sound Test */}
-              <div className="flex flex-wrap items-center gap-3 p-3 rounded-2xl bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-xs">
-                {/* Mic VU Meter */}
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-[#181715] border border-stone-200 dark:border-stone-800">
-                  <button
-                    onClick={startMicTest}
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      isMicTesting ? 'bg-red-500 text-white animate-pulse' : 'bg-stone-100 dark:bg-stone-800 text-stone-600'
-                    }`}
-                    title="Click to test mic"
-                  >
-                    <Mic className="w-3.5 h-3.5" />
-                  </button>
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-bold text-stone-400 uppercase">
-                      {isMicTesting ? 'Speak now' : 'Mic Test'}
-                    </span>
-                    <div className="w-20 h-2 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden mt-0.5">
-                      <div
-                        className="h-full bg-emerald-500 transition-all duration-75"
-                        style={{ width: `${isMicTesting ? micLevel : 0}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Speaker Sound Test */}
-                <button
-                  onClick={playSpeakerTestSound}
-                  className="px-3 py-2 rounded-xl bg-white dark:bg-[#181715] border border-stone-200 dark:border-stone-800 hover:bg-stone-100 dark:hover:bg-stone-800 font-bold text-[11px] text-stone-700 dark:text-stone-300 flex items-center gap-1.5 transition-colors"
-                >
-                  <Volume2 className="w-3.5 h-3.5 text-blue-500" />
-                  <span>{speakerTested ? 'Chime OK!' : 'Test Speaker'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* KPI Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-4 rounded-2xl bg-white dark:bg-[#181715] border border-[#DDD7C8] dark:border-stone-800 shadow-xs flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-sky-300 flex items-center justify-center font-bold">
-                  <Calendar className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-stone-500 uppercase">Consultations Today</p>
-                  <p className="text-2xl font-black text-stone-900 dark:text-[#FAF7F2]">{totalBookings}</p>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-white dark:bg-[#181715] border border-[#DDD7C8] dark:border-stone-800 shadow-xs flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 flex items-center justify-center font-bold">
-                  <ShieldAlert className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-stone-500 uppercase">Urgent Red-Flags</p>
-                  <p className="text-2xl font-black text-red-600 dark:text-red-400">{urgentCount}</p>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-white dark:bg-[#181715] border border-[#DDD7C8] dark:border-stone-800 shadow-xs flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold">
-                  <Activity className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-stone-500 uppercase">In Waiting Room</p>
-                  <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{waitingRoomCount}</p>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-white dark:bg-[#181715] border border-[#DDD7C8] dark:border-stone-800 shadow-xs flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 flex items-center justify-center font-bold">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-stone-500 uppercase">Completed Cases</p>
-                  <p className="text-2xl font-black text-stone-900 dark:text-[#FAF7F2]">{completedCount}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Filter & Search Bar */}
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#181715] border border-[#DDD7C8] dark:border-stone-800 shadow-xs flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2 flex-1 min-w-[240px] max-w-md bg-stone-50 dark:bg-stone-900 px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-800">
-                <Search className="w-4 h-4 text-stone-400" />
-                <input
-                  type="text"
-                  placeholder="Search patient pseudonym, complaint, or booking ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full text-xs bg-transparent border-none focus:outline-none text-stone-900 dark:text-white"
-                />
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <select
-                  value={filterTier}
-                  onChange={(e) => setFilterTier(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-xs font-bold text-stone-700 dark:text-stone-300 focus:outline-none"
-                >
-                  <option value="ALL">All Acuity Tiers</option>
-                  <option value="URGENT">Urgent Red-Flags</option>
-                  <option value="ANDROLOGY_UROLOGY">Andrology Review</option>
-                  <option value="FERTILITY_SERVICES">Fertility Pathway</option>
-                </select>
-
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-xs font-bold text-stone-700 dark:text-stone-300 focus:outline-none"
-                >
-                  <option value="ALL">All Statuses</option>
-                  <option value="IN_WAITING_ROOM">In Waiting Room</option>
-                  <option value="CONFIRMED">Confirmed</option>
-                  <option value="COMPLETED">Completed</option>
-                </select>
-
-                <button
-                  onClick={fetchBookings}
-                  className="p-2.5 rounded-xl text-stone-500 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors border border-stone-300 dark:border-stone-700"
-                  title="Refresh Queue"
-                >
-                  <RefreshCw className={`w-4 h-4 ${loadingBookings ? 'animate-spin' : ''}`} />
-                </button>
-              </div>
-            </div>
-
-            {/* Patients Appointments Queue */}
-            <div className="space-y-4">
+              />
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-wider text-stone-500 dark:text-stone-400">
-                  Live Patient Roster ({filteredBookings.length} Cases)
-                </h3>
-                <span className="text-[11px] text-stone-400">
-                  Encrypted under DoH Sovereign Privacy Standards
+                <span className="text-xs font-bold uppercase tracking-wider text-[#1A1816]">
+                  Runtime Review
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#E8F5E9] text-[#1B5E20] font-bold">
+                  237 Pending
                 </span>
               </div>
+              <p className="text-[11px] text-[#8A8172] mt-0.5">
+                Human-in-the-loop review for borderline WHO 2021 motility cases.
+              </p>
+            </div>
 
-              {filteredBookings.length === 0 ? (
-                <div className="p-12 text-center bg-white dark:bg-[#181715] rounded-3xl border border-[#DDD7C8] dark:border-stone-800 text-xs text-stone-500 space-y-2">
-                  <p className="font-bold text-sm text-stone-700 dark:text-stone-300">
-                    No patient consultations found
-                  </p>
-                  <p>Check filter criteria or click Refresh above to reload.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4">
-                  {filteredBookings.map((b) => {
-                    const isUrgent = b.triageTier === 'URGENT';
-                    const isWaiting = b.status === 'IN_WAITING_ROOM';
-                    const isCompleted = b.status === 'COMPLETED';
+            {/* Menu Item 3: Consent Ledger */}
+            <div
+              onClick={() => setActiveSidebarTab('consent')}
+              className={`relative cursor-pointer group transition-all ${
+                activeSidebarTab === 'consent' ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+              }`}
+            >
+              <div
+                className={`absolute -left-[19px] top-1.5 w-3 h-3 rounded-full border-2 transition-all ${
+                  activeSidebarTab === 'consent'
+                    ? 'bg-[#1A1816] border-white ring-2 ring-[#1A1816]'
+                    : 'bg-[#DDD7C8] border-white group-hover:bg-[#1A1816]'
+                }`}
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#1A1816]">
+                  Consent Ledger
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-stone-100 text-[#6B6355] font-bold">
+                  511 SHA-256
+                </span>
+              </div>
+              <p className="text-[11px] text-[#8A8172] mt-0.5">
+                Zero-PII cryptographically signed Abu Dhabi DoH sharing receipts.
+              </p>
+            </div>
 
-                    return (
-                      <div
-                        key={b.bookingId}
-                        className={`p-5 rounded-3xl border transition-all bg-white dark:bg-[#181715] shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 ${
-                          isUrgent
-                            ? 'border-red-300 dark:border-red-900/60 ring-1 ring-red-500/20'
-                            : isWaiting
-                            ? 'border-emerald-300 dark:border-emerald-800/80 ring-1 ring-emerald-500/20'
-                            : 'border-[#DDD7C8] dark:border-stone-800'
-                        }`}
-                      >
-                        {/* Left: Patient Info & Clinical Triage */}
-                        <div className="space-y-2.5 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-mono text-xs font-black text-stone-900 dark:text-[#FAF7F2]">
-                              {b.pseudonymId}
-                            </span>
-                            <span className="text-[10px] text-stone-400 font-mono">
-                              ({b.bookingId})
-                            </span>
-
-                            {/* Acuity Tier Badge */}
-                            <span
-                              className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border ${
-                                isUrgent
-                                  ? 'bg-red-100 text-red-800 border-red-300 dark:bg-red-950 dark:text-red-300'
-                                  : 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-sky-300'
-                              }`}
-                            >
-                              {b.triageTier}
-                            </span>
-
-                            {/* Status Badge */}
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                isWaiting
-                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 animate-pulse'
-                                  : isCompleted
-                                  ? 'bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300'
-                                  : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                              }`}
-                            >
-                              ● {b.status.replace(/_/g, ' ')}
-                            </span>
-                          </div>
-
-                          {/* Chief Complaint */}
-                          <p className="text-xs font-bold text-stone-800 dark:text-stone-200">
-                            {b.chiefComplaint || 'Assessment for male subfertility and motility optimization'}
-                          </p>
-
-                          {/* WHO 2021 Reference Parameters Preview */}
-                          {b.whoParameters && (
-                            <div className="flex flex-wrap items-center gap-3 text-[11px] bg-stone-50 dark:bg-stone-900 p-2.5 rounded-xl border border-stone-200 dark:border-stone-800 font-mono">
-                              <span>
-                                <strong>Sperm Conc:</strong> {b.whoParameters.concentration || '16 M/ml (Ref ≥15)'}
-                              </span>
-                              <span>•</span>
-                              <span>
-                                <strong>Prog. Motility:</strong>{' '}
-                                <span className={b.whoParameters.progressiveMotility?.includes('Sub') ? 'text-red-600 dark:text-red-400 font-bold' : 'text-emerald-600'}>
-                                  {b.whoParameters.progressiveMotility || '28% (Sub-ref <32%)'}
-                                </span>
-                              </span>
-                              <span>•</span>
-                              <span>
-                                <strong>Normal Forms:</strong> {b.whoParameters.normalForms || '3% (Ref ≥4%)'}
-                              </span>
-                            </div>
-                          )}
-
-                          <div className="flex flex-wrap items-center gap-4 text-[11px] text-stone-500 dark:text-stone-400">
-                            <span className="flex items-center gap-1 font-semibold text-blue-700 dark:text-sky-300">
-                              <Clock className="w-3.5 h-3.5" />
-                              {b.slotTime}
-                            </span>
-                            <span>
-                              {b.consultType === 'TELEHEALTH_VIDEO' ? '📹 Telehealth Video' : '🏥 In-Clinic'}
-                            </span>
-                            {b.contact?.email && (
-                              <span className="flex items-center gap-1">
-                                <Mail className="w-3 h-3" />
-                                {b.contact.email}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Right: Action Buttons */}
-                        <div className="flex flex-wrap items-center gap-2 shrink-0 w-full lg:w-auto pt-3 lg:pt-0 border-t lg:border-t-0 border-stone-200 dark:border-stone-800">
-                          {/* Join Video Room Button */}
-                          {b.consultType === 'TELEHEALTH_VIDEO' && (
-                            <Link
-                              href={`/telehealth/${b.bookingId}?role=doctor`}
-                              target="_blank"
-                              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition-all"
-                            >
-                              <Video className="w-4 h-4" />
-                              <span>Join Live Video Room</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </Link>
-                          )}
-
-                          {/* Copy Patient Link */}
-                          <button
-                            type="button"
-                            onClick={() => copyPatientTelehealthLink(b.bookingId)}
-                            className="p-2.5 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 transition-colors"
-                            title="Copy Patient Consultation Link"
-                          >
-                            {copiedBookingId === b.bookingId ? (
-                              <Check className="w-4 h-4 text-emerald-600" />
-                            ) : (
-                              <Copy className="w-4 h-4" />
-                            )}
-                          </button>
-
-                          {/* Full EHR Dossier Button */}
-                          <button
-                            type="button"
-                            onClick={() => openEHRDossier(b, 'overview')}
-                            className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#25221E] border border-stone-300 dark:border-stone-700 text-stone-800 dark:text-[#FAF7F2] font-bold text-xs flex items-center gap-1.5 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors shadow-2xs"
-                          >
-                            <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-sky-400" />
-                            <span>Clinical EHR / Rx</span>
-                          </button>
-
-                          {/* Quick Mark Completed Toggle */}
-                          {b.status !== 'COMPLETED' ? (
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateStatus(b.bookingId, 'COMPLETED')}
-                              className="px-3 py-2.5 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-emerald-50 dark:hover:bg-emerald-950 text-stone-600 hover:text-emerald-700 dark:text-stone-300 text-xs font-bold transition-colors"
-                              title="Mark Consultation Complete"
-                            >
-                              Mark Done
-                            </button>
-                          ) : (
-                            <span className="px-2.5 py-1 rounded-lg text-emerald-600 font-bold text-xs">
-                              ✓ Completed
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+            {/* Menu Item 4: Patient Escapements */}
+            <div
+              onClick={() => setActiveSidebarTab('escapements')}
+              className={`relative cursor-pointer group transition-all ${
+                activeSidebarTab === 'escapements' ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+              }`}
+            >
+              <div
+                className={`absolute -left-[19px] top-1.5 w-3 h-3 rounded-full border-2 transition-all ${
+                  activeSidebarTab === 'escapements'
+                    ? 'bg-[#B71C1C] border-white ring-2 ring-red-500 animate-ping'
+                    : 'bg-[#B71C1C] border-white'
+                }`}
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#B71C1C]">
+                  Patient Escapements
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-100 text-[#B71C1C] font-bold">
+                  2 SLA Active
+                </span>
+              </div>
+              <p className="text-[11px] text-[#8A8172] mt-0.5">
+                Urgent deterministic red flags requiring physician override.
+              </p>
             </div>
           </div>
-        )}
-      </main>
+
+          {/* Clinician On-Call Status Card */}
+          <div className="mt-8 p-4 rounded-2xl bg-[#F9F8F6] border border-[#EBE7DF] space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold">
+              <span className="text-[#6B6355]">Physician Duty Status</span>
+              <span className="text-emerald-700 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Active
+              </span>
+            </div>
+            <p className="text-[11px] text-[#8A8172]">
+              Dr. Tariq Al-Hashimi · License: DOH-AUH-2018-0924 (Malaffi Provider #PRV-882190)
+            </p>
+          </div>
+        </aside>
+
+        {/* ========================================================
+            MAIN CONSOLE: HERO & PATIENT CARDS WITH WHO 2021 SIMULATOR
+            ======================================================== */}
+        <main className="lg:col-span-9 space-y-8">
+          {/* Hero Banner: Runtime & Clinician Review Console (Matching Video Frames 03 & 04) */}
+          <div className="bg-white/80 backdrop-blur-md rounded-3xl p-8 lg:p-10 border border-[#EBE7DF] shadow-[0_8px_30px_rgb(0,0,0,0.03)] relative overflow-hidden text-center space-y-4">
+            {/* Subtle decorative curved background pattern in hero */}
+            <div className="absolute inset-0 pointer-events-none opacity-40">
+              <svg className="w-full h-full" viewBox="0 0 800 240" fill="none">
+                <path
+                  d="M 50 200 C 250 80, 550 80, 750 200"
+                  stroke="#E8E2D4"
+                  strokeWidth="2"
+                  strokeDasharray="6 6"
+                />
+              </svg>
+            </div>
+
+            <div className="relative z-10 space-y-3 max-w-2xl mx-auto">
+              <span className="inline-block px-3 py-1 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-[10px] font-black uppercase tracking-[0.2em] text-[#1B5E20]">
+                Autonomous WHO 2021 Semen Analysis & Deterministic Triage Gateway
+              </span>
+
+              {/* High-contrast Serif Headline matching video */}
+              <h1 className="font-editorial-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#1A1816] leading-[1.15]">
+                Runtime & Clinician Review Console
+              </h1>
+
+              <p className="text-xs sm:text-sm text-[#6B6355] max-w-xl mx-auto leading-relaxed">
+                Review asynchronous WHO 2021 computer-assisted semen analysis (CASA) parameters,
+                override algorithmic risk bands with clinical justification, and issue official DoH
+                Malaffi e-prescriptions.
+              </p>
+
+              {/* Prominent Dark Pill Button with Ripple Effect (Matching Video Click Action) */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (displayedPatients[0]) openReviewModal(displayedPatients[0]);
+                  }}
+                  className="group relative inline-flex items-center gap-3 px-8 py-3.5 rounded-full bg-[#1A1816] hover:bg-[#2A2724] text-white text-xs font-bold tracking-widest uppercase transition-all shadow-md hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <span>Launch Clinician Review Portal</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* ========================================================
+              ANALYTICS & PARAMETER CARDS BAR (Matching Frame 05)
+              ======================================================== */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Metric 1: Total Sperm Rating */}
+            <div className="p-5 rounded-3xl bg-white border border-[#EBE7DF] shadow-[0_8px_30px_rgb(0,0,0,0.03)] space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8172] block">
+                Total Sperm Metrics
+              </span>
+              <div className="flex items-center justify-between">
+                <span className="font-editorial-serif text-2xl font-bold text-[#1A1816]">
+                  99%
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#E8F5E9] text-[#1B5E20] font-bold">
+                  +1.33%
+                </span>
+              </div>
+              <p className="text-[11px] text-[#8A8172]">
+                Quality index across 511 CASA verified samples.
+              </p>
+            </div>
+
+            {/* Metric 2: Average Progressive Motility */}
+            <div className="p-5 rounded-3xl bg-white border border-[#EBE7DF] shadow-[0_8px_30px_rgb(0,0,0,0.03)] space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8172] block">
+                Prog Motility Average
+              </span>
+              <div className="flex items-center justify-between">
+                <span className="font-editorial-serif text-2xl font-bold text-[#1A1816]">
+                  60%
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#E8F5E9] text-[#1B5E20] font-bold">
+                  Normal (≥32%)
+                </span>
+              </div>
+              <p className="text-[11px] text-[#8A8172]">
+                Mean forward progressive motility score.
+              </p>
+            </div>
+
+            {/* Metric 3: Total Sperm Count Throughput */}
+            <div className="p-5 rounded-3xl bg-white border border-[#EBE7DF] shadow-[0_8px_30px_rgb(0,0,0,0.03)] space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8172] block">
+                Total Sperm Count
+              </span>
+              <div className="flex items-center justify-between">
+                <span className="font-editorial-serif text-2xl font-bold text-[#1A1816]">
+                  24.5 M/ml
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#E8F5E9] text-[#1B5E20] font-bold">
+                  Normal
+                </span>
+              </div>
+              <p className="text-[11px] text-[#8A8172]">
+                WHO 2021 reference floor: 15 M/ml.
+              </p>
+            </div>
+
+            {/* Metric 4: Immediate Escapement Alerts */}
+            <div className="p-5 rounded-3xl bg-white border border-[#EBE7DF] shadow-[0_8px_30px_rgb(0,0,0,0.03)] space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#B71C1C] block">
+                Clinical Escapements
+              </span>
+              <div className="flex items-center justify-between">
+                <span className="font-editorial-serif text-2xl font-bold text-[#B71C1C]">
+                  2 Cases
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-100 text-[#B71C1C] font-bold">
+                  Action SLA
+                </span>
+              </div>
+              <p className="text-[11px] text-[#8A8172]">
+                Deterministic red-flag safety triggers.
+              </p>
+            </div>
+          </div>
+
+          {/* ========================================================
+              CENTRAL GRID OF PATIENT CARDS AWAITING ASYNC REVIEW
+              (With WHO 2021 Semen Analysis Simulator Metrics & Sparklines)
+              ======================================================== */}
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#EBE7DF]">
+              <div className="flex items-center gap-3">
+                <h3 className="font-editorial-serif text-xl font-bold text-[#1A1816]">
+                  Awaiting Async Clinician Review ({displayedPatients.length} Cases)
+                </h3>
+              </div>
+
+              {/* Timeframe selector matching video (1b, 6M, 1M, All) */}
+              <div className="flex items-center gap-1.5 p-1 rounded-full bg-white border border-[#E5E0D5] text-xs font-bold shadow-2xs">
+                {(['1b', '6M', '1M', 'All'] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTimeframe(t)}
+                    className={`px-3 py-1 rounded-full text-[11px] transition-all ${
+                      timeframe === t
+                        ? 'bg-[#1A1816] text-white shadow-2xs'
+                        : 'text-[#6B6355] hover:text-[#1A1816]'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {displayedPatients.length === 0 ? (
+              <div className="p-12 text-center bg-white rounded-3xl border border-[#EBE7DF] text-xs text-[#8A8172]">
+                No patients found in this queue.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {displayedPatients.map((patient) => {
+                  const isUrgent =
+                    patient.triageTier === 'URGENT' ||
+                    (patient.redFlags && patient.redFlags.length > 0);
+                  const isWaiting = patient.status === 'IN_WAITING_ROOM';
+
+                  return (
+                    <div
+                      key={patient.bookingId}
+                      className="bg-white rounded-3xl p-6 border border-[#EBE7DF] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-lg transition-all space-y-5 flex flex-col justify-between"
+                    >
+                      {/* Top Patient Header */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-2xl bg-[#F5F2EB] flex items-center justify-center text-xl font-bold shadow-2xs border border-[#EAE5D9]">
+                            {isUrgent ? '🚨' : '🧑'}
+                          </div>
+                          <div>
+                            <h4 className="font-editorial-serif text-lg font-bold text-[#1A1816] leading-tight">
+                              Patient #{patient.pseudonymId.slice(-7)}
+                            </h4>
+                            <p className="text-[11px] text-[#8A8172] font-mono">
+                              Ref: {patient.bookingId} · {patient.facility.name}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Acuity Badge */}
+                        <span
+                          className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
+                            isUrgent
+                              ? 'bg-red-50 text-[#B71C1C] border-red-200'
+                              : 'bg-blue-50 text-blue-900 border-blue-200'
+                          }`}
+                        >
+                          {patient.triageTier}
+                        </span>
+                      </div>
+
+                      {/* Chief Complaint */}
+                      <div className="p-3 rounded-2xl bg-[#F9F8F6] border border-[#EFECE3] text-xs text-[#4A453C] leading-relaxed">
+                        <span className="font-bold text-[#1A1816] block mb-0.5">
+                          Reported Symptom / Triage Intake:
+                        </span>
+                        {patient.chiefComplaint ||
+                          '14 months primary subfertility. Asthenozoospermia pattern with sluggish motility.'}
+                      </div>
+
+                      {/* ========================================================
+                          WHO 2021 Semen Analysis Simulator Metric Blocks
+                          (Matching Reference Video Frames 02 & 03)
+                          ======================================================== */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Block 1: Total Sperm Count */}
+                        <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#EBE7DF] space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8172]">
+                              Total Sperm Count
+                            </span>
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#E8F5E9] text-[#1B5E20]">
+                              Normal
+                            </span>
+                          </div>
+                          <div className="font-editorial-serif text-xl font-bold text-[#1A1816]">
+                            {patient.whoParameters?.concentration || '24.5 M/ml'}
+                          </div>
+                          <span className="text-[10px] text-[#8A8172] block">Ref: ≥15 M/ml</span>
+                        </div>
+
+                        {/* Block 2: Progressive Motility */}
+                        <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#EBE7DF] space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8172]">
+                              Prog Motility
+                            </span>
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#FFEBEE] text-[#C62828]">
+                              Flagged
+                            </span>
+                          </div>
+                          <div className="font-editorial-serif text-xl font-bold text-[#C62828]">
+                            {patient.whoParameters?.progressiveMotility || '16.8% (USTS)'}
+                          </div>
+                          <span className="text-[10px] text-[#C62828] block">Sub-ref: &lt;32%</span>
+                        </div>
+                      </div>
+
+                      {/* Mini Sparkline Motility Curve SVG (Matching Video) */}
+                      <div className="p-3 rounded-2xl bg-[#FAF8F5] border border-[#EBE7DF] flex items-center justify-between">
+                        <div className="text-left">
+                          <span className="text-[10px] font-bold text-[#8A8172] block uppercase tracking-wider">
+                            Motility Curve Trajectory
+                          </span>
+                          <span className="text-xs font-bold text-emerald-800">
+                            ↑ 18% Recovery Projection
+                          </span>
+                        </div>
+                        <div className="w-28 h-8">
+                          <svg className="w-full h-full" viewBox="0 0 100 30" fill="none">
+                            <path
+                              d="M 5 22 Q 25 15, 45 18 T 85 8 T 95 6"
+                              stroke="#00A884"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                            />
+                            <circle cx="95" cy="6" r="3" fill="#00A884" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* Primary Actions on Card */}
+                      <div className="pt-2 flex flex-col sm:flex-row items-center gap-2.5">
+                        {/* Launch Clinician Review Portal Pill Button (Requested) */}
+                        <button
+                          type="button"
+                          onClick={() => openReviewModal(patient)}
+                          className="w-full sm:flex-1 py-3 px-5 rounded-full bg-[#1A1816] hover:bg-[#2A2724] text-white text-xs font-bold tracking-wider uppercase transition-transform active:scale-95 flex items-center justify-center gap-2 shadow-sm"
+                        >
+                          <span>Launch Clinician Review Portal</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Telehealth Video Call Pill Button */}
+                        {patient.consultType === 'TELEHEALTH_VIDEO' && (
+                          <Link
+                            href={`/telehealth/${patient.bookingId}?role=doctor`}
+                            target="_blank"
+                            className="w-full sm:w-auto px-4 py-3 rounded-full bg-[#00A884] hover:bg-[#008f70] text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm transition-transform active:scale-95"
+                            title="Start WhatsApp Video Call"
+                          >
+                            <Video className="w-4 h-4" />
+                            <span>Video</span>
+                          </Link>
+                        )}
+
+                        {/* Copy Room Link */}
+                        <button
+                          type="button"
+                          onClick={() => copyPatientLink(patient.bookingId)}
+                          className="p-3 rounded-full bg-stone-100 hover:bg-stone-200 text-[#6B6355] transition-colors"
+                          title="Copy Patient Room URL"
+                        >
+                          {copiedBookingId === patient.bookingId ? (
+                            <Check className="w-4 h-4 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
 
       {/* ========================================================
-          3. COMPREHENSIVE ELECTRONIC HEALTH RECORD (EHR) MODAL
+          4. INTERACTIVE CLINICIAN REVIEW PORTAL MODAL / DRAWER
           ======================================================== */}
-      {selectedBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-[#181715] border border-stone-300 dark:border-stone-800 rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      {selectedReviewPatient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-[#FAF8F5] border border-[#DDD7C8] rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
             {/* Modal Header */}
-            <div className="p-5 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between bg-stone-50 dark:bg-[#1D1B18]">
+            <div className="p-6 border-b border-[#E8E2D5] bg-white flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-sky-300 flex items-center justify-center font-bold">
-                  <FileText className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-xl bg-[#1A1816] text-white flex items-center justify-center font-bold">
+                  <Stethoscope className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-black text-stone-900 dark:text-[#FAF7F2]">
-                      Patient Clinical EHR Dossier · {selectedBooking.pseudonymId}
-                    </h3>
-                    <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-sky-300 text-[10px] font-black">
-                      {selectedBooking.triageTier}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-stone-500 font-mono">
-                    Ref: {selectedBooking.bookingId} · Facility: {selectedBooking.facility.name}
+                  <h3 className="font-editorial-serif text-xl font-bold text-[#1A1816]">
+                    Clinician Review Portal · Patient #{selectedReviewPatient.pseudonymId}
+                  </h3>
+                  <p className="text-xs text-[#8A8172]">
+                    WHO 2021 Human-In-The-Loop Triage & DoH Malaffi E-Prescription Gateway
                   </p>
                 </div>
               </div>
 
               <button
-                onClick={() => setSelectedBooking(null)}
-                className="p-2 rounded-xl text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors"
+                onClick={() => setSelectedReviewPatient(null)}
+                className="p-2 rounded-full hover:bg-stone-100 text-stone-500 hover:text-stone-900"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Modal Navigation Tabs */}
-            <div className="flex border-b border-stone-200 dark:border-stone-800 bg-[#FAF8F5] dark:bg-[#151412] px-4 gap-2">
-              <button
-                onClick={() => setActiveEHRTab('overview')}
-                className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 ${
-                  activeEHRTab === 'overview'
-                    ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-                    : 'border-transparent text-stone-500 hover:text-stone-900 dark:hover:text-stone-300'
-                }`}
-              >
-                <User className="w-4 h-4" />
-                <span>Patient Overview & Safety</span>
-              </button>
-
-              <button
-                onClick={() => setActiveEHRTab('who')}
-                className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 ${
-                  activeEHRTab === 'who'
-                    ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-                    : 'border-transparent text-stone-500 hover:text-stone-900 dark:hover:text-stone-300'
-                }`}
-              >
-                <Microscope className="w-4 h-4" />
-                <span>WHO 2021 Semen Analysis</span>
-              </button>
-
-              <button
-                onClick={() => setActiveEHRTab('orders')}
-                className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 ${
-                  activeEHRTab === 'orders'
-                    ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-                    : 'border-transparent text-stone-500 hover:text-stone-900 dark:hover:text-stone-300'
-                }`}
-              >
-                <Zap className="w-4 h-4" />
-                <span>Diagnostic Test Orders</span>
-              </button>
-
-              <button
-                onClick={() => setActiveEHRTab('rx')}
-                className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 ${
-                  activeEHRTab === 'rx'
-                    ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-                    : 'border-transparent text-stone-500 hover:text-stone-900 dark:hover:text-stone-300'
-                }`}
-              >
-                <Pill className="w-4 h-4" />
-                <span>DoH Malaffi E-Prescription</span>
-              </button>
-            </div>
-
-            {/* Modal Body Content */}
+            {/* Modal Content */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
-              {/* TAB 1: OVERVIEW & SAFETY AUDIT */}
-              {activeEHRTab === 'overview' && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
-                      <span className="text-[10px] font-bold uppercase text-stone-400 block mb-1">
-                        Consultation Modality
-                      </span>
-                      <p className="font-bold text-sm text-stone-900 dark:text-white">
-                        {selectedBooking.consultType === 'TELEHEALTH_VIDEO'
-                          ? '📹 Real-Time WebRTC Telehealth'
-                          : '🏥 In-Clinic Physical Consult'}
-                      </p>
-                    </div>
+              {/* Patient Snapshot */}
+              <div className="p-4 rounded-2xl bg-white border border-[#E8E2D5] grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-[#8A8172] block">
+                    Assigned Urgency Tier
+                  </span>
+                  <span className="font-bold text-sm text-[#1A1816]">
+                    {selectedReviewPatient.triageTier}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-[#8A8172] block">
+                    Consultation Modality
+                  </span>
+                  <span className="font-bold text-sm text-[#1A1816]">
+                    {selectedReviewPatient.consultType === 'TELEHEALTH_VIDEO'
+                      ? '📹 Telehealth Live'
+                      : '🏥 In-Person Visit'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-[#8A8172] block">
+                    Consent Audit
+                  </span>
+                  <span className="font-bold text-sm text-emerald-700 flex items-center gap-1">
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Verified SHA-256</span>
+                  </span>
+                </div>
+              </div>
 
-                    <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
-                      <span className="text-[10px] font-bold uppercase text-stone-400 block mb-1">
-                        Consent Verification
-                      </span>
-                      <p className="font-bold text-sm text-emerald-600 flex items-center gap-1.5">
-                        <ShieldCheck className="w-4 h-4" />
-                        <span>Active Sovereign Ledger</span>
-                      </p>
-                    </div>
-
-                    <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
-                      <span className="text-[10px] font-bold uppercase text-stone-400 block mb-1">
-                        SLA Escalation Window
-                      </span>
-                      <p className="font-bold text-sm text-stone-900 dark:text-white">
-                        {selectedBooking.triageTier === 'URGENT' ? '🚨 Immediate (SLA <60m)' : 'Standard Elective (1-7 Days)'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* 16 Red-Flag Safety Audit Checklist */}
-                  <div className="p-4 rounded-2xl bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-3">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-stone-500 block">
-                      Deterministic Safety Gate Audit (16 Red Flags)
+              {/* WHO 2021 Semen Analysis Simulator Detail Table */}
+              <div className="p-5 rounded-2xl bg-white border border-[#E8E2D5] space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#8A8172] block">
+                  WHO 2021 Semen Analysis Simulator (6th Edition Limits)
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+                  <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E8E2D5]">
+                    <span className="text-[10px] text-[#8A8172] block">Sperm Concentration</span>
+                    <span className="font-editorial-serif text-xl font-bold text-[#1A1816]">
+                      {selectedReviewPatient.whoParameters?.concentration || '24.5 M/ml'}
                     </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                      <div className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-[#181715] border border-stone-200 dark:border-stone-800">
-                        <span>Acute Sudden Scrotal Pain (&lt;6h)</span>
-                        <span className="font-bold text-emerald-600">✓ Ruled Out</span>
-                      </div>
-                      <div className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-[#181715] border border-stone-200 dark:border-stone-800">
-                        <span>Painless Testicular Mass</span>
-                        <span className="font-bold text-emerald-600">✓ Negative</span>
-                      </div>
-                      <div className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-[#181715] border border-stone-200 dark:border-stone-800">
-                        <span>Prolonged Painful Erection</span>
-                        <span className="font-bold text-emerald-600">✓ None</span>
-                      </div>
-                      <div className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-[#181715] border border-stone-200 dark:border-stone-800">
-                        <span>Acute Urinary Retention</span>
-                        <span className="font-bold text-emerald-600">✓ None</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Clinician Consultation Notes */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block">
-                      Doctor Clinical Consultation Notes & History:
-                    </label>
-                    <textarea
-                      rows={4}
-                      value={notesInput}
-                      onChange={(e) => setNotesInput(e.target.value)}
-                      placeholder="Enter clinical examination notes, patient history, duration of subfertility, physical findings..."
-                      className="w-full text-xs p-3 rounded-2xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 leading-relaxed font-sans"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2: WHO 2021 SEMEN ANALYSIS BENCHMARKS */}
-              {activeEHRTab === 'who' && (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 space-y-1">
-                    <h4 className="text-xs font-black uppercase text-blue-900 dark:text-sky-300">
-                      WHO Laboratory Manual for the Examination and Processing of Human Semen (6th Edition)
-                    </h4>
-                    <p className="text-[11px] text-stone-600 dark:text-stone-300">
-                      Standardized thresholds established by the World Health Organization (WHO 2021).
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    {/* Concentration */}
-                    <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-stone-900 dark:text-white">
-                          Sperm Concentration
-                        </span>
-                        <span className="font-mono font-bold text-emerald-600">
-                          16 M/ml (Normal: ≥15 M/ml)
-                        </span>
-                      </div>
-                      <div className="w-full h-2.5 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: '60%' }} />
-                      </div>
-                    </div>
-
-                    {/* Progressive Motility */}
-                    <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-stone-900 dark:text-white">
-                          Progressive Motility (PR)
-                        </span>
-                        <span className="font-mono font-bold text-red-500">
-                          22% (Sub-reference: Threshold ≥32%)
-                        </span>
-                      </div>
-                      <div className="w-full h-2.5 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-red-500 rounded-full" style={{ width: '44%' }} />
-                      </div>
-                      <p className="text-[10px] text-red-500 font-medium">
-                        Asthenozoospermia flagged: Sub-reference forward motility contributing to delayed conception.
-                      </p>
-                    </div>
-
-                    {/* Strict Normal Forms */}
-                    <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-stone-900 dark:text-white">
-                          Strict Normal Morphology (Tygerberg Criteria)
-                        </span>
-                        <span className="font-mono font-bold text-amber-500">
-                          3% (Borderline: Threshold ≥4%)
-                        </span>
-                      </div>
-                      <div className="w-full h-2.5 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-amber-500 rounded-full" style={{ width: '38%' }} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 3: DIAGNOSTIC TEST ORDERS */}
-              {activeEHRTab === 'orders' && (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-1">
-                    <h4 className="text-xs font-black uppercase text-emerald-900 dark:text-emerald-300">
-                      1-Click Abu Dhabi Diagnostic Referral Builder
-                    </h4>
-                    <p className="text-[11px] text-stone-600 dark:text-stone-300">
-                      Select official investigations to dispatch to Cleveland Clinic Abu Dhabi or HealthPlus.
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {[
-                      {
-                        name: 'Bilateral Scrotal Doppler Ultrasound',
-                        desc: 'Evaluate varicocele reflux, venous diameter, and testicular volume',
-                      },
-                      {
-                        name: 'Serum Endocrine Panel (FSH, LH, Total Testosterone, Prolactin)',
-                        desc: 'Investigate hypothalamic-pituitary-gonadal axis integrity',
-                      },
-                      {
-                        name: 'Repeat CASA Semen Analysis in 4 Weeks',
-                        desc: 'Confirm asthenozoospermia pattern with second sample',
-                      },
-                      {
-                        name: 'Sperm DNA Fragmentation Index (DFI)',
-                        desc: 'Assess chromatin integrity and oxidative sperm damage',
-                      },
-                      {
-                        name: 'Karyotype & Y-Chromosome Microdeletion',
-                        desc: 'Indicated if sperm concentration drops below 5 M/ml',
-                      },
-                      {
-                        name: 'Urine Chlamydia / Gonorrhoea PCR',
-                        desc: 'Rule out occult accessory gland infection',
-                      },
-                    ].map((test) => {
-                      const isSelected = selectedLabOrders.includes(test.name);
-                      return (
-                        <div
-                          key={test.name}
-                          onClick={() => {
-                            if (isSelected) {
-                              setSelectedLabOrders(selectedLabOrders.filter((t) => t !== test.name));
-                            } else {
-                              setSelectedLabOrders([...selectedLabOrders, test.name]);
-                            }
-                          }}
-                          className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
-                            isSelected
-                              ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-400 dark:border-emerald-700 ring-1 ring-emerald-500/30'
-                              : 'bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-stone-400'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-xs text-stone-900 dark:text-white">
-                              {test.name}
-                            </span>
-                            <span className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] ${
-                              isSelected ? 'bg-emerald-600 text-white' : 'border border-stone-300 dark:border-stone-700'
-                            }`}>
-                              {isSelected ? '✓' : ''}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-stone-500 dark:text-stone-400 leading-tight">
-                            {test.desc}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 4: DoH MALAFFI E-PRESCRIPTION */}
-              {activeEHRTab === 'rx' && (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] font-black uppercase text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
-                        <Award className="w-4 h-4" />
-                        <span>Department of Health Abu Dhabi · Malaffi Digital Prescription</span>
-                      </span>
-                      <p className="text-xs text-stone-600 dark:text-stone-300">
-                        Signed by: <strong>{currentDoctor?.fullName || 'Dr. Tariq Al-Hashimi'}</strong> ({currentDoctor?.licenseNumber || 'DOH-AUH-2018-0924'})
-                      </p>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-1 rounded bg-emerald-200/60 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200 font-mono">
-                      Malaffi Active
+                    <span className="text-[10px] text-emerald-700 font-bold block">
+                      Ref: ≥ 15 M/ml (Normal)
                     </span>
                   </div>
 
-                  {/* Prescription Textarea */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block">
-                      Medication Orders, Dosages & Clinical Directives:
-                    </label>
-                    <textarea
-                      rows={6}
-                      value={prescriptionInput}
-                      onChange={(e) => setPrescriptionInput(e.target.value)}
-                      className="w-full text-xs font-mono p-3 rounded-2xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 leading-relaxed"
-                    />
+                  <div className="p-3 rounded-xl bg-red-50/50 border border-red-200">
+                    <span className="text-[10px] text-[#C62828] font-bold block">
+                      Progressive Motility (PR)
+                    </span>
+                    <span className="font-editorial-serif text-xl font-bold text-[#C62828]">
+                      {selectedReviewPatient.whoParameters?.progressiveMotility || '16.8%'}
+                    </span>
+                    <span className="text-[10px] text-[#C62828] font-bold block">
+                      Sub-ref: &lt; 32% (Flagged)
+                    </span>
                   </div>
 
-                  {/* Quick Preset Buttons */}
-                  <div className="flex flex-wrap gap-2 text-[10px]">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPrescriptionInput(
-                          (prev) =>
-                            prev +
-                            '\n• L-Carnitine 2000mg PO QD + CoQ10 200mg PO QD for 90 days (Sperm mitochondrial motility support).'
-                        )
-                      }
-                      className="px-2.5 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200"
-                    >
-                      + Add Antioxidant Protocol
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPrescriptionInput(
-                          (prev) =>
-                            prev +
-                            '\n• Bilateral Scrotal Ultrasound with Doppler at Cleveland Clinic Abu Dhabi.'
-                        )
-                      }
-                      className="px-2.5 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200"
-                    >
-                      + Add Ultrasound Referral
-                    </button>
+                  <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E8E2D5]">
+                    <span className="text-[10px] text-[#8A8172] block">Strict Normal Forms</span>
+                    <span className="font-editorial-serif text-xl font-bold text-[#1A1816]">
+                      {selectedReviewPatient.whoParameters?.normalForms || '3%'}
+                    </span>
+                    <span className="text-[10px] text-amber-700 font-bold block">
+                      Borderline: Ref ≥ 4%
+                    </span>
                   </div>
                 </div>
-              )}
+              </div>
+
+              {/* Triage Decision Override Engine */}
+              <div className="p-5 rounded-2xl bg-white border border-[#E8E2D5] space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#8A8172] block">
+                  Clinician Human-In-The-Loop Triage Decision
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    'ANDROLOGY_UROLOGY',
+                    'URGENT',
+                    'FERTILITY_SERVICES',
+                    'PRIMARY_CARE',
+                    'SELF_CARE',
+                  ].map((tier) => (
+                    <button
+                      key={tier}
+                      type="button"
+                      onClick={() => setOverrideTier(tier)}
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                        overrideTier === tier
+                          ? 'bg-[#1A1816] text-white shadow-xs'
+                          : 'bg-[#FAF8F5] text-[#6B6355] border border-[#E5E0D5] hover:border-stone-400'
+                      }`}
+                    >
+                      {tier}
+                    </button>
+                  ))}
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-[#1A1816] block mb-1">
+                    Clinical Justification & Audit Notes:
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={justificationNotes}
+                    onChange={(e) => setJustificationNotes(e.target.value)}
+                    placeholder="Document clinical reasoning for this acuity pathway..."
+                    className="w-full text-xs p-3 rounded-xl border border-[#DDD7C8] bg-[#FAF8F5] text-[#1A1816] focus:outline-none focus:ring-1 focus:ring-[#1A1816]"
+                  />
+                </div>
+              </div>
+
+              {/* Abu Dhabi Diagnostic Referral Suite */}
+              <div className="p-5 rounded-2xl bg-white border border-[#E8E2D5] space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#8A8172] block">
+                  1-Click Abu Dhabi Diagnostic Referral Builder
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {[
+                    'Bilateral Scrotal Doppler Ultrasound',
+                    'Serum Endocrine Profile (FSH/LH/Testosterone)',
+                    'Repeat CASA Semen Analysis',
+                    'Sperm DNA Fragmentation Index (DFI)',
+                  ].map((order) => {
+                    const isChecked = selectedLabOrders.includes(order);
+                    return (
+                      <div
+                        key={order}
+                        onClick={() => {
+                          if (isChecked) {
+                            setSelectedLabOrders(selectedLabOrders.filter((o) => o !== order));
+                          } else {
+                            setSelectedLabOrders([...selectedLabOrders, order]);
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl border cursor-pointer flex items-center justify-between transition-colors ${
+                          isChecked
+                            ? 'bg-[#E8F5E9] border-[#A5D6A7] text-[#1B5E20] font-bold'
+                            : 'bg-[#FAF8F5] border-[#E8E2D5] text-[#6B6355]'
+                        }`}
+                      >
+                        <span>{order}</span>
+                        <span>{isChecked ? '✓' : '+'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* DoH Malaffi E-Prescription */}
+              <div className="p-5 rounded-2xl bg-white border border-[#E8E2D5] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#1B5E20] flex items-center gap-1.5">
+                    <Pill className="w-3.5 h-3.5" />
+                    <span>Official DoH Malaffi E-Prescription Pad</span>
+                  </span>
+                  <span className="text-[10px] font-mono text-[#8A8172]">
+                    Dr. Tariq Al-Hashimi (DOH-AUH-2018-0924)
+                  </span>
+                </div>
+
+                <textarea
+                  rows={4}
+                  value={prescriptionText}
+                  onChange={(e) => setPrescriptionText(e.target.value)}
+                  className="w-full text-xs font-mono p-3 rounded-xl border border-[#DDD7C8] bg-[#FAF8F5] text-[#1A1816] focus:outline-none focus:ring-1 focus:ring-[#1A1816] leading-relaxed"
+                />
+              </div>
             </div>
 
-            {/* Modal Footer Controls */}
-            <div className="p-4 border-t border-stone-200 dark:border-stone-800 flex items-center justify-between bg-stone-50 dark:bg-[#1D1B18]">
-              <div className="flex items-center gap-2">
-                {printSuccess && (
-                  <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+            {/* Modal Footer */}
+            <div className="p-5 border-t border-[#E8E2D5] bg-white flex items-center justify-between">
+              <span className="text-xs text-[#8A8172]">
+                {decisionSuccess ? (
+                  <span className="text-emerald-700 font-bold flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>Prescription synced to patient & Malaffi!</span>
+                    Decision successfully persisted & Malaffi synced!
                   </span>
+                ) : (
+                  'Changes are committed to the sovereign clinical audit trail.'
                 )}
-              </div>
+              </span>
 
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setSelectedBooking(null)}
-                  className="px-4 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 font-bold text-xs text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                  onClick={() => setSelectedReviewPatient(null)}
+                  className="px-5 py-2.5 rounded-full border border-[#DDD7C8] text-xs font-bold text-[#6B6355] hover:bg-stone-50"
                 >
-                  Close
+                  Cancel
                 </button>
-
                 <button
                   type="button"
-                  onClick={handleSaveEHRAndRx}
-                  disabled={savingNotes}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider shadow-sm flex items-center gap-2 transition-transform active:scale-95"
+                  onClick={handleSaveDecision}
+                  disabled={savingDecision}
+                  className="px-6 py-2.5 rounded-full bg-[#1A1816] hover:bg-[#2A2724] text-white text-xs font-bold uppercase tracking-wider shadow-sm flex items-center gap-2 transition-transform active:scale-95"
                 >
-                  {savingNotes ? (
-                    <span>Saving...</span>
-                  ) : (
-                    <>
-                      <FileCheck className="w-4 h-4" />
-                      <span>Save EHR & Issue Official DoH Rx</span>
-                    </>
-                  )}
+                  <FileCheck className="w-4 h-4" />
+                  <span>{savingDecision ? 'Saving...' : 'Apply Decision & Issue Rx'}</span>
                 </button>
               </div>
             </div>
