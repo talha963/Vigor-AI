@@ -51,6 +51,26 @@ interface SpecialistOption {
 
 const SPECIALISTS: SpecialistOption[] = [
   {
+    id: 'spec_ali',
+    name: 'Dr. Ali Khan',
+    nameAr: 'د. علي خان',
+    title: 'Consultant Andrologist & Male Infertility Microsurgeon',
+    titleAr: 'استشاري أمراض الذكورة والعقم وجراحة المسالك البولية المجهرية',
+    facility: 'Cleveland Clinic Abu Dhabi · Andrology & Fertility Hub',
+    facilityAr: 'كليفلاند كلينك أبوظبي · مركز صحة الرجل والإخصاب',
+    location: 'Al Maryah Island, Abu Dhabi',
+    locationAr: 'جزيرة المارية، أبوظبي',
+    dohLicense: 'DOH-AUH-2024-9102',
+    experience: '16+ Years Experience (European Board & Cleveland Clinic)',
+    languages: ['Arabic', 'English', 'Urdu'],
+    avatar: '👨‍⚕️',
+    telehealthAvailable: true,
+    inPersonAvailable: true,
+    earliestSlot: 'Today · 5:30 PM',
+    slots: ['Today · 5:30 PM', 'Today · 7:00 PM', 'Tomorrow · 11:00 AM', 'Tomorrow · 3:30 PM'],
+    tierMatch: ['ANDROLOGY_UROLOGY', 'FERTILITY_SERVICES', 'URGENT', 'PRIMARY_CARE'],
+  },
+  {
     id: 'spec_01',
     name: 'Dr. Tariq Al-Hashimi',
     nameAr: 'د. طارق الهاشمي',

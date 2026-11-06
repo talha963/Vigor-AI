@@ -55,9 +55,16 @@ import {
   Sun,
   Moon,
   ChevronDown,
+  Database,
+  Network,
 } from 'lucide-react';
 import Link from 'next/link';
 import VigorLogo from '@/components/VigorLogo';
+import GraphDbExplorer from '@/components/doctor/GraphDbExplorer';
+import DoctorSettingsModal, {
+  DoctorSettings,
+  DEFAULT_DOCTOR_SETTINGS,
+} from '@/components/doctor/DoctorSettingsModal';
 import {
   DoctorAccount,
   getCurrentDoctor,
@@ -81,7 +88,7 @@ interface PatientBooking {
   };
   consultType: 'TELEHEALTH_VIDEO' | 'IN_PERSON';
   slotTime: string;
-  status: 'CONFIRMED' | 'IN_WAITING_ROOM' | 'IN_CALL' | 'COMPLETED';
+  status: 'CONFIRMED' | 'PENDING_APPROVAL' | 'APPROVED' | 'PRESCRIBED' | 'IN_WAITING_ROOM' | 'IN_CALL' | 'COMPLETED';
   triageTier: 'URGENT' | 'ANDROLOGY_UROLOGY' | 'FERTILITY_SERVICES' | 'PRIMARY_CARE' | 'SELF_CARE';
   telehealthRoomUrl?: string;
   contact?: { email?: string; phone?: string };
@@ -106,6 +113,31 @@ export default function DoctorPortalPage() {
   const [currentDoctor, setCurrentDoctor] = useState<DoctorAccount | null>(null);
   const [locale, setLocale] = useState<'en' | 'ar'>('en');
   const isAr = locale === 'ar';
+
+  // Doctor Settings & Identity Customization (e.g. Dr. Ali Khan, Clinic Logo, License)
+  const [doctorSettings, setDoctorSettings] = useState<DoctorSettings>(DEFAULT_DOCTOR_SETTINGS);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+
+  // Load persisted doctor settings
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('vigor_doctor_settings');
+      if (saved) {
+        setDoctorSettings(JSON.parse(saved));
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  const handleSaveDoctorSettings = (newSettings: DoctorSettings) => {
+    setDoctorSettings(newSettings);
+    try {
+      localStorage.setItem('vigor_doctor_settings', JSON.stringify(newSettings));
+    } catch (e) {
+      // ignore
+    }
+  };
 
   // Theme synchronization (Master Theme Architecture)
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -139,9 +171,9 @@ export default function DoctorPortalPage() {
     }
   };
 
-  // Navigation / Sidebar View State
+  // Navigation / Sidebar View State (Including Semantic GraphDB Explorer)
   const [activeSidebarTab, setActiveSidebarTab] = useState<
-    'workflows' | 'runtime' | 'consent' | 'escapements'
+    'workflows' | 'runtime' | 'consent' | 'escapements' | 'graphdb'
   >('runtime');
 
   // Search & Filters
@@ -293,6 +325,115 @@ export default function DoctorPortalPage() {
       console.error(err);
     } finally {
       setSavingDecision(false);
+    }
+  };
+
+  // Appointment Approval Workflow
+  const handleApproveAppointment = async (bookingId: string) => {
+    setBookings((prev) =>
+      prev.map((b) => (b.bookingId === bookingId ? { ...b, status: 'APPROVED' } : b))
+    );
+    try {
+      await fetch('/api/booking', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId, status: 'APPROVED' }),
+      });
+    } catch (e) {
+      console.warn('Sync booking approval status:', e);
+    }
+  };
+
+  // Choice 1: Prescribe Patient & Send Email Report State
+  const [emailModalPatient, setEmailModalPatient] = useState<PatientBooking | null>(null);
+  const [patientEmailInput, setPatientEmailInput] = useState('');
+  const [prescribeDiagnosis, setPrescribeDiagnosis] = useState('');
+  const [prescribeRxText, setPrescribeRxText] = useState('');
+  const [prescribeLabOrders, setPrescribeLabOrders] = useState<string[]>([]);
+  const [prescribeNotes, setPrescribeNotes] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSentSuccess, setEmailSentSuccess] = useState<{ message: string; email: string } | null>(null);
+
+  const openPrescribeEmailModal = (patient: PatientBooking) => {
+    setEmailModalPatient(patient);
+    setPatientEmailInput(patient.contact?.email || 'patient@vigor.health');
+    setPrescribeDiagnosis(
+      patient.triageTier === 'URGENT'
+        ? 'Acute Scrotal Emergency Gate (GC01 detorsion protocol)'
+        : 'Asthenozoospermia (WHO 2021 PR: 16.8%) & Subclinical Left Varicocele'
+    );
+    setPrescribeRxText(
+      patient.prescription ||
+        '1. L-Carnitine 2000mg + CoQ10 200mg daily (Antioxidant protocol).\n2. Zinc 25mg + Selenium 200mcg daily.\n3. Repeat CASA Semen Analysis in 4 weeks.\n4. Avoid thermal testicular stress.'
+    );
+    setPrescribeLabOrders(
+      patient.labOrders || [
+        'Bilateral Scrotal Doppler Ultrasound',
+        'Serum Endocrine Profile (Total Testosterone, FSH, LH)',
+        'Repeat CASA Semen Analysis',
+      ]
+    );
+    setPrescribeNotes(
+      patient.clinicalNotes ||
+        'Patient reviewed and approved for comprehensive antioxidant protocol. Repeat semen analysis ordered.'
+    );
+    setEmailSentSuccess(null);
+  };
+
+  const handleDispatchPrescriptionEmail = async () => {
+    if (!emailModalPatient) return;
+    setSendingEmail(true);
+    try {
+      const res = await fetch('/api/doctor/prescribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: emailModalPatient.bookingId,
+          patientEmail: patientEmailInput.trim(),
+          patientName: `Patient #${emailModalPatient.pseudonymId.slice(-6)}`,
+          doctorName: doctorSettings.fullName,
+          doctorTitle: doctorSettings.title,
+          doctorLicense: doctorSettings.dohLicense,
+          facilityName: doctorSettings.facility,
+          facilityLocation: doctorSettings.location,
+          diagnosis: prescribeDiagnosis,
+          prescriptionText: prescribeRxText,
+          labOrders: prescribeLabOrders,
+          clinicalNotes: prescribeNotes,
+          locale,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setBookings((prev) =>
+          prev.map((b) =>
+            b.bookingId === emailModalPatient.bookingId
+              ? {
+                  ...b,
+                  status: 'COMPLETED',
+                  clinicalNotes: prescribeNotes,
+                  prescription: prescribeRxText,
+                  labOrders: prescribeLabOrders,
+                  contact: { ...b.contact, email: patientEmailInput.trim() },
+                }
+              : b
+          )
+        );
+        setEmailSentSuccess({
+          message: data.message || 'Prescription report successfully dispatched to patient email!',
+          email: data.recipientEmail,
+        });
+        setTimeout(() => {
+          setEmailModalPatient(null);
+          setEmailSentSuccess(null);
+        }, 1800);
+      } else {
+        alert(data.error || 'Failed to dispatch email prescription.');
+      }
+    } catch (err) {
+      alert('Network error while dispatching prescription email.');
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -467,20 +608,33 @@ export default function DoctorPortalPage() {
                 </span>
               </button>
 
+              {/* Settings Pill Button */}
+              <button
+                type="button"
+                onClick={() => setSettingsModalOpen(true)}
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#DDD7C8] dark:border-stone-700 bg-white/70 dark:bg-stone-900/70 text-[10px] font-bold uppercase tracking-wider text-[#5A544A] dark:text-[#DDD7C8] hover:border-stone-400 dark:hover:border-stone-500 hover:bg-white dark:hover:bg-stone-800 transition-all shadow-2xs"
+                title="Customize Doctor Profile, Logo & DoH License"
+              >
+                <Sliders className="w-3.5 h-3.5 text-stone-600 dark:text-stone-300" />
+                <span className="hidden sm:inline">{isAr ? 'الإعدادات' : 'Settings'}</span>
+              </button>
+
               {/* Clinician Profile Avatar & Name */}
               <div
-                onClick={() => setAuthModalOpen(true)}
+                onClick={() => setSettingsModalOpen(true)}
                 className="shrink-0 flex items-center gap-2 pl-1 border-l border-[#DDD7C8] dark:border-stone-700 cursor-pointer group"
-                title="Manage Clinician Credentials"
+                title="Customize Doctor Profile & Logo"
               >
                 <div className="w-8 h-8 rounded-full bg-[#2A2724] dark:bg-stone-800 text-white flex items-center justify-center font-bold text-xs shadow-xs border border-stone-300 dark:border-stone-600 group-hover:scale-105 transition-transform">
-                  👨‍⚕️
+                  {doctorSettings.avatarIcon || '👨‍⚕️'}
                 </div>
                 <div className="hidden xl:flex flex-col text-left rtl:text-right">
                   <span className="text-[11px] font-bold text-[#1A1816] dark:text-[#FAF7F2] leading-tight">
-                    {currentDoctor?.fullName || 'Dr. Tariq Al-Hashimi'}
+                    {doctorSettings.fullName}
                   </span>
-                  <span className="text-[9px] text-[#8A8172] dark:text-stone-400">Consultant Andrologist</span>
+                  <span className="text-[9px] text-[#8A8172] dark:text-stone-400 truncate max-w-[130px]">
+                    {doctorSettings.facility.split('·')[0]}
+                  </span>
                 </div>
               </div>
             </div>
@@ -649,7 +803,37 @@ export default function DoctorPortalPage() {
               </p>
             </div>
 
-            {/* Menu Item 4: Patient Escapements */}
+            {/* Menu Item 4: Physical Visit GraphDB (SPARQL & Turtle) */}
+            <div
+              onClick={() => setActiveSidebarTab('graphdb')}
+              className={`relative cursor-pointer group p-3 rounded-2xl transition-all ${
+                activeSidebarTab === 'graphdb'
+                  ? 'bg-amber-50/90 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 shadow-2xs'
+                  : 'hover:bg-stone-50 dark:hover:bg-stone-800/40'
+              }`}
+            >
+              {/* Circular Anchor Node sitting on the curve */}
+              <div
+                className={`absolute -left-[27px] top-4 w-3.5 h-3.5 rounded-full border-2 transition-all ${
+                  activeSidebarTab === 'graphdb'
+                    ? 'bg-amber-600 border-white dark:border-[#1C1A17] ring-4 ring-amber-500/25 scale-110'
+                    : 'bg-[#DDD7C8] dark:bg-stone-700 border-white dark:border-[#1C1A17] group-hover:bg-amber-600'
+                }`}
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#1A1816] dark:text-[#FAF7F2]">
+                  Physical Visit GraphDB
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 font-bold">
+                  SPARQL 1.1
+                </span>
+              </div>
+              <p className="text-[11px] text-[#8A8172] dark:text-stone-400 mt-1 leading-tight">
+                Longitudinal physical history, Doppler imaging & W3C Turtle explorer.
+              </p>
+            </div>
+
+            {/* Menu Item 5: Patient Escapements */}
             <div
               onClick={() => setActiveSidebarTab('escapements')}
               className={`relative cursor-pointer group p-3 rounded-2xl transition-all ${
@@ -689,8 +873,11 @@ export default function DoctorPortalPage() {
                 Active
               </span>
             </div>
-            <p className="text-[11px] text-[#8A8172] dark:text-stone-400 leading-relaxed">
-              Dr. Tariq Al-Hashimi · License: DOH-AUH-2018-0924 (Malaffi Provider #PRV-882190)
+            <p className="text-[11px] text-[#8A8172] dark:text-stone-400 leading-relaxed font-mono">
+              {doctorSettings.fullName} · {doctorSettings.dohLicense}
+            </p>
+            <p className="text-[10px] text-[#8A8172] dark:text-stone-400">
+              {doctorSettings.facility}
             </p>
           </div>
         </aside>
@@ -699,6 +886,10 @@ export default function DoctorPortalPage() {
             4. MAIN DASHBOARD AREA (Clinician Review Console)
             ======================================================== */}
         <main className="lg:col-span-9 space-y-8">
+          {activeSidebarTab === 'graphdb' ? (
+            <GraphDbExplorer currentDoctorName={doctorSettings.fullName} locale={locale} />
+          ) : (
+            <>
           {/* Hero Banner: Runtime & Clinician Review Console */}
           <div className="bg-white/80 dark:bg-[#1C1A17]/85 backdrop-blur-md rounded-3xl p-8 lg:p-10 border border-[#EBE7DF] dark:border-stone-800 shadow-[0_8px_30px_rgb(0,0,0,0.03)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)] relative overflow-hidden text-center space-y-4">
             {/* Subtle decorative curved background pattern in hero */}
@@ -864,6 +1055,8 @@ export default function DoctorPortalPage() {
                   const isUrgent =
                     patient.triageTier === 'URGENT' ||
                     (patient.redFlags && patient.redFlags.length > 0);
+                  const isApproved = patient.status === 'APPROVED' || patient.status === 'COMPLETED';
+                  const isPrescribed = patient.status === 'COMPLETED' || !!patient.prescription;
 
                   return (
                     <div
@@ -877,11 +1070,27 @@ export default function DoctorPortalPage() {
                             {isUrgent ? '🚨' : '🧑'}
                           </div>
                           <div>
-                            <h4 className="font-editorial-serif text-lg font-bold text-[#1A1816] dark:text-[#FAF7F2] leading-tight">
-                              Patient #{patient.pseudonymId.slice(-7)}
-                            </h4>
-                            <p className="text-[11px] text-[#8A8172] dark:text-stone-400 font-mono">
-                              Ref: {patient.bookingId} · {patient.facility.name}
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-editorial-serif text-lg font-bold text-[#1A1816] dark:text-[#FAF7F2] leading-tight">
+                                Patient #{patient.pseudonymId.slice(-7)}
+                              </h4>
+                              {/* Status Badge */}
+                              {isPrescribed ? (
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300">
+                                  ✓ Rx Dispatched
+                                </span>
+                              ) : isApproved ? (
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-sky-300 border border-blue-300">
+                                  ✓ Approved
+                                </span>
+                              ) : (
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border border-stone-200">
+                                  Awaiting Approval
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-[#8A8172] dark:text-stone-400 font-mono mt-0.5">
+                              Ref: {patient.bookingId} · {patient.consultType === 'TELEHEALTH_VIDEO' ? '📹 Telehealth' : '🏥 Physical Visit'}
                             </p>
                           </div>
                         </div>
@@ -900,9 +1109,16 @@ export default function DoctorPortalPage() {
 
                       {/* Chief Complaint */}
                       <div className="p-3.5 rounded-2xl bg-[#F9F8F6] dark:bg-stone-900/60 border border-[#EFECE3] dark:border-stone-800 text-xs text-[#4A453C] dark:text-stone-300 leading-relaxed">
-                        <span className="font-bold text-[#1A1816] dark:text-white block mb-0.5">
-                          Reported Symptom / Triage Intake:
-                        </span>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="font-bold text-[#1A1816] dark:text-white">
+                            Reported Symptom / Triage Intake:
+                          </span>
+                          {patient.contact?.email && (
+                            <span className="text-[10px] text-stone-500 font-mono truncate max-w-[150px]">
+                              ✉️ {patient.contact.email}
+                            </span>
+                          )}
+                        </div>
                         {patient.chiefComplaint ||
                           '14 months primary subfertility. Asthenozoospermia pattern with sluggish motility.'}
                       </div>
@@ -966,43 +1182,92 @@ export default function DoctorPortalPage() {
                       </div>
 
                       {/* Primary Actions on Card */}
-                      <div className="pt-2 flex flex-col sm:flex-row items-center gap-2.5">
-                        {/* Prominent Dark Pill Button on Each Card (Requested) */}
-                        <button
-                          type="button"
-                          onClick={() => openReviewModal(patient)}
-                          className="w-full sm:flex-1 py-3 px-5 rounded-full bg-[#1A1816] hover:bg-[#332F2A] dark:bg-[#FAF7F2] dark:hover:bg-white text-white dark:text-[#181614] text-xs font-bold tracking-wider uppercase transition-all shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
-                        >
-                          <span>Launch Clinician Review Portal</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* Telehealth Video Call Pill Button */}
-                        {patient.consultType === 'TELEHEALTH_VIDEO' && (
-                          <Link
-                            href={`/telehealth/${patient.bookingId}?role=doctor`}
-                            target="_blank"
-                            className="w-full sm:w-auto px-4 py-3 rounded-full bg-[#00A884] hover:bg-[#008f70] text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm transition-transform active:scale-95"
-                            title="Start WhatsApp Video Call"
+                      <div className="pt-2 space-y-2.5">
+                        {!isApproved && !isPrescribed ? (
+                          /* Step 1: Doctor Approves Appointment */
+                          <button
+                            type="button"
+                            onClick={() => handleApproveAppointment(patient.bookingId)}
+                            className="w-full py-3 px-5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold uppercase tracking-wider transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 active:scale-95"
                           >
-                            <Video className="w-4 h-4" />
-                            <span>Video</span>
-                          </Link>
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>Approve Appointment</span>
+                          </button>
+                        ) : (
+                          /* Step 2: Doctor has 2 Clear Choices */
+                          <div className="space-y-2 border-t border-[#EBE7DF] dark:border-stone-800 pt-2.5">
+                            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[#6B6355] dark:text-stone-400">
+                              <span>Approved Consultation Pathways:</span>
+                              <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>Approved</span>
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {/* Choice 1: Prescribe & Send Email Report */}
+                              <button
+                                type="button"
+                                onClick={() => openPrescribeEmailModal(patient)}
+                                className="py-2.5 px-3.5 rounded-full bg-[#1A1816] hover:bg-[#332F2A] dark:bg-[#FAF7F2] dark:hover:bg-white text-white dark:text-[#181614] text-xs font-bold uppercase tracking-wider shadow-xs hover:shadow-md flex items-center justify-center gap-1.5 transition-transform active:scale-95"
+                                title="Prescribe patient and send official report to their email"
+                              >
+                                <Mail className="w-3.5 h-3.5 text-amber-400" />
+                                <span>1. Prescribe & Email</span>
+                              </button>
+
+                              {/* Choice 2: Video Call or Physical GraphDB */}
+                              {patient.consultType === 'TELEHEALTH_VIDEO' ? (
+                                <Link
+                                  href={`/telehealth/${patient.bookingId}?role=doctor`}
+                                  target="_blank"
+                                  className="py-2.5 px-3.5 rounded-full bg-[#00A884] hover:bg-[#008f70] text-black font-black text-xs uppercase tracking-wider shadow-xs hover:shadow-md flex items-center justify-center gap-1.5 transition-transform active:scale-95"
+                                  title="Start WhatsApp Video Call"
+                                >
+                                  <Video className="w-3.5 h-3.5" />
+                                  <span>2. Video Call</span>
+                                </Link>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveSidebarTab('graphdb');
+                                  }}
+                                  className="py-2.5 px-3.5 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-900 dark:bg-indigo-950/70 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 text-xs font-bold uppercase tracking-wider shadow-xs flex items-center justify-center gap-1.5 transition-colors"
+                                  title="Search physical visit history in GraphDB"
+                                >
+                                  <Database className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                                  <span>2. Physical Graph</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         )}
 
-                        {/* Copy Room Link */}
-                        <button
-                          type="button"
-                          onClick={() => copyPatientLink(patient.bookingId)}
-                          className="p-3 rounded-full bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-[#6B6355] dark:text-stone-300 transition-colors"
-                          title="Copy Patient Room URL"
-                        >
-                          {copiedBookingId === patient.bookingId ? (
-                            <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                          ) : (
-                            <Copy className="w-4 h-4" />
-                          )}
-                        </button>
+                        {/* Secondary: Launch Detailed Clinician Review Portal & Copy Link */}
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => openReviewModal(patient)}
+                            className="flex-1 py-2 px-3 rounded-full border border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800 text-[#6B6355] dark:text-stone-300 text-[10px] font-bold tracking-wider uppercase transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <span>Review WHO Parameters</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => copyPatientLink(patient.bookingId)}
+                            className="p-2 rounded-full border border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800 text-[#6B6355] dark:text-stone-300 transition-colors"
+                            title="Copy Patient Consultation Link"
+                          >
+                            {copiedBookingId === patient.bookingId ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -1010,6 +1275,8 @@ export default function DoctorPortalPage() {
               </div>
             )}
           </div>
+            </>
+          )}
         </main>
       </div>
 
@@ -1317,6 +1584,223 @@ export default function DoctorPortalPage() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          7. DOCTOR SETTINGS MODAL (Customize Name, Clinic Logo, License)
+          ======================================================== */}
+      <DoctorSettingsModal
+        isOpen={settingsModalOpen}
+        onClose={() => setSettingsModalOpen(false)}
+        currentSettings={doctorSettings}
+        onSaveSettings={handleSaveDoctorSettings}
+        locale={locale}
+      />
+
+      {/* ========================================================
+          8. CHOICE 1: PRESCRIBE PATIENT & SEND EMAIL REPORT MODAL
+          ======================================================== */}
+      {emailModalPatient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-[#FAF8F5] dark:bg-[#181614] border border-[#DDD7C8] dark:border-stone-800 rounded-3xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-[#E8E2D5] dark:border-stone-800 bg-white dark:bg-[#1C1A17] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-editorial-serif text-xl font-bold text-[#1A1816] dark:text-[#FAF7F2]">
+                    Prescribe & Send Email Clinical Report
+                  </h3>
+                  <p className="text-xs text-[#8A8172] dark:text-stone-400">
+                    Patient #{emailModalPatient.pseudonymId} · Booking Ref: {emailModalPatient.bookingId}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setEmailModalPatient(null)}
+                className="p-2 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-500 hover:text-stone-900 dark:hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-5 flex-1 text-xs">
+              {/* Recipient Email Destination */}
+              <div className="p-4 rounded-2xl bg-white dark:bg-[#1C1A17] border border-[#E8E2D5] dark:border-stone-800 space-y-2">
+                <label className="text-[11px] font-bold text-[#1A1816] dark:text-[#FAF7F2] flex items-center justify-between">
+                  <span>Patient Recipient Email (From Appointment Booking Form):</span>
+                  <span className="text-emerald-700 dark:text-emerald-400 font-bold text-[10px]">
+                    Direct Delivery Target
+                  </span>
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    value={patientEmailInput}
+                    onChange={(e) => setPatientEmailInput(e.target.value)}
+                    placeholder="patient@example.com"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#DDD7C8] dark:border-stone-700 bg-[#FAF8F5] dark:bg-stone-900 text-xs text-[#1A1816] dark:text-white font-mono focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                  />
+                </div>
+                <p className="text-[10px] text-[#8A8172] dark:text-stone-400">
+                  The clinical evaluation, Rx prescriptions, and diagnostic orders will be dispatched directly to this address.
+                </p>
+              </div>
+
+              {/* Prescribing Clinician Identity */}
+              <div className="p-3.5 rounded-2xl bg-[#F0FDF4] dark:bg-emerald-950/40 border border-[#86EFAC] dark:border-emerald-800 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm">
+                    {doctorSettings.avatarIcon || '👨‍⚕️'}
+                  </div>
+                  <div>
+                    <span className="font-bold text-sm text-[#14532D] dark:text-emerald-300 block">
+                      {doctorSettings.fullName}
+                    </span>
+                    <span className="text-[10px] text-[#166534] dark:text-emerald-400 block font-mono">
+                      {doctorSettings.facility} · License: {doctorSettings.dohLicense}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSettingsModalOpen(true)}
+                  className="px-2.5 py-1 rounded-full border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100"
+                >
+                  Change Profile
+                </button>
+              </div>
+
+              {/* Diagnosis */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-[#1A1816] dark:text-[#FAF7F2] block">
+                  Clinical Diagnosis & Acuity:
+                </label>
+                <input
+                  type="text"
+                  value={prescribeDiagnosis}
+                  onChange={(e) => setPrescribeDiagnosis(e.target.value)}
+                  className="w-full text-xs p-3 rounded-xl border border-[#DDD7C8] dark:border-stone-700 bg-white dark:bg-stone-900 text-[#1A1816] dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                />
+              </div>
+
+              {/* Rx Prescription Textarea */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-[#1A1816] dark:text-[#FAF7F2] flex items-center justify-between">
+                  <span>Official Medical Prescription (Rx):</span>
+                  <span className="text-emerald-700 dark:text-emerald-400 font-bold text-[10px] font-mono">
+                    DoH Malaffi E-Rx Compliant
+                  </span>
+                </label>
+                <textarea
+                  rows={4}
+                  value={prescribeRxText}
+                  onChange={(e) => setPrescribeRxText(e.target.value)}
+                  className="w-full text-xs font-mono p-3 rounded-xl border border-[#DDD7C8] dark:border-stone-700 bg-white dark:bg-stone-900 text-[#1A1816] dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-600 leading-relaxed"
+                />
+              </div>
+
+              {/* Diagnostic Orders */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-[#1A1816] dark:text-[#FAF7F2] block">
+                  Laboratory & Diagnostic Orders to Include:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {[
+                    'Bilateral Scrotal Doppler Ultrasound',
+                    'Serum Endocrine Profile (Total Testosterone, FSH, LH)',
+                    'Repeat CASA Semen Analysis',
+                    'Sperm DNA Fragmentation Index (DFI)',
+                  ].map((order) => {
+                    const isChecked = prescribeLabOrders.includes(order);
+                    return (
+                      <div
+                        key={order}
+                        onClick={() => {
+                          if (isChecked) {
+                            setPrescribeLabOrders(prescribeLabOrders.filter((o) => o !== order));
+                          } else {
+                            setPrescribeLabOrders([...prescribeLabOrders, order]);
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl border cursor-pointer flex items-center justify-between transition-colors ${
+                          isChecked
+                            ? 'bg-[#E8F5E9] dark:bg-emerald-950/70 border-[#A5D6A7] dark:border-emerald-800 text-[#1B5E20] dark:text-emerald-300 font-bold'
+                            : 'bg-white dark:bg-stone-900 border-[#E8E2D5] dark:border-stone-800 text-[#6B6355] dark:text-stone-400'
+                        }`}
+                      >
+                        <span>{order}</span>
+                        <span>{isChecked ? '✓' : '+'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Clinical Notes */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-[#1A1816] dark:text-[#FAF7F2] block">
+                  Clinical Recommendations & Follow-Up Advice:
+                </label>
+                <textarea
+                  rows={2}
+                  value={prescribeNotes}
+                  onChange={(e) => setPrescribeNotes(e.target.value)}
+                  className="w-full text-xs p-3 rounded-xl border border-[#DDD7C8] dark:border-stone-700 bg-white dark:bg-stone-900 text-[#1A1816] dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                />
+              </div>
+
+              {/* Success Result Banner */}
+              {emailSentSuccess && (
+                <div className="p-4 rounded-2xl bg-[#E8F5E9] dark:bg-emerald-950/80 border border-[#86EFAC] dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex items-center gap-3 animate-in fade-in">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div>
+                    <span className="font-bold text-xs block">{emailSentSuccess.message}</span>
+                    <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono">
+                      Target: {emailSentSuccess.email} · Encrypted & Logged to GraphDB
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-5 border-t border-[#E8E2D5] dark:border-stone-800 bg-white dark:bg-[#1C1A17] flex items-center justify-between">
+              <span className="text-xs text-[#8A8172] dark:text-stone-400">
+                Official DoH Malaffi Telehealth standard.
+              </span>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEmailModalPatient(null)}
+                  className="px-5 py-2.5 rounded-full border border-[#DDD7C8] dark:border-stone-700 text-xs font-bold text-[#6B6355] dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDispatchPrescriptionEmail}
+                  disabled={sendingEmail || !patientEmailInput}
+                  className="px-6 py-2.5 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold uppercase tracking-wider shadow-sm flex items-center gap-2 transition-transform active:scale-95 disabled:opacity-50"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>
+                    {sendingEmail
+                      ? 'Dispatching Report...'
+                      : `Send Prescription to ${patientEmailInput.split('@')[0] || 'Patient'}`}
+                  </span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
