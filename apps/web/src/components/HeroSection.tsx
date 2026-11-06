@@ -78,30 +78,30 @@ export default function HeroSection({
 
             {/* Core Value Props List (Editorial Minimalism) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8 max-w-xl">
-              <div className="flex items-center gap-2.5 text-xs font-medium text-[#403B33] dark:text-[#DDD6C8] bg-[#FAF8F5]/80 dark:bg-stone-900/60 p-3 rounded-md border border-[#DDD7C8]/80 dark:border-stone-800">
+              <div className="flex items-center gap-2.5 text-xs font-medium text-[#403B33] dark:text-[#DDD6C8] bg-white/70 dark:bg-stone-900/60 p-3 rounded-2xl border border-[#DDD7C8]/80 dark:border-stone-800 shadow-2xs">
                 <CheckCircle className="w-3.5 h-3.5 text-[#7A7163] dark:text-[#C2BBB0] shrink-0" />
                 <span>{isAr ? 'بدون حساب أو بيانات هوية' : 'Zero Account / Anonymous-First'}</span>
               </div>
-              <div className="flex items-center gap-2.5 text-xs font-medium text-[#403B33] dark:text-[#DDD6C8] bg-[#FAF8F5]/80 dark:bg-stone-900/60 p-3 rounded-md border border-[#DDD7C8]/80 dark:border-stone-800">
+              <div className="flex items-center gap-2.5 text-xs font-medium text-[#403B33] dark:text-[#DDD6C8] bg-white/70 dark:bg-stone-900/60 p-3 rounded-2xl border border-[#DDD7C8]/80 dark:border-stone-800 shadow-2xs">
                 <CheckCircle className="w-3.5 h-3.5 text-[#7A7163] dark:text-[#C2BBB0] shrink-0" />
                 <span>{isAr ? 'صمام أمان حتمي لـ 9 علامات خطر' : 'Deterministic 9 Red-Flag Safety Floor'}</span>
               </div>
-              <div className="flex items-center gap-2.5 text-xs font-medium text-[#403B33] dark:text-[#DDD6C8] bg-[#FAF8F5]/80 dark:bg-stone-900/60 p-3 rounded-md border border-[#DDD7C8]/80 dark:border-stone-800">
+              <div className="flex items-center gap-2.5 text-xs font-medium text-[#403B33] dark:text-[#DDD6C8] bg-white/70 dark:bg-stone-900/60 p-3 rounded-2xl border border-[#DDD7C8]/80 dark:border-stone-800 shadow-2xs">
                 <CheckCircle className="w-3.5 h-3.5 text-[#7A7163] dark:text-[#C2BBB0] shrink-0" />
                 <span>{isAr ? 'معايير منظمة الصحة العالمية 2021' : 'WHO 2021 Semen Analysis Standards'}</span>
               </div>
-              <div className="flex items-center gap-2.5 text-xs font-medium text-[#403B33] dark:text-[#DDD6C8] bg-[#FAF8F5]/80 dark:bg-stone-900/60 p-3 rounded-md border border-[#DDD7C8]/80 dark:border-stone-800">
+              <div className="flex items-center gap-2.5 text-xs font-medium text-[#403B33] dark:text-[#DDD6C8] bg-white/70 dark:bg-stone-900/60 p-3 rounded-2xl border border-[#DDD7C8]/80 dark:border-stone-800 shadow-2xs">
                 <CheckCircle className="w-3.5 h-3.5 text-[#7A7163] dark:text-[#C2BBB0] shrink-0" />
                 <span>{isAr ? 'سجل موافقة مشفر وإلغاء فوري' : 'Cryptographically Revocable Consent'}</span>
               </div>
             </div>
 
-            {/* CTA Buttons */}
+            {/* CTA Buttons - Premium Pill Shaped Design */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 mb-8">
               <button
                 type="button"
                 onClick={onOpenIntake}
-                className="group inline-flex items-center justify-center gap-3 px-8 py-3.5 rounded-sm bg-[#2E2922] dark:bg-[#EFEAE0] text-[#F7F4EB] dark:text-[#22201D] text-xs font-semibold tracking-[0.2em] uppercase hover:bg-[#453E34] dark:hover:bg-white transition-all shadow-sm"
+                className="group inline-flex items-center justify-center gap-3 px-8 py-3.5 rounded-full bg-[#1A1816] dark:bg-[#FAF7F2] text-[#FAF7F2] dark:text-[#181614] text-xs font-bold tracking-[0.2em] uppercase hover:bg-[#332F2A] dark:hover:bg-white transition-all shadow-md hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
               >
                 <span>{isAr ? 'ابدأ الفحص المجهول (10 دقائق)' : 'Start Anonymous Intake (10 min)'}</span>
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
@@ -110,23 +110,23 @@ export default function HeroSection({
               <button
                 type="button"
                 onClick={onOpenClinician}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-sm bg-[#EFECE3] dark:bg-stone-800 text-[#2E2922] dark:text-[#F7F4EB] text-xs font-semibold tracking-[0.18em] uppercase hover:bg-[#DDD7C8] transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-[#EFECE3] dark:bg-stone-800/80 text-[#1A1816] dark:text-[#FAF7F2] text-xs font-bold tracking-[0.18em] uppercase border border-[#DDD7C8] dark:border-stone-700 hover:bg-[#E5E0D5] dark:hover:bg-stone-700 transition-all shadow-2xs hover:scale-[1.02] active:scale-[0.98]"
               >
-                <Stethoscope className="w-3.5 h-3.5 text-[#7A7163]" />
+                <Stethoscope className="w-3.5 h-3.5 text-[#7A7163] dark:text-emerald-400" />
                 <span>{isAr ? 'منصة الطبيب' : 'Clinician Console'}</span>
               </button>
             </div>
 
             {/* Quick Golden Case Fast-Track Selector */}
             <div className="pt-4 border-t border-[#DDD7C8]/70 dark:border-stone-800">
-              <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#7A7163] dark:text-stone-300 block mb-2">
+              <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-[#7A7163] dark:text-stone-300 block mb-2.5">
                 {isAr ? 'جرّب إحدى الحالات الذهبية السريرية المعتمدة:' : 'Simulate Verified Golden Cases:'}
               </span>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => onSelectGoldenCase('GC01')}
-                  className="px-2.5 py-1 text-xs font-medium rounded-sm bg-[#FAF8F5] dark:bg-stone-900 text-[#403B33] dark:text-stone-200 border border-[#DDD7C8] dark:border-stone-800 hover:border-[#7A7163] dark:hover:border-stone-600 transition-colors"
+                  className="px-3 py-1.5 text-xs font-bold rounded-full bg-white/80 dark:bg-stone-900 text-[#403B33] dark:text-stone-200 border border-[#DDD7C8] dark:border-stone-800 hover:border-[#1A1816] dark:hover:border-stone-500 transition-all shadow-2xs hover:scale-105"
                   title="Acute scrotal pain (< 6h) -> EMERGENCY_ED"
                 >
                   GC01: Acute Torsion (&lt; 6h)
@@ -134,7 +134,7 @@ export default function HeroSection({
                 <button
                   type="button"
                   onClick={() => onSelectGoldenCase('GC02')}
-                  className="px-2.5 py-1 text-xs font-medium rounded-sm bg-[#FAF8F5] dark:bg-stone-900 text-[#403B33] dark:text-stone-200 border border-[#DDD7C8] dark:border-stone-800 hover:border-[#7A7163] dark:hover:border-stone-600 transition-colors"
+                  className="px-3 py-1.5 text-xs font-bold rounded-full bg-white/80 dark:bg-stone-900 text-[#403B33] dark:text-stone-200 border border-[#DDD7C8] dark:border-stone-800 hover:border-[#1A1816] dark:hover:border-stone-500 transition-all shadow-2xs hover:scale-105"
                   title="Painless firm lump -> URGENT_UROLOGY"
                 >
                   GC02: Testicular Mass
@@ -142,7 +142,7 @@ export default function HeroSection({
                 <button
                   type="button"
                   onClick={() => onSelectGoldenCase('GC09')}
-                  className="px-2.5 py-1 text-xs font-medium rounded-sm bg-[#FAF8F5] dark:bg-stone-900 text-[#403B33] dark:text-stone-200 border border-[#DDD7C8] dark:border-stone-800 hover:border-[#7A7163] dark:hover:border-stone-600 transition-colors"
+                  className="px-3 py-1.5 text-xs font-bold rounded-full bg-white/80 dark:bg-stone-900 text-[#403B33] dark:text-stone-200 border border-[#DDD7C8] dark:border-stone-800 hover:border-[#1A1816] dark:hover:border-stone-500 transition-all shadow-2xs hover:scale-105"
                   title="Subfertility + Metabolic risk -> ANDROLOGY_UROLOGY"
                 >
                   GC09: Metabolic Infertility
@@ -150,7 +150,7 @@ export default function HeroSection({
                 <button
                   type="button"
                   onClick={() => onSelectGoldenCase('GC16')}
-                  className="px-2.5 py-1 text-xs font-medium rounded-sm bg-[#FAF8F5] dark:bg-stone-900 text-[#403B33] dark:text-stone-200 border border-[#DDD7C8] dark:border-stone-800 hover:border-[#7A7163] dark:hover:border-stone-600 transition-colors"
+                  className="px-3 py-1.5 text-xs font-bold rounded-full bg-white/80 dark:bg-stone-900 text-[#403B33] dark:text-stone-200 border border-[#DDD7C8] dark:border-stone-800 hover:border-[#1A1816] dark:hover:border-stone-500 transition-all shadow-2xs hover:scale-105"
                   title="Gradual scrotal ache -> Near-Miss Safe"
                 >
                   GC16: Gradual Ache (Near-Miss)

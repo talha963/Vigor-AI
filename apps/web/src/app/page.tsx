@@ -102,8 +102,8 @@ export default function Home() {
         onOpenBooking={() => setIsBookingOpen(true)}
       />
 
-      {/* Main Page Surfaces with pt-16 offset for fixed header */}
-      <main className="flex-1 pt-14 sm:pt-16">
+      {/* Main Page Surfaces with generous offset for floating luxury header */}
+      <main className="flex-1 pt-20 sm:pt-24 lg:pt-28">
         {/* Front Hero Section */}
         <HeroSection
           locale={locale}

@@ -52,6 +52,9 @@ import {
   SlidersHorizontal,
   Workflow,
   Compass,
+  Sun,
+  Moon,
+  ChevronDown,
 } from 'lucide-react';
 import Link from 'next/link';
 import VigorLogo from '@/components/VigorLogo';
@@ -104,6 +107,38 @@ export default function DoctorPortalPage() {
   const [locale, setLocale] = useState<'en' | 'ar'>('en');
   const isAr = locale === 'ar';
 
+  // Theme synchronization (Master Theme Architecture)
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const isDark = theme === 'dark';
+
+  useEffect(() => {
+    try {
+      const storedTheme = localStorage.getItem('vigor-theme');
+      const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (storedTheme === 'dark' || (!storedTheme && isSystemDark)) {
+        setTheme('dark');
+        document.documentElement.classList.add('dark');
+      } else {
+        setTheme('light');
+        document.documentElement.classList.remove('dark');
+      }
+    } catch (e) {
+      // fallback
+    }
+  }, []);
+
+  const handleToggleTheme = () => {
+    const nextTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(nextTheme);
+    if (nextTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('vigor-theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('vigor-theme', 'light');
+    }
+  };
+
   // Navigation / Sidebar View State
   const [activeSidebarTab, setActiveSidebarTab] = useState<
     'workflows' | 'runtime' | 'consent' | 'escapements'
@@ -115,6 +150,7 @@ export default function DoctorPortalPage() {
   const [timeframe, setTimeframe] = useState<'1b' | '6M' | '1M' | 'All'>('6M');
 
   // Auth State
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
@@ -151,7 +187,6 @@ export default function DoctorPortalPage() {
     if (doc) {
       setCurrentDoctor(doc);
     } else {
-      // Auto-populate Dr. Tariq demo
       handleDemoLogin();
     }
   }, []);
@@ -163,7 +198,6 @@ export default function DoctorPortalPage() {
       const res = await fetch('/api/booking');
       const data = await res.json();
       if (res.ok && data.bookings) {
-        // augment demo sparklines for visual aesthetics matching reference video
         const augmented = data.bookings.map((b: any, i: number) => ({
           ...b,
           sparkline: b.sparkline || [12, 14, 18, 16, 22, 26, 24, 28, 32],
@@ -195,6 +229,7 @@ export default function DoctorPortalPage() {
   const handleLogout = async () => {
     await logoutDoctor();
     setCurrentDoctor(null);
+    setAuthModalOpen(true);
   };
 
   // Launch Clinician Review Portal Modal
@@ -288,11 +323,14 @@ export default function DoctorPortalPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F9F8F6] text-[#1A1816] font-editorial-sans antialiased selection:bg-[#1A1816] selection:text-white relative overflow-x-hidden">
-      {/* Decorative Warm Arcs & Ambient Radial Gradients (Matching Reference Video) */}
-      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+    <div
+      dir={isAr ? 'rtl' : 'ltr'}
+      className="min-h-screen bg-[#F9F8F6] dark:bg-[#141311] text-[#1A1816] dark:text-[#FAF7F2] font-editorial-sans antialiased selection:bg-[#1A1816] selection:text-white dark:selection:bg-white dark:selection:text-[#141311] transition-colors duration-300 relative overflow-x-hidden"
+    >
+      {/* Decorative Warm Arcs & Ambient Radial Gradients (Harmonized Master Theme) */}
+      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden select-none">
         <svg
-          className="absolute -top-40 -right-40 w-[1000px] h-[1000px] opacity-[0.045] text-[#22201D]"
+          className="absolute -top-40 -right-40 w-[1000px] h-[1000px] opacity-[0.04] dark:opacity-[0.06] text-[#22201D] dark:text-[#FAF7F2]"
           viewBox="0 0 1000 1000"
           fill="none"
           stroke="currentColor"
@@ -301,126 +339,167 @@ export default function DoctorPortalPage() {
           <circle cx="500" cy="500" r="320" strokeWidth="1.5" />
           <circle cx="500" cy="500" r="180" strokeWidth="1" />
         </svg>
-        <div className="absolute top-1/4 -left-48 w-[700px] h-[700px] rounded-full bg-[#EFE8DC]/50 blur-3xl pointer-events-none" />
+        <div className="absolute top-1/4 -left-48 w-[700px] h-[700px] rounded-full bg-[#EFE8DC]/50 dark:bg-amber-950/10 blur-3xl" />
+        <div className="absolute top-2/3 -right-48 w-[600px] h-[600px] rounded-full bg-[#E5DFCF]/40 dark:bg-stone-900/20 blur-3xl" />
       </div>
 
       {/* ========================================================
-          1. TOP NAVIGATION BAR (Clean, Luxury, Brand Identity)
+          1. TOP NAVIGATION BAR (Signature Floating Architectural Island Pill)
           ======================================================== */}
-      <header className="sticky top-0 z-40 bg-[#F9F8F6]/90 backdrop-blur-md border-b border-[#EBE7DF]">
-        <div className="max-w-[1520px] mx-auto px-6 h-18 flex items-center justify-between gap-6">
-          {/* Left: VIGOR AI Brand Emblem */}
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2.5 group focus:outline-none">
-              <div className="w-9 h-9 rounded-xl bg-[#1A1816] flex items-center justify-center text-white shadow-xs transition-transform duration-300 group-hover:scale-105">
-                <VigorLogo className="w-5 h-5 text-current" size={20} />
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="font-editorial-serif text-lg tracking-[0.2em] font-bold text-[#1A1816] uppercase">
-                    Vigor
-                  </span>
-                  <span className="text-[10px] tracking-[0.24em] font-black text-[#8A8172] uppercase">
-                    AI
-                  </span>
+      <header className="fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 pt-2 sm:pt-3 px-3 sm:px-6">
+        <div className="max-w-[1520px] mx-auto rounded-2xl sm:rounded-full bg-[#FAF8F5]/92 dark:bg-[#161513]/94 backdrop-blur-xl border border-[#DDD7C8] dark:border-stone-800 shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.45)] px-4 sm:px-6 transition-all duration-300">
+          <div className="h-14 sm:h-16 flex items-center justify-between gap-3 flex-nowrap">
+            {/* Left: VIGOR AI Brand Emblem & Doctor Portal Badge */}
+            <div className="flex items-center gap-3 shrink-0">
+              <Link href="/" className="flex items-center gap-2.5 group focus:outline-none" aria-label="Vigor AI Home">
+                <div className="w-8 sm:w-9 h-8 sm:h-9 rounded-xl bg-gradient-to-br from-[#2E2922] via-[#24201A] to-[#181614] dark:from-[#FAF8F5] dark:to-[#E5E0D5] flex items-center justify-center text-[#FAF8F5] dark:text-[#181614] shadow-xs transition-transform duration-300 group-hover:scale-105 border border-[#524A3D]/40 dark:border-stone-300">
+                  <VigorLogo className="w-4 sm:w-5 h-4 sm:h-5 text-current" size={20} />
                 </div>
-                <span className="text-[9px] font-bold tracking-wider text-emerald-800 uppercase -mt-0.5">
-                  Doctor Portal
-                </span>
+                <div className="flex flex-col">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="font-editorial-serif text-lg tracking-[0.2em] font-medium text-[#1A1816] dark:text-[#FAF7F2] uppercase">
+                      Vigor
+                    </span>
+                    <span className="text-[10px] tracking-[0.24em] font-black text-[#8A8172] dark:text-[#C5BEB2] uppercase">
+                      AI
+                    </span>
+                  </div>
+                </div>
+              </Link>
+
+              {/* Doctor Portal Pill Indicator */}
+              <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300/80 dark:border-emerald-800/80 text-[10px] font-bold tracking-wider text-emerald-800 dark:text-emerald-300 uppercase shadow-2xs">
+                <Stethoscope className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                <span>{isAr ? 'بوابة الأطباء' : 'Doctor Portal'}</span>
               </div>
-            </Link>
-          </div>
-
-          {/* Center: Standard Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6 text-[12px] font-semibold tracking-wider uppercase text-[#6B6355]">
-            <Link href="/" className="hover:text-[#1A1816] transition-colors">
-              Home
-            </Link>
-            <Link href="/#section-intake" className="hover:text-[#1A1816] transition-colors">
-              Intake
-            </Link>
-            <Link href="/#section-safety" className="hover:text-[#1A1816] transition-colors">
-              Clinical Standards
-            </Link>
-            <Link
-              href="/doctor"
-              className="text-[#1A1816] font-bold relative after:absolute after:-bottom-1 after:left-0 after:right-0 after:h-0.5 after:bg-[#1A1816]"
-            >
-              Doctor Portal
-            </Link>
-          </nav>
-
-          {/* Right Cluster: Search, Telehealth Pill, Lang, Profile */}
-          <div className="flex items-center gap-3.5">
-            {/* Search input */}
-            <div className="hidden lg:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#E5E0D5] text-xs text-[#6B6355] shadow-2xs w-48">
-              <Search className="w-3.5 h-3.5 text-[#9E9587]" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent border-none focus:outline-none text-xs text-[#1A1816] placeholder-[#9E9587]"
-              />
             </div>
 
-            {/* TELEHEALTH LIVE Pill Button (Requested) */}
-            <Link
-              href={`/telehealth/bk_auh_7821?role=doctor`}
-              target="_blank"
-              className="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#1A1816] hover:bg-[#2A2724] text-white text-[11px] font-bold tracking-widest uppercase transition-all shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <span className="w-2 h-2 rounded-full bg-[#00A884] animate-pulse" />
-              <span>TELEHEALTH LIVE</span>
-            </Link>
+            {/* Center: Editorial Navigation Links */}
+            <nav className="hidden lg:flex shrink-0 items-center justify-center gap-1 xl:gap-2 font-editorial-sans text-[11px] font-semibold tracking-[0.16em] uppercase text-[#6B6355] dark:text-[#A8A092] whitespace-nowrap">
+              <Link
+                href="/"
+                className="shrink-0 px-3 py-1.5 rounded-full hover:bg-[#EFECE3]/80 dark:hover:bg-stone-800/70 hover:text-[#1A1816] dark:hover:text-white transition-all"
+              >
+                {isAr ? 'الرئيسية' : 'Home'}
+              </Link>
+              <Link
+                href="/#section-intake"
+                className="shrink-0 px-3 py-1.5 rounded-full hover:bg-[#EFECE3]/80 dark:hover:bg-stone-800/70 hover:text-[#1A1816] dark:hover:text-white transition-all"
+              >
+                {isAr ? 'الاستقبال' : 'Intake'}
+              </Link>
+              <Link
+                href="/#section-safety"
+                className="shrink-0 px-3 py-1.5 rounded-full hover:bg-[#EFECE3]/80 dark:hover:bg-stone-800/70 hover:text-[#1A1816] dark:hover:text-white transition-all"
+              >
+                {isAr ? 'المعايير السريرية' : 'Clinical Standards'}
+              </Link>
+              <Link
+                href="/doctor"
+                className="shrink-0 px-3.5 py-1.5 rounded-full bg-[#1A1816] dark:bg-[#FAF7F2] text-white dark:text-[#181614] font-bold tracking-wider text-[10px] shadow-2xs"
+              >
+                {isAr ? 'منصة الطبيب' : 'Doctor Portal'}
+              </Link>
+            </nav>
 
-            {/* Language Switcher */}
-            <button
-              onClick={() => setLocale(locale === 'en' ? 'ar' : 'en')}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-[#E5E0D5] bg-white text-[10px] font-bold tracking-wider uppercase text-[#6B6355] hover:border-stone-400 transition-all shadow-2xs"
-            >
-              <Globe className="w-3 h-3 text-[#8A8172]" />
-              <span>{locale === 'en' ? 'عربي' : 'EN'}</span>
-            </button>
+            {/* Right: Search, TELEHEALTH LIVE Pill, Switches & Doctor Profile */}
+            <div className="shrink-0 flex items-center gap-2 sm:gap-2.5 whitespace-nowrap">
+              {/* Compact Search input */}
+              <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 dark:bg-stone-900/70 border border-[#DDD7C8] dark:border-stone-700 text-xs text-[#6B6355] dark:text-stone-300 shadow-2xs w-44">
+                <Search className="w-3.5 h-3.5 text-[#9E9587]" />
+                <input
+                  type="text"
+                  placeholder={isAr ? 'بحث...' : 'Search queue...'}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-transparent border-none focus:outline-none text-xs text-[#1A1816] dark:text-white placeholder-[#9E9587]"
+                />
+              </div>
 
-            {/* Notifications Bell */}
-            <div className="relative p-2 rounded-full bg-white border border-[#E5E0D5] text-[#6B6355] shadow-2xs cursor-pointer">
-              <Bell className="w-4 h-4" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#D32F2F] text-white text-[9px] font-black flex items-center justify-center">
-                2
-              </span>
-            </div>
+              {/* TELEHEALTH LIVE Pill Button (Requested Design Specification) */}
+              <Link
+                href={`/telehealth/bk_auh_7821?role=doctor`}
+                target="_blank"
+                className="shrink-0 group inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-full bg-[#1A1816] hover:bg-[#332F2A] dark:bg-[#FAF7F2] dark:hover:bg-white text-white dark:text-[#181614] text-[10px] font-bold tracking-[0.18em] uppercase transition-all shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <span className="w-2 h-2 rounded-full bg-[#00A884] animate-pulse" />
+                <span>TELEHEALTH LIVE</span>
+              </Link>
 
-            {/* Clinician Profile Avatar */}
-            {currentDoctor && (
-              <div className="flex items-center gap-2 pl-1 border-l border-[#E5E0D5]">
-                <div className="w-8 h-8 rounded-full bg-[#2A2724] text-white flex items-center justify-center font-bold text-xs shadow-xs">
+              {/* Language Switcher */}
+              <button
+                type="button"
+                onClick={() => setLocale(locale === 'en' ? 'ar' : 'en')}
+                className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full border border-[#DDD7C8] dark:border-stone-700 bg-white/70 dark:bg-stone-900/70 text-[10px] font-bold uppercase tracking-wider text-[#5A544A] dark:text-[#DDD7C8] hover:border-stone-400 dark:hover:border-stone-500 hover:bg-white dark:hover:bg-stone-800 transition-all shadow-2xs"
+                title="Toggle Language"
+              >
+                <Globe className="w-3 h-3 text-[#7A7163] dark:text-stone-400" />
+                <span>{locale === 'en' ? 'عربي' : 'EN'}</span>
+              </button>
+
+              {/* Theme Switcher Button */}
+              <button
+                type="button"
+                onClick={handleToggleTheme}
+                className="shrink-0 p-1.5 sm:p-2 rounded-full border border-[#DDD7C8] dark:border-stone-700 bg-white/70 dark:bg-stone-900/70 text-[#5A544A] dark:text-[#DDD7C8] hover:border-stone-400 dark:hover:border-stone-500 hover:bg-white dark:hover:bg-stone-800 transition-all shadow-2xs"
+                aria-label="Toggle Dark Mode"
+              >
+                {isDark ? (
+                  <Sun className="w-3.5 h-3.5 text-amber-400" />
+                ) : (
+                  <Moon className="w-3.5 h-3.5 text-stone-600" />
+                )}
+              </button>
+
+              {/* Notifications Bell */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSidebarTab('escapements');
+                  if (urgentPatients[0]) openReviewModal(urgentPatients[0]);
+                }}
+                className="shrink-0 relative p-2 rounded-full bg-white/70 dark:bg-stone-900/70 border border-[#DDD7C8] dark:border-stone-700 text-[#6B6355] dark:text-[#DDD7C8] shadow-2xs cursor-pointer hover:border-stone-400 transition-colors"
+                title="2 Urgent Escapements Active"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#B71C1C] text-white text-[9px] font-black flex items-center justify-center animate-pulse">
+                  2
+                </span>
+              </button>
+
+              {/* Clinician Profile Avatar & Name */}
+              <div
+                onClick={() => setAuthModalOpen(true)}
+                className="shrink-0 flex items-center gap-2 pl-1 border-l border-[#DDD7C8] dark:border-stone-700 cursor-pointer group"
+                title="Manage Clinician Credentials"
+              >
+                <div className="w-8 h-8 rounded-full bg-[#2A2724] dark:bg-stone-800 text-white flex items-center justify-center font-bold text-xs shadow-xs border border-stone-300 dark:border-stone-600 group-hover:scale-105 transition-transform">
                   👨‍⚕️
                 </div>
-                <div className="hidden xl:flex flex-col text-left">
-                  <span className="text-[11px] font-bold text-[#1A1816] leading-tight">
-                    {currentDoctor.fullName}
+                <div className="hidden xl:flex flex-col text-left rtl:text-right">
+                  <span className="text-[11px] font-bold text-[#1A1816] dark:text-[#FAF7F2] leading-tight">
+                    {currentDoctor?.fullName || 'Dr. Tariq Al-Hashimi'}
                   </span>
-                  <span className="text-[9px] text-[#8A8172]">Consultant Andrologist</span>
+                  <span className="text-[9px] text-[#8A8172] dark:text-stone-400">Consultant Andrologist</span>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
       </header>
 
       {/* ========================================================
-          2. CRITICAL EMERGENCY WARNING BANNER (Top of Console)
+          2. CRITICAL EMERGENCY WARNING BANNER (Red Background, White Text)
           ======================================================== */}
       {urgentPatients.length > 0 && (
-        <div className="bg-[#B71C1C] text-white py-3 px-6 shadow-md transition-colors animate-in fade-in duration-300">
-          <div className="max-w-[1520px] mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-center md:text-left">
+        <div className="max-w-[1520px] mx-auto mt-20 sm:mt-24 px-3 sm:px-6 mb-6">
+          <div className="bg-[#B71C1C] dark:bg-[#991B1B] text-white py-3.5 px-6 rounded-2xl sm:rounded-3xl shadow-lg border border-red-700/50 flex flex-col md:flex-row items-center justify-between gap-3 text-center md:text-left rtl:md:text-right transition-all">
             <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-4 h-4 text-white animate-pulse" />
               </div>
               <div>
-                <span className="text-xs sm:text-sm font-bold tracking-wide">
+                <span className="text-xs sm:text-sm font-bold tracking-wide block sm:inline">
                   Clinical Emergency Warning: 2 Patients require immediate review.
                 </span>
                 <span className="hidden lg:inline text-xs text-rose-200 ml-2">
@@ -429,13 +508,14 @@ export default function DoctorPortalPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="shrink-0 flex items-center gap-3">
               <button
+                type="button"
                 onClick={() => {
                   setActiveSidebarTab('escapements');
                   if (urgentPatients[0]) openReviewModal(urgentPatients[0]);
                 }}
-                className="px-4 py-1.5 rounded-full bg-white text-[#B71C1C] hover:bg-rose-50 text-[11px] font-black uppercase tracking-wider shadow-sm transition-transform active:scale-95 flex items-center gap-1.5"
+                className="px-5 py-2 rounded-full bg-white text-[#B71C1C] hover:bg-rose-50 text-[11px] font-black uppercase tracking-wider shadow-sm transition-transform active:scale-95 flex items-center gap-1.5"
               >
                 <span>Review Immediate Cases</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -445,88 +525,96 @@ export default function DoctorPortalPage() {
         </div>
       )}
 
-      {/* ========================================================
-          3. MAIN LAYOUT: CURVED TIMELINE SIDEBAR + CONSOLE
-          ======================================================== */}
-      <div className="max-w-[1520px] mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      {/* Main Container Layout */}
+      <div className={`max-w-[1520px] mx-auto px-3 sm:px-6 ${urgentPatients.length > 0 ? 'mt-2' : 'mt-20 sm:mt-24'} pb-16 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start`}>
         {/* ========================================================
-            LEFT SIDEBAR: CURVED SEGMENTED TIMELINE GRAPHIC
-            (Matching Reference Video Frame 01 & 03)
+            3. LEFT SIDEBAR: CURVED SEGMENTED TIMELINE GRAPHIC
+            (Subtle curved, segmented timeline graphic connecting menu items)
             ======================================================== */}
-        <aside className="lg:col-span-3 bg-white/80 backdrop-blur-md rounded-3xl p-6 border border-[#EBE7DF] shadow-[0_8px_30px_rgb(0,0,0,0.03)] relative overflow-hidden">
-          <div className="flex items-center justify-between mb-6 pb-3 border-b border-[#F0ECE1]">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8A8172]">
+        <aside className="lg:col-span-3 bg-white/80 dark:bg-[#1C1A17]/85 backdrop-blur-md rounded-3xl p-6 border border-[#EBE7DF] dark:border-stone-800 shadow-[0_8px_30px_rgb(0,0,0,0.03)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)] relative overflow-hidden">
+          {/* Header Title */}
+          <div className="flex items-center justify-between mb-6 pb-3 border-b border-[#F0ECE1] dark:border-stone-800">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8A8172] dark:text-[#A8A092]">
               Clinical Navigation
             </span>
-            <span className="text-[10px] font-mono text-emerald-700 bg-[#E8F5E9] px-2 py-0.5 rounded-full font-bold">
+            <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 bg-[#E8F5E9] dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full font-bold">
               60.0 fps
             </span>
           </div>
 
-          {/* Timeline graphic wrapper with SVG arc */}
-          <div className="relative pl-6 space-y-8">
-            {/* The Subtle Curved Connecting Timeline Graphic (From Video) */}
-            <div className="absolute top-3 left-2.5 bottom-6 w-8 pointer-events-none">
-              <svg className="w-full h-full" viewBox="0 0 32 300" fill="none">
-                <path
-                  d="M 6 10 C 26 60, 26 120, 6 160 C -8 200, 18 240, 6 290"
-                  stroke="#DDD7C8"
-                  strokeWidth="2"
-                  strokeDasharray="4 4"
-                />
-              </svg>
-            </div>
+          {/* Timeline Graphic Area with S-Curve SVG and Aligned Circular Nodes */}
+          <div className="relative pl-7 space-y-6">
+            {/* The Subtle Curved Connecting Timeline Graphic */}
+            <svg
+              className="absolute left-1 top-2.5 bottom-2.5 w-6 h-[calc(100%-20px)] pointer-events-none text-stone-300 dark:text-stone-700"
+              preserveAspectRatio="none"
+              viewBox="0 0 24 240"
+              fill="none"
+            >
+              <path
+                d="M 12,12 C 22,45 22,75 12,95 C 2,115 2,145 12,165 C 22,185 22,215 12,230"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeDasharray="4 4"
+              />
+            </svg>
 
             {/* Menu Item 1: Active Workflows */}
             <div
               onClick={() => setActiveSidebarTab('workflows')}
-              className={`relative cursor-pointer group transition-all ${
-                activeSidebarTab === 'workflows' ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+              className={`relative cursor-pointer group p-3 rounded-2xl transition-all ${
+                activeSidebarTab === 'workflows'
+                  ? 'bg-stone-100/90 dark:bg-stone-800/80 border border-stone-300/80 dark:border-stone-700 shadow-2xs'
+                  : 'hover:bg-stone-50 dark:hover:bg-stone-800/40'
               }`}
             >
+              {/* Circular Anchor Node sitting on the curve */}
               <div
-                className={`absolute -left-[19px] top-1.5 w-3 h-3 rounded-full border-2 transition-all ${
+                className={`absolute -left-[27px] top-4 w-3.5 h-3.5 rounded-full border-2 transition-all ${
                   activeSidebarTab === 'workflows'
-                    ? 'bg-[#1A1816] border-white ring-2 ring-[#1A1816]'
-                    : 'bg-[#DDD7C8] border-white group-hover:bg-[#1A1816]'
+                    ? 'bg-[#1A1816] dark:bg-white border-white dark:border-[#1A1816] ring-2 ring-stone-400 dark:ring-stone-600 scale-110'
+                    : 'bg-[#DDD7C8] dark:bg-stone-700 border-white dark:border-[#1C1A17] group-hover:bg-[#1A1816] dark:group-hover:bg-white'
                 }`}
               />
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#1A1816]">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#1A1816] dark:text-[#FAF7F2]">
                   Active Workflows
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-stone-100 text-[#6B6355] font-bold">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-[#6B6355] dark:text-[#DDD7C8] font-bold border border-stone-200 dark:border-stone-700">
                   10 n8n
                 </span>
               </div>
-              <p className="text-[11px] text-[#8A8172] mt-0.5">
+              <p className="text-[11px] text-[#8A8172] dark:text-stone-400 mt-1 leading-tight">
                 Autonomous screening, red-flag triage, and lab dispatch loops.
               </p>
             </div>
 
-            {/* Menu Item 2: Runtime Review (Clinician Console) */}
+            {/* Menu Item 2: Runtime Review (Default / Clinician Console) */}
             <div
               onClick={() => setActiveSidebarTab('runtime')}
-              className={`relative cursor-pointer group transition-all ${
-                activeSidebarTab === 'runtime' ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+              className={`relative cursor-pointer group p-3 rounded-2xl transition-all ${
+                activeSidebarTab === 'runtime'
+                  ? 'bg-stone-100/90 dark:bg-stone-800/80 border border-stone-300/80 dark:border-stone-700 shadow-2xs'
+                  : 'hover:bg-stone-50 dark:hover:bg-stone-800/40'
               }`}
             >
+              {/* Circular Anchor Node sitting on the curve */}
               <div
-                className={`absolute -left-[19px] top-1.5 w-3 h-3 rounded-full border-2 transition-all ${
+                className={`absolute -left-[27px] top-4 w-3.5 h-3.5 rounded-full border-2 transition-all ${
                   activeSidebarTab === 'runtime'
-                    ? 'bg-[#1A1816] border-white ring-2 ring-[#1A1816]'
-                    : 'bg-[#DDD7C8] border-white group-hover:bg-[#1A1816]'
+                    ? 'bg-emerald-600 border-white dark:border-[#1C1A17] ring-4 ring-emerald-500/25 scale-110'
+                    : 'bg-[#DDD7C8] dark:bg-stone-700 border-white dark:border-[#1C1A17] group-hover:bg-emerald-600'
                 }`}
               />
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#1A1816]">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#1A1816] dark:text-[#FAF7F2]">
                   Runtime Review
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#E8F5E9] text-[#1B5E20] font-bold">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#E8F5E9] dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-800 text-[#1B5E20] dark:text-emerald-300 font-bold">
                   237 Pending
                 </span>
               </div>
-              <p className="text-[11px] text-[#8A8172] mt-0.5">
+              <p className="text-[11px] text-[#8A8172] dark:text-stone-400 mt-1 leading-tight">
                 Human-in-the-loop review for borderline WHO 2021 motility cases.
               </p>
             </div>
@@ -534,26 +622,29 @@ export default function DoctorPortalPage() {
             {/* Menu Item 3: Consent Ledger */}
             <div
               onClick={() => setActiveSidebarTab('consent')}
-              className={`relative cursor-pointer group transition-all ${
-                activeSidebarTab === 'consent' ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+              className={`relative cursor-pointer group p-3 rounded-2xl transition-all ${
+                activeSidebarTab === 'consent'
+                  ? 'bg-stone-100/90 dark:bg-stone-800/80 border border-stone-300/80 dark:border-stone-700 shadow-2xs'
+                  : 'hover:bg-stone-50 dark:hover:bg-stone-800/40'
               }`}
             >
+              {/* Circular Anchor Node sitting on the curve */}
               <div
-                className={`absolute -left-[19px] top-1.5 w-3 h-3 rounded-full border-2 transition-all ${
+                className={`absolute -left-[27px] top-4 w-3.5 h-3.5 rounded-full border-2 transition-all ${
                   activeSidebarTab === 'consent'
-                    ? 'bg-[#1A1816] border-white ring-2 ring-[#1A1816]'
-                    : 'bg-[#DDD7C8] border-white group-hover:bg-[#1A1816]'
+                    ? 'bg-[#1A1816] dark:bg-white border-white dark:border-[#1A1816] ring-2 ring-stone-400 dark:ring-stone-600 scale-110'
+                    : 'bg-[#DDD7C8] dark:bg-stone-700 border-white dark:border-[#1C1A17] group-hover:bg-[#1A1816] dark:group-hover:bg-white'
                 }`}
               />
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#1A1816]">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#1A1816] dark:text-[#FAF7F2]">
                   Consent Ledger
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-stone-100 text-[#6B6355] font-bold">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-[#6B6355] dark:text-[#DDD7C8] font-bold border border-stone-200 dark:border-stone-700">
                   511 SHA-256
                 </span>
               </div>
-              <p className="text-[11px] text-[#8A8172] mt-0.5">
+              <p className="text-[11px] text-[#8A8172] dark:text-stone-400 mt-1 leading-tight">
                 Zero-PII cryptographically signed Abu Dhabi DoH sharing receipts.
               </p>
             </div>
@@ -561,88 +652,92 @@ export default function DoctorPortalPage() {
             {/* Menu Item 4: Patient Escapements */}
             <div
               onClick={() => setActiveSidebarTab('escapements')}
-              className={`relative cursor-pointer group transition-all ${
-                activeSidebarTab === 'escapements' ? 'opacity-100' : 'opacity-70 hover:opacity-100'
+              className={`relative cursor-pointer group p-3 rounded-2xl transition-all ${
+                activeSidebarTab === 'escapements'
+                  ? 'bg-rose-50/80 dark:bg-rose-950/40 border border-red-300 dark:border-red-900 shadow-2xs'
+                  : 'hover:bg-stone-50 dark:hover:bg-stone-800/40'
               }`}
             >
+              {/* Circular Anchor Node sitting on the curve */}
               <div
-                className={`absolute -left-[19px] top-1.5 w-3 h-3 rounded-full border-2 transition-all ${
+                className={`absolute -left-[27px] top-4 w-3.5 h-3.5 rounded-full border-2 transition-all ${
                   activeSidebarTab === 'escapements'
-                    ? 'bg-[#B71C1C] border-white ring-2 ring-red-500 animate-ping'
+                    ? 'bg-[#B71C1C] border-white ring-4 ring-red-400/30 scale-110 animate-pulse'
                     : 'bg-[#B71C1C] border-white'
                 }`}
               />
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#B71C1C]">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#B71C1C] dark:text-rose-400">
                   Patient Escapements
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-100 text-[#B71C1C] font-bold">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/80 border border-red-300 dark:border-red-800 text-[#B71C1C] dark:text-rose-300 font-bold">
                   2 SLA Active
                 </span>
               </div>
-              <p className="text-[11px] text-[#8A8172] mt-0.5">
+              <p className="text-[11px] text-[#8A8172] dark:text-stone-400 mt-1 leading-tight">
                 Urgent deterministic red flags requiring physician override.
               </p>
             </div>
           </div>
 
           {/* Clinician On-Call Status Card */}
-          <div className="mt-8 p-4 rounded-2xl bg-[#F9F8F6] border border-[#EBE7DF] space-y-2">
+          <div className="mt-8 p-4 rounded-2xl bg-[#F9F8F6] dark:bg-stone-900/60 border border-[#EBE7DF] dark:border-stone-800 space-y-2">
             <div className="flex items-center justify-between text-xs font-bold">
-              <span className="text-[#6B6355]">Physician Duty Status</span>
-              <span className="text-emerald-700 flex items-center gap-1">
+              <span className="text-[#6B6355] dark:text-stone-400">Physician Duty Status</span>
+              <span className="text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 text-[11px]">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 Active
               </span>
             </div>
-            <p className="text-[11px] text-[#8A8172]">
+            <p className="text-[11px] text-[#8A8172] dark:text-stone-400 leading-relaxed">
               Dr. Tariq Al-Hashimi · License: DOH-AUH-2018-0924 (Malaffi Provider #PRV-882190)
             </p>
           </div>
         </aside>
 
         {/* ========================================================
-            MAIN CONSOLE: HERO & PATIENT CARDS WITH WHO 2021 SIMULATOR
+            4. MAIN DASHBOARD AREA (Clinician Review Console)
             ======================================================== */}
         <main className="lg:col-span-9 space-y-8">
-          {/* Hero Banner: Runtime & Clinician Review Console (Matching Video Frames 03 & 04) */}
-          <div className="bg-white/80 backdrop-blur-md rounded-3xl p-8 lg:p-10 border border-[#EBE7DF] shadow-[0_8px_30px_rgb(0,0,0,0.03)] relative overflow-hidden text-center space-y-4">
+          {/* Hero Banner: Runtime & Clinician Review Console */}
+          <div className="bg-white/80 dark:bg-[#1C1A17]/85 backdrop-blur-md rounded-3xl p-8 lg:p-10 border border-[#EBE7DF] dark:border-stone-800 shadow-[0_8px_30px_rgb(0,0,0,0.03)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)] relative overflow-hidden text-center space-y-4">
             {/* Subtle decorative curved background pattern in hero */}
-            <div className="absolute inset-0 pointer-events-none opacity-40">
+            <div className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-20">
               <svg className="w-full h-full" viewBox="0 0 800 240" fill="none">
                 <path
                   d="M 50 200 C 250 80, 550 80, 750 200"
-                  stroke="#E8E2D4"
+                  stroke="currentColor"
+                  className="text-stone-300 dark:text-stone-700"
                   strokeWidth="2"
                   strokeDasharray="6 6"
                 />
               </svg>
             </div>
 
-            <div className="relative z-10 space-y-3 max-w-2xl mx-auto">
-              <span className="inline-block px-3 py-1 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-[10px] font-black uppercase tracking-[0.2em] text-[#1B5E20]">
+            <div className="relative z-10 space-y-3.5 max-w-2xl mx-auto">
+              <span className="inline-block px-3.5 py-1 rounded-full bg-[#E8F5E9] dark:bg-emerald-950/70 border border-[#C8E6C9] dark:border-emerald-800 text-[10px] font-black uppercase tracking-[0.2em] text-[#1B5E20] dark:text-emerald-300 shadow-2xs">
                 Autonomous WHO 2021 Semen Analysis & Deterministic Triage Gateway
               </span>
 
-              {/* High-contrast Serif Headline matching video */}
-              <h1 className="font-editorial-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#1A1816] leading-[1.15]">
+              {/* High-contrast Serif Headline matching reference aesthetic */}
+              <h1 className="font-editorial-serif text-3xl sm:text-4xl lg:text-5xl font-normal tracking-tight text-[#1A1816] dark:text-[#FAF7F2] leading-[1.14]">
                 Runtime & Clinician Review Console
               </h1>
 
-              <p className="text-xs sm:text-sm text-[#6B6355] max-w-xl mx-auto leading-relaxed">
+              <p className="text-xs sm:text-sm text-[#6B6355] dark:text-stone-400 max-w-xl mx-auto leading-relaxed">
                 Review asynchronous WHO 2021 computer-assisted semen analysis (CASA) parameters,
                 override algorithmic risk bands with clinical justification, and issue official DoH
                 Malaffi e-prescriptions.
               </p>
 
-              {/* Prominent Dark Pill Button with Ripple Effect (Matching Video Click Action) */}
+              {/* Prominent Dark Pill Button with Ripple Effect (Fully Rounded Pill) */}
               <div className="pt-2">
                 <button
                   type="button"
                   onClick={() => {
                     if (displayedPatients[0]) openReviewModal(displayedPatients[0]);
                   }}
-                  className="group relative inline-flex items-center gap-3 px-8 py-3.5 rounded-full bg-[#1A1816] hover:bg-[#2A2724] text-white text-xs font-bold tracking-widest uppercase transition-all shadow-md hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+                  className="group relative inline-flex items-center gap-3 px-8 py-3.5 rounded-full bg-[#1A1816] hover:bg-[#332F2A] dark:bg-[#FAF7F2] dark:hover:bg-white text-white dark:text-[#181614] text-xs font-bold tracking-widest uppercase transition-all shadow-md hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <span>Launch Clinician Review Portal</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -652,77 +747,77 @@ export default function DoctorPortalPage() {
           </div>
 
           {/* ========================================================
-              ANALYTICS & PARAMETER CARDS BAR (Matching Frame 05)
+              ANALYTICS & PARAMETER CARDS BAR
               ======================================================== */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Metric 1: Total Sperm Rating */}
-            <div className="p-5 rounded-3xl bg-white border border-[#EBE7DF] shadow-[0_8px_30px_rgb(0,0,0,0.03)] space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8172] block">
+            <div className="p-5 rounded-3xl bg-white/90 dark:bg-[#1C1A17]/90 border border-[#EBE7DF] dark:border-stone-800 shadow-[0_8px_30px_rgb(0,0,0,0.03)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)] space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8172] dark:text-stone-400 block">
                 Total Sperm Metrics
               </span>
               <div className="flex items-center justify-between">
-                <span className="font-editorial-serif text-2xl font-bold text-[#1A1816]">
+                <span className="font-editorial-serif text-2xl font-bold text-[#1A1816] dark:text-[#FAF7F2]">
                   99%
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#E8F5E9] text-[#1B5E20] font-bold">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#E8F5E9] dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-800 text-[#1B5E20] dark:text-emerald-300 font-bold">
                   +1.33%
                 </span>
               </div>
-              <p className="text-[11px] text-[#8A8172]">
+              <p className="text-[11px] text-[#8A8172] dark:text-stone-400">
                 Quality index across 511 CASA verified samples.
               </p>
             </div>
 
             {/* Metric 2: Average Progressive Motility */}
-            <div className="p-5 rounded-3xl bg-white border border-[#EBE7DF] shadow-[0_8px_30px_rgb(0,0,0,0.03)] space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8172] block">
+            <div className="p-5 rounded-3xl bg-white/90 dark:bg-[#1C1A17]/90 border border-[#EBE7DF] dark:border-stone-800 shadow-[0_8px_30px_rgb(0,0,0,0.03)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)] space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8172] dark:text-stone-400 block">
                 Prog Motility Average
               </span>
               <div className="flex items-center justify-between">
-                <span className="font-editorial-serif text-2xl font-bold text-[#1A1816]">
+                <span className="font-editorial-serif text-2xl font-bold text-[#1A1816] dark:text-[#FAF7F2]">
                   60%
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#E8F5E9] text-[#1B5E20] font-bold">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#E8F5E9] dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-800 text-[#1B5E20] dark:text-emerald-300 font-bold">
                   Normal (≥32%)
                 </span>
               </div>
-              <p className="text-[11px] text-[#8A8172]">
+              <p className="text-[11px] text-[#8A8172] dark:text-stone-400">
                 Mean forward progressive motility score.
               </p>
             </div>
 
             {/* Metric 3: Total Sperm Count Throughput */}
-            <div className="p-5 rounded-3xl bg-white border border-[#EBE7DF] shadow-[0_8px_30px_rgb(0,0,0,0.03)] space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8172] block">
+            <div className="p-5 rounded-3xl bg-white/90 dark:bg-[#1C1A17]/90 border border-[#EBE7DF] dark:border-stone-800 shadow-[0_8px_30px_rgb(0,0,0,0.03)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)] space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8172] dark:text-stone-400 block">
                 Total Sperm Count
               </span>
               <div className="flex items-center justify-between">
-                <span className="font-editorial-serif text-2xl font-bold text-[#1A1816]">
+                <span className="font-editorial-serif text-2xl font-bold text-[#1A1816] dark:text-[#FAF7F2]">
                   24.5 M/ml
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#E8F5E9] text-[#1B5E20] font-bold">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#E8F5E9] dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-800 text-[#1B5E20] dark:text-emerald-300 font-bold">
                   Normal
                 </span>
               </div>
-              <p className="text-[11px] text-[#8A8172]">
+              <p className="text-[11px] text-[#8A8172] dark:text-stone-400">
                 WHO 2021 reference floor: 15 M/ml.
               </p>
             </div>
 
             {/* Metric 4: Immediate Escapement Alerts */}
-            <div className="p-5 rounded-3xl bg-white border border-[#EBE7DF] shadow-[0_8px_30px_rgb(0,0,0,0.03)] space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#B71C1C] block">
+            <div className="p-5 rounded-3xl bg-white/90 dark:bg-[#1C1A17]/90 border border-[#EBE7DF] dark:border-stone-800 shadow-[0_8px_30px_rgb(0,0,0,0.03)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)] space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#B71C1C] dark:text-rose-400 block">
                 Clinical Escapements
               </span>
               <div className="flex items-center justify-between">
-                <span className="font-editorial-serif text-2xl font-bold text-[#B71C1C]">
+                <span className="font-editorial-serif text-2xl font-bold text-[#B71C1C] dark:text-rose-400">
                   2 Cases
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-100 text-[#B71C1C] font-bold">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/70 border border-red-300 dark:border-red-800 text-[#B71C1C] dark:text-rose-300 font-bold">
                   Action SLA
                 </span>
               </div>
-              <p className="text-[11px] text-[#8A8172]">
+              <p className="text-[11px] text-[#8A8172] dark:text-stone-400">
                 Deterministic red-flag safety triggers.
               </p>
             </div>
@@ -732,24 +827,25 @@ export default function DoctorPortalPage() {
               CENTRAL GRID OF PATIENT CARDS AWAITING ASYNC REVIEW
               (With WHO 2021 Semen Analysis Simulator Metrics & Sparklines)
               ======================================================== */}
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#EBE7DF]">
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-[#EBE7DF] dark:border-stone-800">
               <div className="flex items-center gap-3">
-                <h3 className="font-editorial-serif text-xl font-bold text-[#1A1816]">
+                <h3 className="font-editorial-serif text-xl font-bold text-[#1A1816] dark:text-[#FAF7F2]">
                   Awaiting Async Clinician Review ({displayedPatients.length} Cases)
                 </h3>
               </div>
 
               {/* Timeframe selector matching video (1b, 6M, 1M, All) */}
-              <div className="flex items-center gap-1.5 p-1 rounded-full bg-white border border-[#E5E0D5] text-xs font-bold shadow-2xs">
+              <div className="flex items-center gap-1.5 p-1 rounded-full bg-white dark:bg-stone-900 border border-[#E5E0D5] dark:border-stone-700 text-xs font-bold shadow-2xs">
                 {(['1b', '6M', '1M', 'All'] as const).map((t) => (
                   <button
                     key={t}
+                    type="button"
                     onClick={() => setTimeframe(t)}
                     className={`px-3 py-1 rounded-full text-[11px] transition-all ${
                       timeframe === t
-                        ? 'bg-[#1A1816] text-white shadow-2xs'
-                        : 'text-[#6B6355] hover:text-[#1A1816]'
+                        ? 'bg-[#1A1816] text-white dark:bg-white dark:text-[#181614] shadow-2xs font-bold'
+                        : 'text-[#6B6355] dark:text-stone-400 hover:text-[#1A1816] dark:hover:text-white'
                     }`}
                   >
                     {t}
@@ -759,7 +855,7 @@ export default function DoctorPortalPage() {
             </div>
 
             {displayedPatients.length === 0 ? (
-              <div className="p-12 text-center bg-white rounded-3xl border border-[#EBE7DF] text-xs text-[#8A8172]">
+              <div className="p-12 text-center bg-white dark:bg-[#1C1A17] rounded-3xl border border-[#EBE7DF] dark:border-stone-800 text-xs text-[#8A8172] dark:text-stone-400 shadow-2xs">
                 No patients found in this queue.
               </div>
             ) : (
@@ -768,24 +864,23 @@ export default function DoctorPortalPage() {
                   const isUrgent =
                     patient.triageTier === 'URGENT' ||
                     (patient.redFlags && patient.redFlags.length > 0);
-                  const isWaiting = patient.status === 'IN_WAITING_ROOM';
 
                   return (
                     <div
                       key={patient.bookingId}
-                      className="bg-white rounded-3xl p-6 border border-[#EBE7DF] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-lg transition-all space-y-5 flex flex-col justify-between"
+                      className="bg-white/95 dark:bg-[#1C1A17]/95 rounded-3xl p-6 border border-[#EBE7DF] dark:border-stone-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)] hover:shadow-lg transition-all space-y-5 flex flex-col justify-between"
                     >
                       {/* Top Patient Header */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-2xl bg-[#F5F2EB] flex items-center justify-center text-xl font-bold shadow-2xs border border-[#EAE5D9]">
+                          <div className="w-12 h-12 rounded-2xl bg-[#F5F2EB] dark:bg-stone-800 flex items-center justify-center text-xl font-bold shadow-2xs border border-[#EAE5D9] dark:border-stone-700">
                             {isUrgent ? '🚨' : '🧑'}
                           </div>
                           <div>
-                            <h4 className="font-editorial-serif text-lg font-bold text-[#1A1816] leading-tight">
+                            <h4 className="font-editorial-serif text-lg font-bold text-[#1A1816] dark:text-[#FAF7F2] leading-tight">
                               Patient #{patient.pseudonymId.slice(-7)}
                             </h4>
-                            <p className="text-[11px] text-[#8A8172] font-mono">
+                            <p className="text-[11px] text-[#8A8172] dark:text-stone-400 font-mono">
                               Ref: {patient.bookingId} · {patient.facility.name}
                             </p>
                           </div>
@@ -793,10 +888,10 @@ export default function DoctorPortalPage() {
 
                         {/* Acuity Badge */}
                         <span
-                          className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
+                          className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border shadow-2xs ${
                             isUrgent
-                              ? 'bg-red-50 text-[#B71C1C] border-red-200'
-                              : 'bg-blue-50 text-blue-900 border-blue-200'
+                              ? 'bg-red-50 dark:bg-red-950/70 text-[#B71C1C] dark:text-rose-300 border-red-200 dark:border-red-800'
+                              : 'bg-blue-50 dark:bg-blue-950/70 text-blue-900 dark:text-sky-300 border-blue-200 dark:border-blue-800'
                           }`}
                         >
                           {patient.triageTier}
@@ -804,59 +899,56 @@ export default function DoctorPortalPage() {
                       </div>
 
                       {/* Chief Complaint */}
-                      <div className="p-3 rounded-2xl bg-[#F9F8F6] border border-[#EFECE3] text-xs text-[#4A453C] leading-relaxed">
-                        <span className="font-bold text-[#1A1816] block mb-0.5">
+                      <div className="p-3.5 rounded-2xl bg-[#F9F8F6] dark:bg-stone-900/60 border border-[#EFECE3] dark:border-stone-800 text-xs text-[#4A453C] dark:text-stone-300 leading-relaxed">
+                        <span className="font-bold text-[#1A1816] dark:text-white block mb-0.5">
                           Reported Symptom / Triage Intake:
                         </span>
                         {patient.chiefComplaint ||
                           '14 months primary subfertility. Asthenozoospermia pattern with sluggish motility.'}
                       </div>
 
-                      {/* ========================================================
-                          WHO 2021 Semen Analysis Simulator Metric Blocks
-                          (Matching Reference Video Frames 02 & 03)
-                          ======================================================== */}
+                      {/* WHO 2021 Semen Analysis Simulator Metric Blocks */}
                       <div className="grid grid-cols-2 gap-3">
                         {/* Block 1: Total Sperm Count */}
-                        <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#EBE7DF] space-y-1">
+                        <div className="p-3.5 rounded-2xl bg-[#FAF8F5] dark:bg-stone-900/50 border border-[#EBE7DF] dark:border-stone-800 space-y-1">
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8172]">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8172] dark:text-stone-400">
                               Total Sperm Count
                             </span>
-                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#E8F5E9] text-[#1B5E20]">
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#E8F5E9] dark:bg-emerald-950/80 text-[#1B5E20] dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                               Normal
                             </span>
                           </div>
-                          <div className="font-editorial-serif text-xl font-bold text-[#1A1816]">
+                          <div className="font-editorial-serif text-xl font-bold text-[#1A1816] dark:text-[#FAF7F2]">
                             {patient.whoParameters?.concentration || '24.5 M/ml'}
                           </div>
-                          <span className="text-[10px] text-[#8A8172] block">Ref: ≥15 M/ml</span>
+                          <span className="text-[10px] text-[#8A8172] dark:text-stone-400 block">Ref: ≥15 M/ml</span>
                         </div>
 
                         {/* Block 2: Progressive Motility */}
-                        <div className="p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#EBE7DF] space-y-1">
+                        <div className="p-3.5 rounded-2xl bg-[#FAF8F5] dark:bg-stone-900/50 border border-[#EBE7DF] dark:border-stone-800 space-y-1">
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8172]">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8172] dark:text-stone-400">
                               Prog Motility
                             </span>
-                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#FFEBEE] text-[#C62828]">
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#FFEBEE] dark:bg-red-950/80 text-[#C62828] dark:text-rose-300 border border-red-200 dark:border-red-800">
                               Flagged
                             </span>
                           </div>
-                          <div className="font-editorial-serif text-xl font-bold text-[#C62828]">
+                          <div className="font-editorial-serif text-xl font-bold text-[#C62828] dark:text-rose-400">
                             {patient.whoParameters?.progressiveMotility || '16.8% (USTS)'}
                           </div>
-                          <span className="text-[10px] text-[#C62828] block">Sub-ref: &lt;32%</span>
+                          <span className="text-[10px] text-[#C62828] dark:text-rose-400 block">Sub-ref: &lt;32%</span>
                         </div>
                       </div>
 
-                      {/* Mini Sparkline Motility Curve SVG (Matching Video) */}
-                      <div className="p-3 rounded-2xl bg-[#FAF8F5] border border-[#EBE7DF] flex items-center justify-between">
-                        <div className="text-left">
-                          <span className="text-[10px] font-bold text-[#8A8172] block uppercase tracking-wider">
+                      {/* Mini Sparkline Motility Curve SVG */}
+                      <div className="p-3 rounded-2xl bg-[#FAF8F5] dark:bg-stone-900/50 border border-[#EBE7DF] dark:border-stone-800 flex items-center justify-between">
+                        <div className="text-left rtl:text-right">
+                          <span className="text-[10px] font-bold text-[#8A8172] dark:text-stone-400 block uppercase tracking-wider">
                             Motility Curve Trajectory
                           </span>
-                          <span className="text-xs font-bold text-emerald-800">
+                          <span className="text-xs font-bold text-emerald-800 dark:text-emerald-400">
                             ↑ 18% Recovery Projection
                           </span>
                         </div>
@@ -875,11 +967,11 @@ export default function DoctorPortalPage() {
 
                       {/* Primary Actions on Card */}
                       <div className="pt-2 flex flex-col sm:flex-row items-center gap-2.5">
-                        {/* Launch Clinician Review Portal Pill Button (Requested) */}
+                        {/* Prominent Dark Pill Button on Each Card (Requested) */}
                         <button
                           type="button"
                           onClick={() => openReviewModal(patient)}
-                          className="w-full sm:flex-1 py-3 px-5 rounded-full bg-[#1A1816] hover:bg-[#2A2724] text-white text-xs font-bold tracking-wider uppercase transition-transform active:scale-95 flex items-center justify-center gap-2 shadow-sm"
+                          className="w-full sm:flex-1 py-3 px-5 rounded-full bg-[#1A1816] hover:bg-[#332F2A] dark:bg-[#FAF7F2] dark:hover:bg-white text-white dark:text-[#181614] text-xs font-bold tracking-wider uppercase transition-all shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
                         >
                           <span>Launch Clinician Review Portal</span>
                           <ArrowRight className="w-3.5 h-3.5" />
@@ -902,11 +994,11 @@ export default function DoctorPortalPage() {
                         <button
                           type="button"
                           onClick={() => copyPatientLink(patient.bookingId)}
-                          className="p-3 rounded-full bg-stone-100 hover:bg-stone-200 text-[#6B6355] transition-colors"
+                          className="p-3 rounded-full bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-[#6B6355] dark:text-stone-300 transition-colors"
                           title="Copy Patient Room URL"
                         >
                           {copiedBookingId === patient.bookingId ? (
-                            <Check className="w-4 h-4 text-emerald-600" />
+                            <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                           ) : (
                             <Copy className="w-4 h-4" />
                           )}
@@ -922,30 +1014,31 @@ export default function DoctorPortalPage() {
       </div>
 
       {/* ========================================================
-          4. INTERACTIVE CLINICIAN REVIEW PORTAL MODAL / DRAWER
+          5. INTERACTIVE CLINICIAN REVIEW PORTAL MODAL / DRAWER
           ======================================================== */}
       {selectedReviewPatient && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-          <div className="bg-[#FAF8F5] border border-[#DDD7C8] rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-[#FAF8F5] dark:bg-[#181614] border border-[#DDD7C8] dark:border-stone-800 rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
             {/* Modal Header */}
-            <div className="p-6 border-b border-[#E8E2D5] bg-white flex items-center justify-between">
+            <div className="p-6 border-b border-[#E8E2D5] dark:border-stone-800 bg-white dark:bg-[#1C1A17] flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#1A1816] text-white flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-xl bg-[#1A1816] dark:bg-white text-white dark:text-[#181614] flex items-center justify-center font-bold shadow-xs">
                   <Stethoscope className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-editorial-serif text-xl font-bold text-[#1A1816]">
+                  <h3 className="font-editorial-serif text-xl font-bold text-[#1A1816] dark:text-[#FAF7F2]">
                     Clinician Review Portal · Patient #{selectedReviewPatient.pseudonymId}
                   </h3>
-                  <p className="text-xs text-[#8A8172]">
+                  <p className="text-xs text-[#8A8172] dark:text-stone-400">
                     WHO 2021 Human-In-The-Loop Triage & DoH Malaffi E-Prescription Gateway
                   </p>
                 </div>
               </div>
 
               <button
+                type="button"
                 onClick={() => setSelectedReviewPatient(null)}
-                className="p-2 rounded-full hover:bg-stone-100 text-stone-500 hover:text-stone-900"
+                className="p-2 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-500 hover:text-stone-900 dark:hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -954,30 +1047,30 @@ export default function DoctorPortalPage() {
             {/* Modal Content */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
               {/* Patient Snapshot */}
-              <div className="p-4 rounded-2xl bg-white border border-[#E8E2D5] grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-4 rounded-2xl bg-white dark:bg-[#1C1A17] border border-[#E8E2D5] dark:border-stone-800 grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-[#8A8172] block">
+                  <span className="text-[10px] font-bold uppercase text-[#8A8172] dark:text-stone-400 block">
                     Assigned Urgency Tier
                   </span>
-                  <span className="font-bold text-sm text-[#1A1816]">
+                  <span className="font-bold text-sm text-[#1A1816] dark:text-[#FAF7F2]">
                     {selectedReviewPatient.triageTier}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-[#8A8172] block">
+                  <span className="text-[10px] font-bold uppercase text-[#8A8172] dark:text-stone-400 block">
                     Consultation Modality
                   </span>
-                  <span className="font-bold text-sm text-[#1A1816]">
+                  <span className="font-bold text-sm text-[#1A1816] dark:text-[#FAF7F2]">
                     {selectedReviewPatient.consultType === 'TELEHEALTH_VIDEO'
                       ? '📹 Telehealth Live'
                       : '🏥 In-Person Visit'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-[#8A8172] block">
+                  <span className="text-[10px] font-bold uppercase text-[#8A8172] dark:text-stone-400 block">
                     Consent Audit
                   </span>
-                  <span className="font-bold text-sm text-emerald-700 flex items-center gap-1">
+                  <span className="font-bold text-sm text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
                     <ShieldCheck className="w-4 h-4" />
                     <span>Verified SHA-256</span>
                   </span>
@@ -985,39 +1078,39 @@ export default function DoctorPortalPage() {
               </div>
 
               {/* WHO 2021 Semen Analysis Simulator Detail Table */}
-              <div className="p-5 rounded-2xl bg-white border border-[#E8E2D5] space-y-3">
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#8A8172] block">
+              <div className="p-5 rounded-2xl bg-white dark:bg-[#1C1A17] border border-[#E8E2D5] dark:border-stone-800 space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#8A8172] dark:text-stone-400 block">
                   WHO 2021 Semen Analysis Simulator (6th Edition Limits)
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
-                  <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E8E2D5]">
-                    <span className="text-[10px] text-[#8A8172] block">Sperm Concentration</span>
-                    <span className="font-editorial-serif text-xl font-bold text-[#1A1816]">
+                  <div className="p-3 rounded-xl bg-[#FAF8F5] dark:bg-stone-900 border border-[#E8E2D5] dark:border-stone-800">
+                    <span className="text-[10px] text-[#8A8172] dark:text-stone-400 block">Sperm Concentration</span>
+                    <span className="font-editorial-serif text-xl font-bold text-[#1A1816] dark:text-[#FAF7F2]">
                       {selectedReviewPatient.whoParameters?.concentration || '24.5 M/ml'}
                     </span>
-                    <span className="text-[10px] text-emerald-700 font-bold block">
+                    <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold block">
                       Ref: ≥ 15 M/ml (Normal)
                     </span>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-red-50/50 border border-red-200">
-                    <span className="text-[10px] text-[#C62828] font-bold block">
+                  <div className="p-3 rounded-xl bg-red-50/50 dark:bg-red-950/40 border border-red-200 dark:border-red-800">
+                    <span className="text-[10px] text-[#C62828] dark:text-rose-400 font-bold block">
                       Progressive Motility (PR)
                     </span>
-                    <span className="font-editorial-serif text-xl font-bold text-[#C62828]">
+                    <span className="font-editorial-serif text-xl font-bold text-[#C62828] dark:text-rose-400">
                       {selectedReviewPatient.whoParameters?.progressiveMotility || '16.8%'}
                     </span>
-                    <span className="text-[10px] text-[#C62828] font-bold block">
+                    <span className="text-[10px] text-[#C62828] dark:text-rose-400 font-bold block">
                       Sub-ref: &lt; 32% (Flagged)
                     </span>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E8E2D5]">
-                    <span className="text-[10px] text-[#8A8172] block">Strict Normal Forms</span>
-                    <span className="font-editorial-serif text-xl font-bold text-[#1A1816]">
+                  <div className="p-3 rounded-xl bg-[#FAF8F5] dark:bg-stone-900 border border-[#E8E2D5] dark:border-stone-800">
+                    <span className="text-[10px] text-[#8A8172] dark:text-stone-400 block">Strict Normal Forms</span>
+                    <span className="font-editorial-serif text-xl font-bold text-[#1A1816] dark:text-[#FAF7F2]">
                       {selectedReviewPatient.whoParameters?.normalForms || '3%'}
                     </span>
-                    <span className="text-[10px] text-amber-700 font-bold block">
+                    <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold block">
                       Borderline: Ref ≥ 4%
                     </span>
                   </div>
@@ -1025,8 +1118,8 @@ export default function DoctorPortalPage() {
               </div>
 
               {/* Triage Decision Override Engine */}
-              <div className="p-5 rounded-2xl bg-white border border-[#E8E2D5] space-y-3">
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#8A8172] block">
+              <div className="p-5 rounded-2xl bg-white dark:bg-[#1C1A17] border border-[#E8E2D5] dark:border-stone-800 space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#8A8172] dark:text-stone-400 block">
                   Clinician Human-In-The-Loop Triage Decision
                 </span>
                 <div className="flex flex-wrap gap-2">
@@ -1043,8 +1136,8 @@ export default function DoctorPortalPage() {
                       onClick={() => setOverrideTier(tier)}
                       className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                         overrideTier === tier
-                          ? 'bg-[#1A1816] text-white shadow-xs'
-                          : 'bg-[#FAF8F5] text-[#6B6355] border border-[#E5E0D5] hover:border-stone-400'
+                          ? 'bg-[#1A1816] text-white dark:bg-white dark:text-[#181614] shadow-xs'
+                          : 'bg-[#FAF8F5] dark:bg-stone-900 text-[#6B6355] dark:text-stone-400 border border-[#E5E0D5] dark:border-stone-700 hover:border-stone-400'
                       }`}
                     >
                       {tier}
@@ -1053,7 +1146,7 @@ export default function DoctorPortalPage() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-[#1A1816] block mb-1">
+                  <label className="text-[11px] font-bold text-[#1A1816] dark:text-[#FAF7F2] block mb-1">
                     Clinical Justification & Audit Notes:
                   </label>
                   <textarea
@@ -1061,14 +1154,14 @@ export default function DoctorPortalPage() {
                     value={justificationNotes}
                     onChange={(e) => setJustificationNotes(e.target.value)}
                     placeholder="Document clinical reasoning for this acuity pathway..."
-                    className="w-full text-xs p-3 rounded-xl border border-[#DDD7C8] bg-[#FAF8F5] text-[#1A1816] focus:outline-none focus:ring-1 focus:ring-[#1A1816]"
+                    className="w-full text-xs p-3 rounded-xl border border-[#DDD7C8] dark:border-stone-700 bg-[#FAF8F5] dark:bg-stone-900 text-[#1A1816] dark:text-white focus:outline-none focus:ring-1 focus:ring-[#1A1816] dark:focus:ring-white"
                   />
                 </div>
               </div>
 
               {/* Abu Dhabi Diagnostic Referral Suite */}
-              <div className="p-5 rounded-2xl bg-white border border-[#E8E2D5] space-y-3">
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#8A8172] block">
+              <div className="p-5 rounded-2xl bg-white dark:bg-[#1C1A17] border border-[#E8E2D5] dark:border-stone-800 space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#8A8172] dark:text-stone-400 block">
                   1-Click Abu Dhabi Diagnostic Referral Builder
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
@@ -1091,8 +1184,8 @@ export default function DoctorPortalPage() {
                         }}
                         className={`p-2.5 rounded-xl border cursor-pointer flex items-center justify-between transition-colors ${
                           isChecked
-                            ? 'bg-[#E8F5E9] border-[#A5D6A7] text-[#1B5E20] font-bold'
-                            : 'bg-[#FAF8F5] border-[#E8E2D5] text-[#6B6355]'
+                            ? 'bg-[#E8F5E9] dark:bg-emerald-950/70 border-[#A5D6A7] dark:border-emerald-800 text-[#1B5E20] dark:text-emerald-300 font-bold'
+                            : 'bg-[#FAF8F5] dark:bg-stone-900 border-[#E8E2D5] dark:border-stone-800 text-[#6B6355] dark:text-stone-400'
                         }`}
                       >
                         <span>{order}</span>
@@ -1104,13 +1197,13 @@ export default function DoctorPortalPage() {
               </div>
 
               {/* DoH Malaffi E-Prescription */}
-              <div className="p-5 rounded-2xl bg-white border border-[#E8E2D5] space-y-3">
+              <div className="p-5 rounded-2xl bg-white dark:bg-[#1C1A17] border border-[#E8E2D5] dark:border-stone-800 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-[#1B5E20] flex items-center gap-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#1B5E20] dark:text-emerald-400 flex items-center gap-1.5">
                     <Pill className="w-3.5 h-3.5" />
                     <span>Official DoH Malaffi E-Prescription Pad</span>
                   </span>
-                  <span className="text-[10px] font-mono text-[#8A8172]">
+                  <span className="text-[10px] font-mono text-[#8A8172] dark:text-stone-400">
                     Dr. Tariq Al-Hashimi (DOH-AUH-2018-0924)
                   </span>
                 </div>
@@ -1119,16 +1212,16 @@ export default function DoctorPortalPage() {
                   rows={4}
                   value={prescriptionText}
                   onChange={(e) => setPrescriptionText(e.target.value)}
-                  className="w-full text-xs font-mono p-3 rounded-xl border border-[#DDD7C8] bg-[#FAF8F5] text-[#1A1816] focus:outline-none focus:ring-1 focus:ring-[#1A1816] leading-relaxed"
+                  className="w-full text-xs font-mono p-3 rounded-xl border border-[#DDD7C8] dark:border-stone-700 bg-[#FAF8F5] dark:bg-stone-900 text-[#1A1816] dark:text-white focus:outline-none focus:ring-1 focus:ring-[#1A1816] dark:focus:ring-white leading-relaxed"
                 />
               </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="p-5 border-t border-[#E8E2D5] bg-white flex items-center justify-between">
-              <span className="text-xs text-[#8A8172]">
+            <div className="p-5 border-t border-[#E8E2D5] dark:border-stone-800 bg-white dark:bg-[#1C1A17] flex items-center justify-between">
+              <span className="text-xs text-[#8A8172] dark:text-stone-400">
                 {decisionSuccess ? (
-                  <span className="text-emerald-700 font-bold flex items-center gap-1.5">
+                  <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4" />
                     Decision successfully persisted & Malaffi synced!
                   </span>
@@ -1141,7 +1234,7 @@ export default function DoctorPortalPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedReviewPatient(null)}
-                  className="px-5 py-2.5 rounded-full border border-[#DDD7C8] text-xs font-bold text-[#6B6355] hover:bg-stone-50"
+                  className="px-5 py-2.5 rounded-full border border-[#DDD7C8] dark:border-stone-700 text-xs font-bold text-[#6B6355] dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors"
                 >
                   Cancel
                 </button>
@@ -1149,13 +1242,81 @@ export default function DoctorPortalPage() {
                   type="button"
                   onClick={handleSaveDecision}
                   disabled={savingDecision}
-                  className="px-6 py-2.5 rounded-full bg-[#1A1816] hover:bg-[#2A2724] text-white text-xs font-bold uppercase tracking-wider shadow-sm flex items-center gap-2 transition-transform active:scale-95"
+                  className="px-6 py-2.5 rounded-full bg-[#1A1816] hover:bg-[#332F2A] dark:bg-[#FAF7F2] dark:hover:bg-white text-white dark:text-[#181614] text-xs font-bold uppercase tracking-wider shadow-sm flex items-center gap-2 transition-transform active:scale-95"
                 >
                   <FileCheck className="w-4 h-4" />
                   <span>{savingDecision ? 'Saving...' : 'Apply Decision & Issue Rx'}</span>
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          6. CLINICIAN AUTH & PROFILE DIALOG
+          ======================================================== */}
+      {authModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-[#FAF8F5] dark:bg-[#181614] border border-[#DDD7C8] dark:border-stone-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E8E2D5] dark:border-stone-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#1A1816] dark:bg-white text-white dark:text-[#181614] flex items-center justify-center font-bold">
+                  <Stethoscope className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-editorial-serif text-lg font-bold text-[#1A1816] dark:text-[#FAF7F2]">
+                    Clinician Identity
+                  </h4>
+                  <p className="text-[10px] text-[#8A8172] dark:text-stone-400">DoH Malaffi Authorized Session</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAuthModalOpen(false)}
+                className="p-1.5 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {currentDoctor ? (
+              <div className="space-y-4 text-xs">
+                <div className="p-4 rounded-2xl bg-white dark:bg-[#1C1A17] border border-[#E8E2D5] dark:border-stone-800 space-y-1.5">
+                  <p className="font-bold text-sm text-[#1A1816] dark:text-white">{currentDoctor.fullName}</p>
+                  <p className="text-[#6B6355] dark:text-stone-400">{currentDoctor.email}</p>
+                  <p className="text-[#8A8172] dark:text-stone-400 font-mono text-[11px]">
+                    License: {currentDoctor.licenseNumber}
+                  </p>
+                  <p className="text-[#8A8172] dark:text-stone-400 text-[11px]">{currentDoctor.facility}</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full py-2.5 rounded-full border border-red-300 dark:border-red-900 text-red-700 dark:text-rose-400 font-bold hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex items-center justify-center gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Log Out Clinician Session</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3 text-xs">
+                <p className="text-[#6B6355] dark:text-stone-400">
+                  Authenticate with authorized Abu Dhabi Health Authority credentials:
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await handleDemoLogin();
+                    setAuthModalOpen(false);
+                  }}
+                  className="w-full py-3 rounded-full bg-[#1A1816] hover:bg-[#332F2A] dark:bg-[#FAF7F2] dark:hover:bg-white text-white dark:text-[#181614] font-bold uppercase tracking-wider text-[11px] transition-transform active:scale-95 shadow-sm"
+                >
+                  Quick Sign In as Dr. Tariq Al-Hashimi (Demo)
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
