@@ -270,7 +270,15 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { bookingId, status, clinicalNotes, prescription } = body;
+    const {
+      bookingId,
+      status,
+      clinicalNotes,
+      prescription,
+      labOrders,
+      diagnosticPlan,
+      prescriptionDetails,
+    } = body;
     if (!bookingId) return NextResponse.json({ error: 'missing_booking_id' }, { status: 400 });
 
     const database = await db();
@@ -278,6 +286,9 @@ export async function PATCH(request: Request) {
     if (status) updateFields.status = status;
     if (clinicalNotes) updateFields.clinicalNotes = clinicalNotes;
     if (prescription) updateFields.prescription = prescription;
+    if (labOrders) updateFields.labOrders = labOrders;
+    if (diagnosticPlan) updateFields.diagnosticPlan = diagnosticPlan;
+    if (prescriptionDetails) updateFields.prescriptionDetails = prescriptionDetails;
 
     const res = await database.collection('bookings').updateOne(
       { bookingId },

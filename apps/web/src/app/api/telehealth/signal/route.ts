@@ -25,6 +25,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'missing_fields' }, { status: 400 });
     }
 
+    if (type === 'reset') {
+      signalStore.set(roomId, []);
+      return NextResponse.json({ ok: true, reset: true });
+    }
+
     const targetReceiver = receiver || (sender === 'doctor' ? 'patient' : 'doctor');
     const msg: SignalMessage = {
       id: `sig_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,

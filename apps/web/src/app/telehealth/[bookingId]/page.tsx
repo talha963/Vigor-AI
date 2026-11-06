@@ -31,6 +31,10 @@ import {
   CheckCheck,
   ChevronRight,
   Download,
+  Volume2,
+  VolumeX,
+  Copy,
+  Check,
 } from 'lucide-react';
 import Link from 'next/link';
 import { getCurrentDoctor } from '@/lib/firebase';
@@ -68,6 +72,12 @@ function TelehealthRoomContent() {
   const [callStatus, setCallStatus] = useState<'calling' | 'connected' | 'ended'>('calling');
   const [callDuration, setCallDuration] = useState(0);
 
+  // Audio voice activity detection & Autoplay unblock
+  const [isLocalSpeaking, setIsLocalSpeaking] = useState(false);
+  const [isRemoteSpeaking, setIsRemoteSpeaking] = useState(false);
+  const [isAudioBlocked, setIsAudioBlocked] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
   // Layout & Drawers
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isClinicalSheetOpen, setIsClinicalSheetOpen] = useState(false);
@@ -81,8 +91,8 @@ function TelehealthRoomContent() {
       sender: isDoctor ? 'patient' : 'doctor',
       senderName: peerName,
       text: isDoctor
-        ? 'Hello Doctor Tariq, I have entered the secure room. My WHO 2021 triage summary has been uploaded.'
-        : 'Welcome to your Vigor clinical consultation. I am reviewing your confidential sperm motility metrics.',
+        ? 'Hello Doctor Tariq, I have entered the confidential waiting room. My semen analysis parameters are loaded.'
+        : 'Welcome to your Vigor clinical consultation. Both video and microphone are live and encrypted.',
       time: 'Just now',
     },
   ]);
@@ -90,7 +100,7 @@ function TelehealthRoomContent() {
 
   // Clinical Prescription State (Doctor writes, Patient sees in real time)
   const [prescriptionText, setPrescriptionText] = useState(
-    '1. Bilateral Scrotal Doppler Ultrasound to evaluate subclinical varicocele.\n2. Serum Endocrine Panel: Total Testosterone, FSH, LH, and Prolactin.\n3. Repeat CASA Semen Analysis in 4 weeks.\n4. Micronutrient protocol: L-Carnitine 2000mg + CoQ10 200mg daily.'
+    '1. Bilateral Scrotal Doppler Ultrasound (Evaluate subclinical varicocele & venous reflux).\n2. Endocrine Serum Profile: Total Testosterone, FSH, LH, and Prolactin.\n3. Repeat CASA Semen Analysis in 4 weeks.\n4. Micronutrient protocol: L-Carnitine 2000mg + CoQ10 200mg daily.'
   );
   const [activePrescription, setActivePrescription] = useState<string | null>(null);
   const [prescribingSaved, setPrescribingSaved] = useState(false);
@@ -98,16 +108,28 @@ function TelehealthRoomContent() {
   // WebRTC Refs
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
+  const iceCandidatesQueueRef = useRef<RTCIceCandidateInit[]>([]);
+  const processedSignalIdsRef = useRef<Set<string>>(new Set());
+  const lastSignalPollTimeRef = useRef<number>(Date.now() - 10000);
 
+  // Audio Analysers
+  const localAudioContextRef = useRef<AudioContext | null>(null);
+  const remoteAudioContextRef = useRef<AudioContext | null>(null);
+
+  // ========================================================
   // 1. WebRTC & Media Stream Initialization
+  // ========================================================
   useEffect(() => {
     let active = true;
+    let pollInterval: any = null;
 
-    // A. Start local camera / mic
+    // A. Start local camera & microphone with optimal audio processing
     const startMedia = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -116,7 +138,11 @@ function TelehealthRoomContent() {
             width: { ideal: 1280 },
             height: { ideal: 720 },
           },
-          audio: true,
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
         });
 
         if (!active) return;
@@ -125,10 +151,13 @@ function TelehealthRoomContent() {
           localVideoRef.current.srcObject = stream;
         }
 
+        // Setup local audio meter
+        setupAudioAnalyser(stream, true);
+
+        // Initialize WebRTC
         initializePeerConnection(stream);
       } catch (err) {
         console.warn('getUserMedia fallback: creating simulated video canvas stream', err);
-        // Fallback: create canvas stream so call works even if camera is blocked or not connected
         const canvas = document.createElement('canvas');
         canvas.width = 640;
         canvas.height = 480;
@@ -149,7 +178,7 @@ function TelehealthRoomContent() {
       }
     };
 
-    // B. Setup PeerConnection and Signaling
+    // B. Setup PeerConnection & Media Track Handlers
     const initializePeerConnection = (stream: MediaStream) => {
       const pc = new RTCPeerConnection({
         iceServers: [
@@ -165,12 +194,34 @@ function TelehealthRoomContent() {
         pc.addTrack(track, stream);
       });
 
-      // Handle incoming remote stream tracks
+      // Handle incoming remote media tracks (both video & audio)
       pc.ontrack = (event) => {
-        if (remoteVideoRef.current && event.streams[0]) {
-          remoteVideoRef.current.srcObject = event.streams[0];
-          setCallStatus('connected');
+        if (!remoteStreamRef.current) {
+          remoteStreamRef.current = new MediaStream();
         }
+        // Add received track to remote stream
+        remoteStreamRef.current.addTrack(event.track);
+
+        // Attach to remote video element
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = remoteStreamRef.current;
+          remoteVideoRef.current.play().catch(() => {
+            setIsAudioBlocked(true);
+          });
+        }
+
+        // Attach to remote audio element for guaranteed unmuted voice
+        if (remoteAudioRef.current) {
+          remoteAudioRef.current.srcObject = remoteStreamRef.current;
+          remoteAudioRef.current.play().catch(() => {
+            setIsAudioBlocked(true);
+          });
+        }
+
+        // Setup remote audio voice activity analyser
+        setupAudioAnalyser(remoteStreamRef.current, false);
+
+        setCallStatus('connected');
       };
 
       // Handle ICE Candidates
@@ -178,12 +229,31 @@ function TelehealthRoomContent() {
         if (event.candidate) {
           sendSignal({
             type: 'candidate',
-            payload: event.candidate,
+            payload: event.candidate.toJSON(),
           });
         }
       };
 
-      // Data Channel for real-time in-call text and prescriptions
+      // Handle Peer Connection State changes
+      pc.onconnectionstatechange = () => {
+        console.log('[WebRTC ConnectionState]', pc.connectionState);
+        if (pc.connectionState === 'connected') {
+          setCallStatus('connected');
+          unblockAudio();
+        } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+          console.warn('[WebRTC] Connection lost or disconnected');
+        }
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        console.log('[WebRTC ICEState]', pc.iceConnectionState);
+        if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+          setCallStatus('connected');
+          unblockAudio();
+        }
+      };
+
+      // Setup Data Channel for chat & real-time prescription broadcasts
       if (isDoctor) {
         const dc = pc.createDataChannel('telehealth_chat');
         setupDataChannel(dc);
@@ -193,13 +263,13 @@ function TelehealthRoomContent() {
         };
       }
 
-      // Initialize Signaling Channel (Cross-Tab via BroadcastChannel + Fallback API)
+      // Initialize Signaling Channels (BroadcastChannel + HTTP Polling)
       setupSignaling(pc);
     };
 
     const setupDataChannel = (dc: RTCDataChannel) => {
       dataChannelRef.current = dc;
-      dc.onopen = () => console.log('Data channel open');
+      dc.onopen = () => console.log('WebRTC DataChannel opened');
       dc.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
@@ -215,7 +285,7 @@ function TelehealthRoomContent() {
       };
     };
 
-    // C. Setup Signaling via BroadcastChannel (sub-millisecond tab-to-tab) & API polling
+    // C. Setup Dual-Layer Signaling (BroadcastChannel + Fallback API Polling)
     const setupSignaling = (pc: RTCPeerConnection) => {
       const channelName = `vigor_telehealth_${bookingId}`;
       const bc = new BroadcastChannel(channelName);
@@ -223,49 +293,91 @@ function TelehealthRoomContent() {
 
       bc.onmessage = async (event) => {
         const msg = event.data;
-        if (!msg || msg.senderRole === roleParam) return; // ignore own signals
-
+        if (!msg || msg.senderRole === roleParam) return;
         handleSignalMessage(pc, msg);
       };
 
-      // Announce presence
-      sendSignal({ type: 'ready' });
+      // Announce entry into room
+      sendSignal({ type: 'join' });
 
-      // If doctor is present, after 1.2 seconds initiate offer
+      // Start HTTP polling loop every 1000ms for cross-browser, cross-window, and cross-device sessions
+      pollInterval = setInterval(async () => {
+        try {
+          const res = await fetch(
+            `/api/telehealth/signal?roomId=${encodeURIComponent(bookingId)}&receiver=${roleParam}&since=${lastSignalPollTimeRef.current}`
+          );
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data.signals && data.signals.length > 0) {
+            for (const s of data.signals) {
+              if (s.sender !== roleParam) {
+                await handleSignalMessage(pc, s);
+              }
+            }
+          }
+          if (data.now) {
+            lastSignalPollTimeRef.current = data.now;
+          }
+        } catch (e) {
+          // ignore transient polling errors
+        }
+      }, 1000);
+
+      // If doctor is in room, attempt offer after 800ms
       setTimeout(() => {
-        if (isDoctor && pc.signalingState !== 'closed') {
+        if (isDoctor && pc.signalingState === 'stable') {
           initiateOffer(pc);
         }
-      }, 1200);
-
-      // Simulating connection if peer is waiting or testing solo
-      const fallbackConnectTimer = setTimeout(() => {
-        if (callStatus === 'calling') {
-          setCallStatus('connected');
-        }
-      }, 3500);
-
-      return () => clearTimeout(fallbackConnectTimer);
+      }, 800);
     };
 
     const handleSignalMessage = async (pc: RTCPeerConnection, msg: any) => {
       try {
-        if (msg.type === 'ready') {
+        const msgKey = msg.id || `${msg.type}_${msg.timestamp || Date.now()}`;
+        if (processedSignalIdsRef.current.has(msgKey)) return;
+        processedSignalIdsRef.current.add(msgKey);
+
+        if (msg.type === 'join') {
+          // A peer has joined! If doctor, initiate or renegotiate offer
+          if (isDoctor) {
+            initiateOffer(pc);
+          } else {
+            // Patient notifies presence
+            sendSignal({ type: 'patient_ready' });
+          }
+        } else if (msg.type === 'patient_ready') {
           if (isDoctor) {
             initiateOffer(pc);
           }
         } else if (msg.type === 'offer') {
+          // Received offer from doctor
           await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
+
+          // Flush queued candidates
+          await flushIceCandidates(pc);
+
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
+
           sendSignal({ type: 'answer', payload: answer });
           setCallStatus('connected');
+          unblockAudio();
         } else if (msg.type === 'answer') {
-          await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
-          setCallStatus('connected');
+          // Received answer from patient
+          if (pc.signalingState === 'have-local-offer') {
+            await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
+            await flushIceCandidates(pc);
+            setCallStatus('connected');
+            unblockAudio();
+          }
         } else if (msg.type === 'candidate') {
           if (msg.payload) {
-            await pc.addIceCandidate(new RTCIceCandidate(msg.payload));
+            const candidateInit = msg.payload;
+            if (pc.remoteDescription && pc.remoteDescription.type) {
+              await pc.addIceCandidate(new RTCIceCandidate(candidateInit));
+            } else {
+              iceCandidatesQueueRef.current.push(candidateInit);
+            }
           }
         } else if (msg.type === 'chat') {
           receiveChatMessage(msg.message);
@@ -282,8 +394,12 @@ function TelehealthRoomContent() {
 
     return () => {
       active = false;
+      if (pollInterval) clearInterval(pollInterval);
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+      if (remoteStreamRef.current) {
+        remoteStreamRef.current.getTracks().forEach((track) => track.stop());
       }
       if (pcRef.current) {
         pcRef.current.close();
@@ -291,13 +407,36 @@ function TelehealthRoomContent() {
       if (broadcastChannelRef.current) {
         broadcastChannelRef.current.close();
       }
+      if (localAudioContextRef.current) {
+        localAudioContextRef.current.close();
+      }
+      if (remoteAudioContextRef.current) {
+        remoteAudioContextRef.current.close();
+      }
     };
   }, [bookingId, roleParam, isDoctor]);
+
+  // Flush queued ICE Candidates helper
+  const flushIceCandidates = async (pc: RTCPeerConnection) => {
+    while (iceCandidatesQueueRef.current.length > 0) {
+      const cand = iceCandidatesQueueRef.current.shift();
+      if (cand) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(cand));
+        } catch (e) {
+          console.warn('Error flushing candidate:', e);
+        }
+      }
+    }
+  };
 
   // Initiate WebRTC Offer
   const initiateOffer = async (pc: RTCPeerConnection) => {
     try {
-      if (pc.signalingState === 'closed') return;
+      if (pc.signalingState !== 'stable') {
+        console.log('Skipping offer: state is not stable:', pc.signalingState);
+        return;
+      }
       const offer = await pc.createOffer({
         offerToReceiveAudio: true,
         offerToReceiveVideo: true,
@@ -311,18 +450,22 @@ function TelehealthRoomContent() {
 
   // Send Signal Helper
   const sendSignal = (data: { type: string; payload?: any; message?: any; prescription?: any }) => {
+    const signalId = `sig_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const payload = {
       ...data,
+      id: signalId,
       senderRole: roleParam,
       timestamp: Date.now(),
     };
 
-    // BroadcastChannel
+    processedSignalIdsRef.current.add(signalId);
+
+    // 1. Send via local BroadcastChannel (instant sub-ms on same machine)
     if (broadcastChannelRef.current) {
       broadcastChannelRef.current.postMessage(payload);
     }
 
-    // Also send to API in background for cross-device/network sessions
+    // 2. Also send to API in background for cross-device/network sessions
     fetch('/api/telehealth/signal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -333,6 +476,84 @@ function TelehealthRoomContent() {
         payload: data.payload || data.message || data.prescription,
       }),
     }).catch(() => {});
+  };
+
+  // Setup Web Audio Analyser for Speaking Level Detection
+  const setupAudioAnalyser = (stream: MediaStream, isLocal: boolean) => {
+    try {
+      const audioTracks = stream.getAudioTracks();
+      if (audioTracks.length === 0) return;
+
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      if (isLocal) {
+        localAudioContextRef.current = audioCtx;
+      } else {
+        remoteAudioContextRef.current = audioCtx;
+      }
+
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const checkVolume = () => {
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+        }
+        const average = sum / bufferLength;
+        const isSpeaking = average > 12;
+
+        if (isLocal) {
+          setIsLocalSpeaking(isSpeaking && isAudioEnabled);
+        } else {
+          setIsRemoteSpeaking(isSpeaking);
+        }
+
+        requestAnimationFrame(checkVolume);
+      };
+
+      checkVolume();
+    } catch (e) {
+      console.warn('AudioAnalyser setup error:', e);
+    }
+  };
+
+  // Explicit unblock audio helper
+  const unblockAudio = () => {
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.play().then(() => setIsAudioBlocked(false)).catch(() => {});
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.play().then(() => setIsAudioBlocked(false)).catch(() => {});
+    }
+    if (remoteAudioContextRef.current && remoteAudioContextRef.current.state === 'suspended') {
+      remoteAudioContextRef.current.resume();
+    }
+  };
+
+  // Play test audio chime to verify speakers
+  const playSpeakerTestChime = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.25); // A5
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.45);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // Call Duration Timer
@@ -439,9 +660,19 @@ function TelehealthRoomContent() {
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => track.stop());
     }
+    if (remoteStreamRef.current) {
+      remoteStreamRef.current.getTracks().forEach((track) => track.stop());
+    }
     if (pcRef.current) {
       pcRef.current.close();
     }
+  };
+
+  const copyPatientLink = () => {
+    const patientUrl = `${window.location.origin}/telehealth/${bookingId}`;
+    navigator.clipboard.writeText(patientUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
   };
 
   // If Call Ended View
@@ -495,6 +726,22 @@ function TelehealthRoomContent() {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#0B141A] text-white flex flex-col font-sans select-none">
+      {/* Hidden dedicated audio element to guarantee incoming voice stream is heard */}
+      <audio ref={remoteAudioRef} autoPlay playsInline />
+
+      {/* Browser Autoplay Block Warning Banner */}
+      {isAudioBlocked && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 animate-bounce">
+          <button
+            onClick={unblockAudio}
+            className="px-4 py-2 rounded-full bg-[#00A884] hover:bg-[#008f70] text-black font-black text-xs flex items-center gap-2 shadow-2xl border-2 border-white"
+          >
+            <Volume2 className="w-4 h-4" />
+            <span>Click to Unmute & Hear Voice Stream</span>
+          </button>
+        </div>
+      )}
+
       {/* ========================================================
           1. TOP OVERLAY HEADER: WhatsApp Style Caller & Security Pill
           ======================================================== */}
@@ -517,28 +764,50 @@ function TelehealthRoomContent() {
               </span>
             </div>
             <div className="flex items-center gap-2 text-xs text-[#8696A0]">
-              <span className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
+              <span className={`w-2 h-2 rounded-full ${callStatus === 'connected' ? 'bg-[#25D366] animate-pulse' : 'bg-amber-400 animate-ping'}`} />
               <span>
                 {callStatus === 'connected' ? (
                   <>
                     <span className="font-mono text-white font-medium">{formatTimer(callDuration)}</span>
-                    <span className="hidden sm:inline"> · 1080p WebRTC Live Stream</span>
+                    <span className="hidden sm:inline"> · 1080p Live Audio & Video</span>
                   </>
+                ) : isDoctor ? (
+                  'Waiting for patient to open waiting room...'
                 ) : (
-                  'Calling & connecting specialist room...'
+                  'Calling & connecting with Dr. Tariq Al-Hashimi...'
                 )}
               </span>
+
+              {/* Remote Speaker Activity Badge */}
+              {isRemoteSpeaking && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-[#25D366] text-[10px] font-bold animate-pulse flex items-center gap-1">
+                  <Volume2 className="w-3 h-3" />
+                  <span>Speaking</span>
+                </span>
+              )}
             </div>
           </div>
         </div>
 
         {/* Right Top Status Bar */}
         <div className="flex items-center gap-2">
-          {/* WHO Acuity Badge */}
-          <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#111B21]/80 border border-white/10 text-[11px] font-bold text-[#E9EDEF]">
-            <Award className="w-3.5 h-3.5 text-[#00A884]" />
-            <span>WHO 2021 Reference Grade</span>
-          </div>
+          {/* Quick Copy Link Button so user can open the second tab easily */}
+          <button
+            onClick={copyPatientLink}
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#111B21]/90 hover:bg-[#202C33] border border-white/10 text-[11px] font-bold text-[#E9EDEF] transition-colors"
+            title="Copy Patient Link to Open in Another Tab"
+          >
+            {copiedLink ? <Check className="w-3.5 h-3.5 text-[#25D366]" /> : <Copy className="w-3.5 h-3.5 text-[#00A884]" />}
+            <span>{copiedLink ? 'Link Copied!' : isDoctor ? 'Copy Patient Link' : 'Copy Room Link'}</span>
+          </button>
+
+          <button
+            onClick={playSpeakerTestChime}
+            className="p-2 rounded-full bg-[#111B21]/90 hover:bg-[#202C33] border border-white/10 text-[#8696A0] hover:text-white transition-colors"
+            title="Test Speakers with Chime"
+          >
+            <Volume2 className="w-4 h-4" />
+          </button>
 
           <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-[#111B21]/80 border border-white/10 text-emerald-400 text-xs">
             <Wifi className="w-3.5 h-3.5 text-[#25D366]" />
@@ -563,7 +832,7 @@ function TelehealthRoomContent() {
 
         {/* WhatsApp Ringing / Avatar Placeholder if Video Not Flowing */}
         {callStatus === 'calling' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center space-y-5 bg-[#0B141A]/90 backdrop-blur-xs z-10">
+          <div className="absolute inset-0 flex flex-col items-center justify-center space-y-5 bg-[#0B141A]/90 backdrop-blur-xs z-10 px-4">
             <div className="relative">
               {/* Radar pulse rings */}
               <div className="absolute -inset-4 rounded-full bg-[#00A884]/20 animate-ping" />
@@ -573,10 +842,29 @@ function TelehealthRoomContent() {
               </div>
             </div>
 
-            <div className="text-center space-y-1">
+            <div className="text-center space-y-2 max-w-sm">
               <h3 className="text-lg sm:text-xl font-bold text-white">{peerName}</h3>
-              <p className="text-xs text-[#8696A0]">WhatsApp Live Telehealth Room · Connecting Peer...</p>
-              <div className="pt-2 flex items-center justify-center gap-1.5 text-xs font-mono text-[#00A884]">
+              <p className="text-xs text-[#8696A0] leading-relaxed">
+                {isDoctor
+                  ? 'Waiting for the patient to open their consultation room. You can copy the patient link below to test in another tab.'
+                  : 'Ringing Dr. Tariq Al-Hashimi (MD, Consultant Andrologist)...'}
+              </p>
+
+              {/* Direct 1-Click Copy Link button right in center */}
+              <div className="pt-2">
+                <button
+                  onClick={copyPatientLink}
+                  className="px-4 py-2.5 rounded-2xl bg-[#00A884] hover:bg-[#008f70] text-black font-bold text-xs flex items-center justify-center gap-2 mx-auto shadow-lg transition-transform active:scale-95"
+                >
+                  {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedLink ? 'Patient URL Copied to Clipboard!' : 'Copy Patient Room Link to Test'}</span>
+                </button>
+                <p className="text-[10px] text-stone-500 mt-2 font-mono">
+                  Room Ref: {bookingId}
+                </p>
+              </div>
+
+              <div className="pt-1 flex items-center justify-center gap-1.5 text-xs font-mono text-[#00A884]">
                 <span className="animate-bounce">●</span>
                 <span className="animate-bounce delay-100">●</span>
                 <span className="animate-bounce delay-200">●</span>
@@ -586,8 +874,8 @@ function TelehealthRoomContent() {
         )}
 
         {/* ========================================================
-          3. PICTURE-IN-PICTURE (PiP): Floating Local Camera View
-          ======================================================== */}
+            3. PICTURE-IN-PICTURE (PiP): Floating Local Camera View
+            ======================================================== */}
         <div
           onClick={() =>
             setPipPosition((prev) => (prev === 'bottom-right' ? 'top-right' : 'bottom-right'))
@@ -613,13 +901,16 @@ function TelehealthRoomContent() {
             </div>
           )}
 
-          {/* Local overlay label & mute indicator */}
+          {/* Local overlay label & voice activity indicator */}
           <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between pointer-events-none">
-            <span className="bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-full text-[10px] font-bold text-white">
-              You
-            </span>
+            <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-xs px-2 py-0.5 rounded-full text-[10px] font-bold text-white">
+              <span>You</span>
+              {isLocalSpeaking && (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#25D366] animate-ping" />
+              )}
+            </div>
             {!isAudioEnabled && (
-              <span className="p-1 rounded-full bg-red-600 text-white">
+              <span className="p-1 rounded-full bg-red-600 text-white shadow-sm">
                 <MicOff className="w-3 h-3" />
               </span>
             )}
