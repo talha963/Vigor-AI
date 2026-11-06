@@ -26,7 +26,7 @@ interface FooterProps {
   setLocale: (l: Locale) => void;
   onOpenConsent: () => void;
   onOpenClinician: () => void;
-  onOpenArchitecture: () => void;
+  onOpenArchitecture?: () => void;
   onOpenAtHomeKit?: () => void;
 }
 
@@ -192,14 +192,6 @@ export default function Footer({
                     className="hover:text-sky-300 transition-colors text-left rtl:text-right flex items-center gap-1"
                   >
                     <span>{isAr ? 'بوابة المراجعة الطبية' : 'Clinician Console'}</span>
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={onOpenArchitecture}
-                    className="hover:text-sky-300 transition-colors text-left rtl:text-right flex items-center gap-1"
-                  >
-                    <span>{isAr ? 'معمارية محرك n8n' : 'Engine Architecture'}</span>
                   </button>
                 </li>
                 <li>

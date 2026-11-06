@@ -11,8 +11,8 @@ import ResultsModal from '@/components/ResultsModal';
 import ConsentCentreModal from '@/components/ConsentCentreModal';
 import ClinicianReviewModal from '@/components/ClinicianReviewModal';
 import AtHomeKitModal from '@/components/AtHomeKitModal';
-import ArchitectureModal from '@/components/ArchitectureModal';
 import BookingModal from '@/components/BookingModal';
+import VideoBookingModal from '@/components/VideoBookingModal';
 import { Locale, IntakeAnswers, TriageResult } from '@/types/vigor';
 import { GOLDEN_CASES } from '@/lib/golden-cases';
 
@@ -22,9 +22,9 @@ export default function Home() {
   const [isResultsOpen, setIsResultsOpen] = useState(false);
   const [isConsentOpen, setIsConsentOpen] = useState(false);
   const [isClinicianOpen, setIsClinicianOpen] = useState(false);
-  const [isArchitectureOpen, setIsArchitectureOpen] = useState(false);
   const [isAtHomeKitOpen, setIsAtHomeKitOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [isVideoBookingOpen, setIsVideoBookingOpen] = useState(false);
 
   const [triageResult, setTriageResult] = useState<TriageResult | null>(null);
   const [selectedInitialAnswers, setSelectedInitialAnswers] = useState<IntakeAnswers | undefined>(undefined);
@@ -97,9 +97,9 @@ export default function Home() {
         onOpenIntake={handleOpenNewIntake}
         onOpenConsent={() => setIsConsentOpen(true)}
         onOpenClinician={() => setIsClinicianOpen(true)}
-        onOpenArchitecture={() => setIsArchitectureOpen(true)}
         onOpenAtHomeKit={() => setIsAtHomeKitOpen(true)}
         onOpenBooking={() => setIsBookingOpen(true)}
+        onOpenVideoBooking={() => setIsVideoBookingOpen(true)}
       />
 
       {/* Main Page Surfaces with generous offset for floating luxury header */}
@@ -118,7 +118,6 @@ export default function Home() {
           onOpenIntake={handleOpenNewIntake}
           onOpenConsent={() => setIsConsentOpen(true)}
           onOpenClinician={() => setIsClinicianOpen(true)}
-          onOpenArchitecture={() => setIsArchitectureOpen(true)}
           onOpenAtHomeKit={() => setIsAtHomeKitOpen(true)}
           onOpenBooking={() => setIsBookingOpen(true)}
           onSelectGoldenCase={handleSelectGoldenCase}
@@ -131,7 +130,6 @@ export default function Home() {
         setLocale={setLocale}
         onOpenConsent={() => setIsConsentOpen(true)}
         onOpenClinician={() => setIsClinicianOpen(true)}
-        onOpenArchitecture={() => setIsArchitectureOpen(true)}
         onOpenAtHomeKit={() => setIsAtHomeKitOpen(true)}
       />
 
@@ -174,16 +172,19 @@ export default function Home() {
         locale={locale}
       />
 
-      <ArchitectureModal
-        isOpen={isArchitectureOpen}
-        onClose={() => setIsArchitectureOpen(false)}
-        locale={locale}
-      />
-
       <BookingModal
         isOpen={isBookingOpen}
         onClose={() => setIsBookingOpen(false)}
         triageResult={triageResult}
+        initialEmail={recipientEmail}
+        locale={locale}
+      />
+
+      <VideoBookingModal
+        isOpen={isVideoBookingOpen}
+        onClose={() => setIsVideoBookingOpen(false)}
+        triageResult={triageResult}
+        assessmentId="asm_direct"
         initialEmail={recipientEmail}
         locale={locale}
       />

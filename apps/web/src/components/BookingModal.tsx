@@ -71,26 +71,6 @@ const SPECIALISTS: SpecialistOption[] = [
     tierMatch: ['ANDROLOGY_UROLOGY', 'FERTILITY_SERVICES', 'URGENT', 'PRIMARY_CARE'],
   },
   {
-    id: 'spec_01',
-    name: 'Dr. Tariq Al-Hashimi',
-    nameAr: 'د. طارق الهاشمي',
-    title: 'Consultant Andrologist & Reproductive Urologist',
-    titleAr: 'استشاري أمراض الذكورة والعقم وجراحة المسالك',
-    facility: 'HealthPlus Fertility & Andrology Center',
-    facilityAr: 'مركز هيلث بلس للإخصاب وصحة الرجل',
-    location: 'Al Bateen, Abu Dhabi',
-    locationAr: 'البطين، أبوظبي',
-    dohLicense: 'DOH-AUH-2018-0924',
-    experience: '18+ Years Experience (Ex-Cleveland Clinic)',
-    languages: ['Arabic', 'English'],
-    avatar: '👨‍⚕️',
-    telehealthAvailable: true,
-    inPersonAvailable: true,
-    earliestSlot: 'Today · 6:30 PM',
-    slots: ['Today · 6:30 PM', 'Today · 8:00 PM', 'Tomorrow · 10:30 AM', 'Tomorrow · 2:00 PM'],
-    tierMatch: ['ANDROLOGY_UROLOGY', 'FERTILITY_SERVICES', 'URGENT'],
-  },
-  {
     id: 'spec_02',
     name: 'Dr. Ziad Al-Khafaji',
     nameAr: 'د. زياد الخفاجي',
@@ -108,7 +88,7 @@ const SPECIALISTS: SpecialistOption[] = [
     inPersonAvailable: true,
     earliestSlot: 'Tomorrow · 9:00 AM',
     slots: ['Tomorrow · 9:00 AM', 'Tomorrow · 11:30 AM', 'Tomorrow · 4:00 PM'],
-    tierMatch: ['ANDROLOGY_UROLOGY', 'URGENT'],
+    tierMatch: ['ANDROLOGY_UROLOGY', 'URGENT', 'PRIMARY_CARE'],
   },
   {
     id: 'spec_03',
@@ -169,8 +149,9 @@ export default function BookingModal({
   const fallbackSpecialists = matchingSpecialists.length > 0 ? matchingSpecialists : SPECIALISTS;
 
   const [selectedSpecialist, setSelectedSpecialist] = useState<SpecialistOption>(fallbackSpecialists[0]);
-  const [consultType, setConsultType] = useState<'TELEHEALTH_VIDEO' | 'IN_PERSON'>('TELEHEALTH_VIDEO');
+  const [consultType, setConsultType] = useState<'TELEHEALTH_VIDEO' | 'IN_PERSON'>('IN_PERSON');
   const [selectedSlot, setSelectedSlot] = useState<string>(fallbackSpecialists[0]?.slots[0] || 'Today · 6:30 PM');
+  const [patientNameInput, setPatientNameInput] = useState<string>('');
   const [emailInput, setEmailInput] = useState<string>(initialEmail);
   const [phoneInput, setPhoneInput] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -192,12 +173,22 @@ export default function BookingModal({
   };
 
   const handleConfirmBooking = async () => {
+    if (!emailInput || !emailInput.includes('@')) {
+      alert(isAr ? 'يرجى إدخال عنوان بريد إلكتروني صحيح' : 'Please provide a valid email address.');
+      return;
+    }
+    if (!patientNameInput.trim()) {
+      alert(isAr ? 'يرجى إدخال اسم المريض' : 'Please provide your full name.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const res = await fetch('/api/booking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          patientName: patientNameInput.trim(),
           facilityId: selectedSpecialist.id,
           facilityName: selectedSpecialist.facility,
           doctorName: selectedSpecialist.name,
@@ -482,18 +473,35 @@ export default function BookingModal({
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-xs font-bold text-stone-900 dark:text-[#FAF7F2]">
-                    {isAr ? 'بيانات تأكيد الموعد ورابط المكالمة' : 'Appointment Confirmation & Join Link Delivery'}
+                    {isAr ? 'بيانات المريض والتواصل' : 'Patient Information & Confirmation Delivery'}
                   </span>
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-stone-600 dark:text-[#DDD7C8] block mb-1">
+                    {isAr ? 'اسم المريض الكامل *' : 'Patient Full Name *'}
+                  </label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-stone-400 absolute left-3 top-3 rtl:left-auto rtl:right-3" />
+                    <input
+                      type="text"
+                      required
+                      value={patientNameInput}
+                      onChange={(e) => setPatientNameInput(e.target.value)}
+                      placeholder={isAr ? 'مثال: علي المنصوري' : 'e.g. Ali Al-Mansoori'}
+                      className="w-full text-xs font-medium pl-9 pr-3 rtl:pl-3 rtl:pr-9 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] font-semibold text-stone-600 dark:text-[#DDD7C8] block mb-1">
-                      {isAr ? 'البريد الإلكتروني لاستلام الرابط' : 'Email (to receive private video room link)'}
+                      {isAr ? 'البريد الإلكتروني لتأكيد الموعد *' : 'Email Address (For Notifications) *'}
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-3 rtl:left-auto rtl:right-3" />
                       <input
                         type="email"
+                        required
                         value={emailInput}
                         onChange={(e) => setEmailInput(e.target.value)}
                         placeholder="you@example.com"
@@ -519,23 +527,25 @@ export default function BookingModal({
                 </div>
                 <p className="text-[10px] text-stone-500 dark:text-stone-400 leading-relaxed">
                   🔒 {isAr
-                    ? 'يتم تشفير وسرية بياناتك بالكامل. لن يرى الطبيب إلا المعرف السريري المشفر وملخص درجات الفحص.'
-                    : 'Your contact details are protected under strict Abu Dhabi DoH privacy protocols. The clinician receives only your anonymized assessment ID and risk bands.'}
+                    ? 'يتم تشفير وسرية بياناتك بالكامل. سيتلقى بريدك تأكيداً بالاستلام وفور موافقة الطبيب ستصلك رسالة التأكيد المعتمدة.'
+                    : 'Your contact details are protected under Abu Dhabi DoH privacy protocols. You will receive an immediate confirmation email, and an approval notification once reviewed by the clinician.'}
                 </p>
               </div>
             </>
           ) : (
             /* Booking Confirmed State */
             <div className="py-6 px-4 text-center space-y-5 animate-fade-in">
-              <div className="w-16 h-16 rounded-3xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-sm">
+              <div className="w-16 h-16 rounded-3xl bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto shadow-sm">
                 <CheckCircle2 className="w-10 h-10" />
               </div>
               <div>
-                <span className="text-xs uppercase font-black tracking-widest text-emerald-700 dark:text-emerald-400 block mb-1">
-                  {isAr ? 'تم تأكيد الحجز بنجاح' : 'Consultation Confirmed'}
+                <span className="text-xs uppercase font-black tracking-widest text-amber-700 dark:text-amber-400 block mb-1">
+                  {isAr ? 'الحالة: قيد مراجعة الطبيب' : 'Status: Pending Doctor Approval'}
                 </span>
                 <h3 className="text-xl font-black text-stone-900 dark:text-[#FAF7F2]">
-                  {isAr ? 'تم حجز استشارتك السريرية بنجاح' : 'Your Confidential Consultation is Booked'}
+                  {isAr
+                    ? 'تم استلام طلب موعدك. يرجى انتظار موافقة الطبيب.'
+                    : 'Your appointment request has been received. Please wait for doctor approval.'}
                 </h3>
                 <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
                   {isAr ? 'رقم الحجز السريري المرجعي:' : 'Clinical Booking Reference:'}{' '}

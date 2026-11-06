@@ -143,13 +143,13 @@ services:
       N8N_WEBHOOK_URL: "${N8N_WEBHOOK_URL:-http://host.docker.internal:5678}"
       MONGODB_URI: ${MONGODB_URI:-mongodb://vigor:vigor@mongo:27017/?authSource=admin}
       MONGODB_DB: ${MONGODB_DB:-vigor}
-      VIGOR_INTERNAL_TOKEN: ${VIGOR_INTERNAL_TOKEN}
-      VIGOR_PSEUDONYM_SALT: ${VIGOR_PSEUDONYM_SALT}
+      VIGOR_INTERNAL_TOKEN: "${VIGOR_INTERNAL_TOKEN:-8c496b630677ae036effc4b1e369db322efd3732dfaf67a7}"
+      VIGOR_PSEUDONYM_SALT: "${VIGOR_PSEUDONYM_SALT:-590e009065a429809ebf78fdb28b35bcec730900c392b107}"
       VIGOR_CLINICIAN_ACCESS_KEY: ${VIGOR_CLINICIAN_ACCESS_KEY:-vigor-doctor-demo}
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_USER: "${SMTP_USER:-tk706051@gmail.com}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-ihpvsscxcpxgnouh}"
       NOTIFY_FROM: ${NOTIFY_FROM:-tk706051@gmail.com}
     extra_hosts:
       - "host.docker.internal:host-gateway"

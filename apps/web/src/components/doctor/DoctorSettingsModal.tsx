@@ -62,31 +62,12 @@ export default function DoctorSettingsModal({
   const [form, setForm] = useState<DoctorSettings>({ ...currentSettings });
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  if (!isOpen) return null;
+  // Sync form state when modal opens or currentSettings changes
+  React.useEffect(() => {
+    setForm({ ...currentSettings });
+  }, [currentSettings, isOpen]);
 
-  const handleApplyPreset = (type: 'ali' | 'tariq') => {
-    if (type === 'ali') {
-      setForm({
-        fullName: 'Dr. Ali Khan',
-        title: 'Consultant Andrologist & Male Infertility Microsurgeon',
-        dohLicense: 'DOH-AUH-2024-9102',
-        facility: 'Cleveland Clinic Abu Dhabi · Andrology Hub',
-        location: 'Al Maryah Island, Abu Dhabi',
-        avatarIcon: '👨‍⚕️',
-        logoUrl: '',
-      });
-    } else {
-      setForm({
-        fullName: 'Dr. Tariq Al-Hashimi',
-        title: 'Consultant Andrologist & Reproductive Urologist',
-        dohLicense: 'DOH-AUH-2018-0924',
-        facility: 'HealthPlus Fertility & Andrology Center',
-        location: 'Al Bateen, Abu Dhabi',
-        avatarIcon: '👨‍⚕️',
-        logoUrl: '',
-      });
-    }
-  };
+  if (!isOpen) return null;
 
   const handleSave = () => {
     onSaveSettings(form);
@@ -129,50 +110,6 @@ export default function DoctorSettingsModal({
 
         {/* Content */}
         <div className="p-6 overflow-y-auto space-y-5 flex-1 text-xs">
-          {/* Quick Switch Presets */}
-          <div className="space-y-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8172] dark:text-stone-400 block">
-              {isAr ? 'تبديل سريع للطبيب المعتمد' : 'Quick Clinician Profile Switcher'}
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleApplyPreset('ali')}
-                className={`p-3 rounded-2xl border text-left rtl:text-right transition-all flex items-center gap-2.5 ${
-                  form.fullName.includes('Ali')
-                    ? 'bg-[#E8F5E9] dark:bg-emerald-950/70 border-emerald-300 dark:border-emerald-800 shadow-2xs'
-                    : 'bg-white dark:bg-[#1C1A17] border-[#E8E2D5] dark:border-stone-800 hover:border-stone-400'
-                }`}
-              >
-                <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center text-sm shrink-0">
-                  👨‍⚕️
-                </div>
-                <div className="min-w-0">
-                  <div className="font-bold text-[#1A1816] dark:text-white truncate">Dr. Ali Khan</div>
-                  <div className="text-[10px] text-[#8A8172] dark:text-stone-400 truncate">Cleveland Clinic AD</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleApplyPreset('tariq')}
-                className={`p-3 rounded-2xl border text-left rtl:text-right transition-all flex items-center gap-2.5 ${
-                  form.fullName.includes('Tariq')
-                    ? 'bg-[#E8F5E9] dark:bg-emerald-950/70 border-emerald-300 dark:border-emerald-800 shadow-2xs'
-                    : 'bg-white dark:bg-[#1C1A17] border-[#E8E2D5] dark:border-stone-800 hover:border-stone-400'
-                }`}
-              >
-                <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-sm shrink-0">
-                  👨‍⚕️
-                </div>
-                <div className="min-w-0">
-                  <div className="font-bold text-[#1A1816] dark:text-white truncate">Dr. Tariq Al-Hashimi</div>
-                  <div className="text-[10px] text-[#8A8172] dark:text-stone-400 truncate">HealthPlus Fertility</div>
-                </div>
-              </button>
-            </div>
-          </div>
-
           {/* Live Preview Card */}
           <div className="p-4 rounded-2xl bg-white dark:bg-[#1C1A17] border border-[#E8E2D5] dark:border-stone-800 shadow-xs flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#2E2922] to-[#181614] dark:from-stone-800 dark:to-stone-900 text-white flex items-center justify-center text-2xl shadow-xs shrink-0 border border-stone-300 dark:border-stone-700">

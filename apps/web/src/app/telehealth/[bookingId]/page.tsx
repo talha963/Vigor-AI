@@ -58,12 +58,21 @@ function TelehealthRoomContent() {
 
   // Doctor session if logged in
   const loggedDoctor = getCurrentDoctor();
-  const myName = isDoctor
-    ? loggedDoctor?.fullName || 'Dr. Tariq Al-Hashimi, MD'
-    : 'Patient (Confidential Pseudonym)';
+  let savedSettings: any = null;
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('vigor_doctor_settings');
+      if (raw) savedSettings = JSON.parse(raw);
+    } catch (e) {
+      // ignore
+    }
+  }
+  const doctorDisplayName = loggedDoctor?.fullName || savedSettings?.fullName || 'Dr. Ali Khan';
+  const doctorLicense = loggedDoctor?.licenseNumber || savedSettings?.dohLicense || 'DOH-AUH-2024-9102';
+  const myName = isDoctor ? doctorDisplayName : 'Patient (Confidential Pseudonym)';
   const peerName = isDoctor
     ? `Patient (Ref: ${bookingId.slice(-6).toUpperCase()})`
-    : loggedDoctor?.fullName || 'Dr. Tariq Al-Hashimi, MD (Consultant Andrologist)';
+    : `${doctorDisplayName} (Consultant Andrologist)`;
 
   // Video & Audio States
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
@@ -91,7 +100,7 @@ function TelehealthRoomContent() {
       sender: isDoctor ? 'patient' : 'doctor',
       senderName: peerName,
       text: isDoctor
-        ? 'Hello Doctor Tariq, I have entered the confidential waiting room. My semen analysis parameters are loaded.'
+        ? `Hello ${doctorDisplayName}, I have entered the confidential waiting room. My consultation parameters are loaded.`
         : 'Welcome to your Vigor clinical consultation. Both video and microphone are live and encrypted.',
       time: 'Just now',
     },
@@ -774,7 +783,7 @@ function TelehealthRoomContent() {
                 ) : isDoctor ? (
                   'Waiting for patient to open waiting room...'
                 ) : (
-                  'Calling & connecting with Dr. Tariq Al-Hashimi...'
+                  `Calling & connecting with ${doctorDisplayName}...`
                 )}
               </span>
 
@@ -847,7 +856,7 @@ function TelehealthRoomContent() {
               <p className="text-xs text-[#8696A0] leading-relaxed">
                 {isDoctor
                   ? 'Waiting for the patient to open their consultation room. You can copy the patient link below to test in another tab.'
-                  : 'Ringing Dr. Tariq Al-Hashimi (MD, Consultant Andrologist)...'}
+                  : `Ringing ${doctorDisplayName} (Consultant Andrologist)...`}
               </p>
 
               {/* Direct 1-Click Copy Link button right in center */}
@@ -1219,7 +1228,7 @@ function TelehealthRoomContent() {
                     </p>
                     <div className="p-2.5 rounded-xl bg-[#00A884]/10 border border-[#00A884]/30 text-[11px] text-[#00A884] flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 shrink-0" />
-                      <span>Signed by Dr. Tariq Al-Hashimi (DOH-AUH-2018-0924)</span>
+                      <span>Signed by {doctorDisplayName} ({doctorLicense})</span>
                     </div>
                   </div>
                 ) : (

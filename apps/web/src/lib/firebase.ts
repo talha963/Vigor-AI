@@ -116,14 +116,23 @@ export async function loginDoctorWithFirebase(
     let doctor = doctors.find((d) => d.email === cleanEmail);
 
     if (!doctor) {
-      // Auto-register default demo profile if logging in for first time
+      // Auto-register profile if logging in for first time
+      const isAli = cleanEmail.includes('ali');
       doctor = {
         uid: `doc_${Date.now().toString(36)}`,
         email: cleanEmail,
-        fullName: cleanEmail.includes('tariq') ? 'Dr. Tariq Al-Hashimi' : 'Dr. Certified Andrologist',
-        licenseNumber: 'DOH-AUH-2019-9481',
-        specialty: 'Consultant Andrologist & Reproductive Urologist',
-        facility: 'HealthPlus Fertility & Andrology Center · Al Bateen',
+        fullName: isAli
+          ? 'Dr. Ali Khan'
+          : cleanEmail.includes('tariq')
+          ? 'Dr. Tariq Al-Hashimi'
+          : 'Dr. Ali Khan',
+        licenseNumber: isAli ? 'DOH-AUH-2024-9102' : 'DOH-AUH-2019-9481',
+        specialty: isAli
+          ? 'Consultant Andrologist & Male Infertility Microsurgeon'
+          : 'Consultant Andrologist & Reproductive Urologist',
+        facility: isAli
+          ? 'Cleveland Clinic Abu Dhabi · Andrology Hub'
+          : 'HealthPlus Fertility & Andrology Center · Al Bateen',
         dohVerified: true,
         role: 'doctor',
         status: 'available',
@@ -158,7 +167,12 @@ export function getCurrentDoctor(): DoctorAccount | null {
   const raw = localStorage.getItem(DOCTOR_AUTH_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw);
+    const doc = JSON.parse(raw);
+    if (!doc || !doc.fullName || doc.fullName.includes('Certified') || doc.fullName.includes('Tariq')) {
+      localStorage.removeItem(DOCTOR_AUTH_KEY);
+      return null;
+    }
+    return doc;
   } catch {
     return null;
   }
@@ -175,41 +189,48 @@ export function updateDoctorStatus(status: 'available' | 'busy' | 'offline'): Do
 function getStoredDoctors(): DoctorAccount[] {
   if (typeof window === 'undefined') return [];
   const raw = localStorage.getItem(REGISTERED_DOCTORS_KEY);
+  const initial: DoctorAccount[] = [
+    {
+      uid: 'doc_ali_01',
+      email: 'ali.khan@clevelandclinicabudhabi.ae',
+      fullName: 'Dr. Ali Khan',
+      licenseNumber: 'DOH-AUH-2024-9102',
+      specialty: 'Consultant Andrologist & Male Infertility Microsurgeon',
+      facility: 'Cleveland Clinic Abu Dhabi · Andrology Hub',
+      dohVerified: true,
+      role: 'doctor',
+      status: 'available',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      uid: 'doc_ziad_02',
+      email: 'ziad.khafaji@clevelandclinicabudhabi.ae',
+      fullName: 'Dr. Ziad Al-Khafaji',
+      licenseNumber: 'DOH-AUH-2015-8821',
+      specialty: 'Senior Specialist Urological Microsurgeon',
+      facility: 'Cleveland Clinic Abu Dhabi · Al Maryah Island',
+      dohVerified: true,
+      role: 'doctor',
+      status: 'available',
+      createdAt: new Date().toISOString(),
+    },
+  ];
   if (!raw) {
-    // Initial seeded doctor accounts
-    const initial: DoctorAccount[] = [
-      {
-        uid: 'doc_tariq_01',
-        email: 'tariq.hashimi@healthplus.ae',
-        fullName: 'Dr. Tariq Al-Hashimi',
-        licenseNumber: 'DOH-AUH-2018-0924',
-        specialty: 'Consultant Andrologist & Male Infertility',
-        facility: 'HealthPlus Fertility & Andrology Center · Al Bateen',
-        dohVerified: true,
-        role: 'doctor',
-        status: 'available',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        uid: 'doc_ziad_02',
-        email: 'ziad.khafaji@clevelandclinicabudhabi.ae',
-        fullName: 'Dr. Ziad Al-Khafaji',
-        licenseNumber: 'DOH-AUH-2015-8821',
-        specialty: 'Senior Specialist Urological Microsurgeon',
-        facility: 'Cleveland Clinic Abu Dhabi · Al Maryah Island',
-        dohVerified: true,
-        role: 'doctor',
-        status: 'available',
-        createdAt: new Date().toISOString(),
-      },
-    ];
     localStorage.setItem(REGISTERED_DOCTORS_KEY, JSON.stringify(initial));
     return initial;
   }
   try {
-    return JSON.parse(raw);
+    const parsed: DoctorAccount[] = JSON.parse(raw);
+    const clean = parsed.filter(
+      (d) => d.fullName && !d.fullName.includes('Certified') && !d.fullName.includes('Tariq')
+    );
+    if (clean.length === 0) {
+      localStorage.setItem(REGISTERED_DOCTORS_KEY, JSON.stringify(initial));
+      return initial;
+    }
+    return clean;
   } catch {
-    return [];
+    return initial;
   }
 }
 

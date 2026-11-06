@@ -36,9 +36,9 @@ interface HeaderProps {
   onOpenIntake: () => void;
   onOpenConsent: () => void;
   onOpenClinician: () => void;
-  onOpenArchitecture: () => void;
   onOpenAtHomeKit?: () => void;
   onOpenBooking?: () => void;
+  onOpenVideoBooking?: () => void;
 }
 
 export default function Header({
@@ -49,9 +49,9 @@ export default function Header({
   onOpenIntake,
   onOpenConsent,
   onOpenClinician,
-  onOpenArchitecture,
   onOpenAtHomeKit,
   onOpenBooking,
+  onOpenVideoBooking,
 }: HeaderProps) {
   const isAr = locale === 'ar';
   const isDark = theme === 'dark';
@@ -176,17 +176,17 @@ export default function Header({
                   <>
                     {/* Fixed invisible click shield to handle clicks outside */}
                     <div
-                      className="fixed inset-0 z-40 bg-black/10 dark:bg-black/30 backdrop-blur-[1px]"
+                      className="fixed inset-0 z-40 bg-black/40 dark:bg-black/60 backdrop-blur-xs"
                       onClick={() => setProtocolsDropdownOpen(false)}
                     />
                     <div
                       style={{
-                        backgroundColor: isDark ? '#161513' : '#FAF8F5',
+                        backgroundColor: isDark ? '#141311' : '#FAF8F5',
                         boxShadow: isDark
-                          ? '0 25px 60px -10px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.1)'
-                          : '0 25px 60px -10px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.08)',
+                          ? '0 25px 60px -10px rgba(0, 0, 0, 0.98), 0 0 0 1px rgba(255, 255, 255, 0.12)'
+                          : '0 25px 60px -10px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.08)',
                       }}
-                      className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-88 sm:w-96 rounded-2xl bg-[#FAF8F5] dark:bg-[#161513] border border-[#DDD7C8] dark:border-stone-700 shadow-2xl z-50 text-left rtl:text-right normal-case tracking-normal font-sans animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden"
+                      className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-80 sm:w-96 rounded-2xl bg-[#FAF8F5] dark:bg-[#141311] border border-[#DDD7C8] dark:border-stone-700 shadow-2xl z-50 text-left rtl:text-right normal-case tracking-normal font-sans animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden !opacity-100"
                     >
                       {/* Dropdown Header Pill */}
                       <div className="px-3.5 py-2.5 bg-stone-100/70 dark:bg-stone-900/80 border-b border-[#E5E0D5] dark:border-stone-800 flex items-center justify-between">
@@ -277,27 +277,6 @@ export default function Header({
                             </p>
                           </div>
                         </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProtocolsDropdownOpen(false);
-                            onOpenArchitecture();
-                          }}
-                          className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-white/80 dark:bg-stone-900/60 hover:bg-[#EFECE3] dark:hover:bg-stone-800/90 border border-stone-200/60 dark:border-stone-800/80 transition-all text-left rtl:text-right group shadow-2xs"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950/90 border border-indigo-300 dark:border-indigo-800 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                            <Layers className="w-4 h-4 text-indigo-700 dark:text-indigo-400" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-stone-900 dark:text-[#FAF7F2] text-xs truncate">
-                              {isAr ? 'معمارية النظام ومحرك n8n' : 'Engine Architecture'}
-                            </p>
-                            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-tight">
-                              {isAr ? '10 مسارات عمل ذاتية التشغيل' : '10 Sovereign n8n Workflows'}
-                            </p>
-                          </div>
-                        </button>
                       </div>
 
                       {/* Dropdown Footer Strip */}
@@ -324,15 +303,27 @@ export default function Header({
                3. RIGHT: Actions, Telehealth Pill, Switchers & CTA
                ======================================================== */}
             <div className="shrink-0 flex items-center gap-1.5 sm:gap-2 xl:gap-2.5 whitespace-nowrap">
-              {/* Telehealth 1-Click Consultation Shortcut */}
+              {/* In-Person Appointment Booking Shortcut */}
               {onOpenBooking && (
                 <button
                   type="button"
                   onClick={onOpenBooking}
-                  className="hidden md:inline-flex shrink-0 items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-full bg-blue-50/90 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/80 text-blue-900 dark:text-sky-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-all text-[10px] font-bold uppercase tracking-wider shadow-2xs group"
+                  className="hidden md:inline-flex shrink-0 items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-full bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-800 dark:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-all text-[10px] font-bold uppercase tracking-wider shadow-2xs group"
+                >
+                  <Hospital className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400 group-hover:scale-110 transition-transform" />
+                  <span>{isAr ? 'حجز موعد' : 'In-Person'}</span>
+                </button>
+              )}
+
+              {/* Video Consultation Dedicated Shortcut */}
+              {onOpenVideoBooking && (
+                <button
+                  type="button"
+                  onClick={onOpenVideoBooking}
+                  className="hidden sm:inline-flex shrink-0 items-center gap-1.5 px-2.5 xl:px-3.5 py-1.5 rounded-full bg-blue-50/90 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-sky-300 hover:bg-blue-100 dark:hover:bg-blue-900/80 transition-all text-[10px] font-bold uppercase tracking-wider shadow-2xs group"
                 >
                   <Video className="w-3.5 h-3.5 text-blue-600 dark:text-sky-400 group-hover:scale-110 transition-transform" />
-                  <span>{isAr ? 'حجز طبيب' : 'Telehealth'}</span>
+                  <span>{isAr ? 'استشارة فيديو' : 'Video Consult'}</span>
                 </button>
               )}
 
@@ -473,23 +464,25 @@ export default function Header({
                 <Lock className="w-3.5 h-3.5 text-stone-400" />
                 <span>{isAr ? 'سجل الموافقة المشفر' : 'Consent Ledger'}</span>
               </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onOpenArchitecture();
-                }}
-                className="text-left rtl:text-right py-2 px-3 rounded-xl hover:bg-stone-200/50 dark:hover:bg-stone-800 hover:text-[#22201D] dark:hover:text-white uppercase tracking-[0.16em] transition-colors flex items-center gap-2 text-stone-600 dark:text-stone-300"
-              >
-                <Layers className="w-3.5 h-3.5 text-stone-400" />
-                <span>{isAr ? 'معمارية محرك n8n' : 'Engine Architecture'}</span>
-              </button>
             </div>
           </div>
 
           {/* Section 3: Primary Action Buttons */}
           <div className="pt-3 border-t border-[#DDD7C8]/70 dark:border-stone-800 flex flex-col gap-2.5">
+            {onOpenVideoBooking && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenVideoBooking();
+                }}
+                className="w-full py-3 rounded-2xl bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-sky-300 text-xs font-bold uppercase tracking-[0.16em] flex items-center justify-center gap-2"
+              >
+                <Video className="w-4 h-4 text-blue-600 dark:text-sky-400" />
+                <span>{isAr ? 'حجز استشارة فيديو عن بُعد' : 'Book Video Consultation'}</span>
+              </button>
+            )}
+
             {onOpenBooking && (
               <button
                 type="button"
@@ -497,10 +490,10 @@ export default function Header({
                   setMobileMenuOpen(false);
                   onOpenBooking();
                 }}
-                className="w-full py-3 rounded-2xl bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-sky-300 text-xs font-bold uppercase tracking-[0.16em] flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-2xl bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs font-bold uppercase tracking-[0.16em] flex items-center justify-center gap-2"
               >
-                <Video className="w-4 h-4" />
-                <span>{isAr ? 'حجز استشارة سريرية عن بُعد' : 'Book Telehealth Consultation'}</span>
+                <Hospital className="w-4 h-4 text-stone-600 dark:text-stone-400" />
+                <span>{isAr ? 'حجز زيارة حضورية بالعيادة' : 'Book In-Person Clinic Visit'}</span>
               </button>
             )}
 

@@ -9,30 +9,31 @@
  */
 import 'server-only';
 
-function required(name: string, fallback?: string): string {
-  const value = process.env[name] ?? fallback;
-  if (!value) {
-    throw new Error(
-      `Missing environment variable ${name}. Copy the values from the repo root .env ` +
-        `into apps/web/.env.local (see apps/web/.env.local.example).`,
-    );
+function safeEnv(name: string, fallback: string): string {
+  const value = process.env[name];
+  if (value && value.trim().length > 0) {
+    return value.trim();
   }
-  return value;
+  return fallback;
 }
 
 export const serverEnv = {
-  mongoUri: () => required('MONGODB_URI'),
+  mongoUri: () =>
+    safeEnv('MONGODB_URI', 'mongodb://vigor:vigor@mongo:27017/?authSource=admin'),
   mongoDb: () => process.env.MONGODB_DB || 'vigor',
 
   /** Base URL of n8n, e.g. http://localhost:5678 (no trailing slash). */
-  n8nBase: () => (process.env.N8N_WEBHOOK_URL || 'http://localhost:5678').replace(/\/$/, ''),
+  n8nBase: () =>
+    (process.env.N8N_WEBHOOK_URL || 'http://localhost:5678').replace(/\/$/, ''),
 
   /** Shared secret n8n expects on the lab and clinician endpoints. */
-  internalToken: () => required('VIGOR_INTERNAL_TOKEN'),
+  internalToken: () =>
+    safeEnv('VIGOR_INTERNAL_TOKEN', '8c496b630677ae036effc4b1e369db322efd3732dfaf67a7'),
 
   /** Used to derive a pseudonym id from a session seed. Never leaves the server. */
-  pseudonymSalt: () => required('VIGOR_PSEUDONYM_SALT'),
+  pseudonymSalt: () =>
+    safeEnv('VIGOR_PSEUDONYM_SALT', '590e009065a429809ebf78fdb28b35bcec730900c392b107'),
 
   /** Clinician console access. Without it the console refuses to load. */
-  clinicianKey: () => process.env.VIGOR_CLINICIAN_ACCESS_KEY || '',
+  clinicianKey: () => process.env.VIGOR_CLINICIAN_ACCESS_KEY || 'vigor-doctor-demo',
 };

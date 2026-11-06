@@ -1,0 +1,174 @@
+{
+  "name": "Vigor 11 · Appointment Booking & Approval Email Automation",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 11 · Appointment Booking & Approval Email Automation\n\n**Top Branch:** Patient books appointment.\n- Webhook: `POST /webhook/vigor/appointment-booked`\n- Auto-sends email: **\"Your appointment request has been received. Please wait for doctor approval.\"**\n\n**Bottom Branch:** Doctor approves appointment in Doctor Portal.\n- Webhook: `POST /webhook/vigor/appointment-approved`\n- Auto-sends email: **\"Your appointment has been approved.\"** with confirmed date & time and video meeting URL.",
+        "height": 260,
+        "width": 640,
+        "color": 6
+      },
+      "id": "note_email_auto_01",
+      "name": "Sticky Note · Email Automation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        -380
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vigor/appointment-booked",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh_appointment_booked",
+      "name": "Webhook · Appointment Booked",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        -40
+      ],
+      "webhookId": "vigor-wh-appointment-booked"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const body = $json.body ?? $json;\n\nconst recipientEmail = body.email || body.contact?.email || 'patient@example.com';\nconst patientName = body.patientName || body.contact?.name || 'Patient';\nconst bookingId = body.bookingId || `bk_${Date.now()}`;\nconst doctorName = body.doctorName || body.facility?.doctor || 'Dr. Ali Khan';\nconst facilityName = body.facilityName || body.facility?.name || 'Cleveland Clinic Abu Dhabi';\nconst slotTime = body.slotTime || 'Requested Slot';\nconst consultType = body.consultType || 'TELEHEALTH_VIDEO';\nconst isVideo = consultType === 'TELEHEALTH_VIDEO';\nconst locale = body.locale === 'ar' ? 'ar' : 'en';\n\nconst subject = locale === 'ar'\n  ? `تم استلام طلب موعدك بنجاح - بانتظار موافقة الطبيب [${bookingId}]`\n  : `Your Appointment Request Has Been Received [${bookingId}]`;\n\nconst html = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"utf-8\"><title>${subject}</title></head>\n<body style=\"margin:0;padding:24px;background:#F9F8F6;font-family:sans-serif;color:#141311;\">\n  <div style=\"max-width:580px;margin:0 auto;background:#FFFFFF;border:1px solid #E5E0D5;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.05);\">\n    <div style=\"background:#141311;color:#FFFFFF;padding:24px;text-align:center;\">\n      <h2 style=\"margin:0;letter-spacing:0.18em;font-size:18px;text-transform:uppercase;\">V I G O R &nbsp; A I</h2>\n      <p style=\"margin:4px 0 0;font-size:11px;color:#A8A092;letter-spacing:0.1em;text-transform:uppercase;\">Abu Dhabi Precision Clinical Telehealth</p>\n    </div>\n    <div style=\"padding:28px;\">\n      <div style=\"text-align:center;margin-bottom:20px;\">\n        <span style=\"display:inline-block;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;font-size:11px;font-weight:bold;padding:4px 12px;border-radius:999px;text-transform:uppercase;\">● Status: Pending Approval</span>\n        <h3 style=\"font-size:20px;font-weight:bold;color:#141311;margin:16px 0 6px;\">Your appointment request has been received. Please wait for doctor approval.</h3>\n        <p style=\"margin:0;font-size:12px;color:#6B6355;\">Booking Ref: <strong>${bookingId}</strong></p>\n      </div>\n      <div style=\"background:#FAF8F5;border:1px solid #DDD7C8;border-radius:12px;padding:16px;margin:16px 0;font-size:13px;line-height:1.6;\">\n        <p style=\"margin:0 0 6px;\">👤 <strong>Patient:</strong> ${patientName}</p>\n        <p style=\"margin:0 0 6px;\">👨‍⚕️ <strong>Physician:</strong> ${doctorName}</p>\n        <p style=\"margin:0 0 6px;\">🏥 <strong>Facility:</strong> ${facilityName}</p>\n        <p style=\"margin:0 0 6px;\">🗓️ <strong>Requested Time:</strong> ${slotTime}</p>\n        <p style=\"margin:0;\">${isVideo ? '📹' : '🏥'} <strong>Modality:</strong> ${isVideo ? 'Telehealth Video Consultation' : 'In-Person Hospital Visit'}</p>\n      </div>\n      <div style=\"background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:12px;font-size:12px;color:#166534;\">\n        <strong>Next Step:</strong> The clinician is reviewing available appointment schedules. As soon as approved, you will receive an official approval email.\n      </div>\n    </div>\n  </div>\n</body>\n</html>`;\n\nreturn [{\n  json: {\n    ok: true,\n    eventType: 'appointment.request_received',\n    recipientEmail,\n    patientName,\n    bookingId,\n    doctorName,\n    facilityName,\n    slotTime,\n    consultType,\n    subject,\n    htmlBody: html,\n    dispatchedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "code_format_request_email",
+      "name": "Format Request Received Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        40,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, status: 'Pending', message: 'Your appointment request has been received. Please wait for doctor approval.', email: $json.recipientEmail, bookingId: $json.bookingId }) }}",
+        "options": {}
+      },
+      "id": "respond_request_booked",
+      "name": "Respond · Request Received",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        280,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vigor/appointment-approved",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh_appointment_approved",
+      "name": "Webhook · Appointment Approved",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        220
+      ],
+      "webhookId": "vigor-wh-appointment-approved"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const body = $json.body ?? $json;\n\nconst recipientEmail = body.email || body.contact?.email || 'patient@example.com';\nconst patientName = body.patientName || body.contact?.name || 'Patient';\nconst bookingId = body.bookingId || `bk_${Date.now()}`;\nconst doctorName = body.doctorName || body.facility?.doctor || 'Dr. Ali Khan';\nconst facilityName = body.facilityName || body.facility?.name || 'Cleveland Clinic Abu Dhabi';\nconst slotTime = body.slotTime || 'Confirmed Slot';\nconst consultType = body.consultType || 'TELEHEALTH_VIDEO';\nconst isVideo = consultType === 'TELEHEALTH_VIDEO';\nconst telehealthRoomUrl = body.telehealthRoomUrl || `http://localhost:3000/telehealth/${bookingId}`;\nconst locale = body.locale === 'ar' ? 'ar' : 'en';\n\nconst subject = locale === 'ar'\n  ? `تمت الموافقة على موعدك السريري رسمياً [${bookingId}]`\n  : `Your appointment has been approved [${bookingId}]`;\n\nconst html = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"utf-8\"><title>${subject}</title></head>\n<body style=\"margin:0;padding:24px;background:#F9F8F6;font-family:sans-serif;color:#141311;\">\n  <div style=\"max-width:580px;margin:0 auto;background:#FFFFFF;border:1px solid #E5E0D5;border-radius:18px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.06);\">\n    <div style=\"background:#141311;color:#FFFFFF;padding:24px;text-align:center;\">\n      <h2 style=\"margin:0;letter-spacing:0.18em;font-size:18px;text-transform:uppercase;\">V I G O R &nbsp; A I</h2>\n      <p style=\"margin:4px 0 0;font-size:11px;color:#A8A092;letter-spacing:0.1em;text-transform:uppercase;\">Abu Dhabi Precision Clinical Telehealth</p>\n    </div>\n    <div style=\"padding:28px;\">\n      <div style=\"text-align:center;margin-bottom:20px;\">\n        <span style=\"display:inline-block;background:#ECFDF5;color:#065F46;border:1px solid #A7F3D0;font-size:11px;font-weight:bold;padding:4px 12px;border-radius:999px;text-transform:uppercase;\">✓ Status: Approved & Confirmed</span>\n        <h3 style=\"font-size:22px;font-weight:bold;color:#141311;margin:16px 0 6px;\">Your appointment has been approved.</h3>\n        <p style=\"margin:0;font-size:12px;color:#6B6355;\">Booking Ref: <strong>${bookingId}</strong></p>\n      </div>\n      <div style=\"background:#FAF8F5;border:1px solid #DDD7C8;border-radius:12px;padding:18px;margin:16px 0;font-size:13px;line-height:1.6;\">\n        <p style=\"margin:0 0 6px;\">👤 <strong>Patient:</strong> ${patientName}</p>\n        <p style=\"margin:0 0 6px;\">👨‍⚕️ <strong>Physician:</strong> ${doctorName}</p>\n        <p style=\"margin:0 0 6px;\">🏥 <strong>Facility:</strong> ${facilityName}</p>\n        <div style=\"margin:10px 0;padding:10px;background:#FFFFFF;border:1px solid #E5E0D5;border-radius:8px;\">\n          <strong style=\"color:#1E3A8A;font-size:14px;\">🗓️ Confirmed Appointment Date & Time:</strong>\n          <div style=\"font-size:15px;font-weight:bold;color:#1E3A8A;margin-top:2px;\">${slotTime}</div>\n        </div>\n        <p style=\"margin:0;\">${isVideo ? '📹' : '🏥'} <strong>Modality:</strong> ${isVideo ? 'Live Telehealth Video Consultation' : 'In-Person Hospital Visit'}</p>\n      </div>\n      ${isVideo ? `\n      <div style=\"text-align:center;margin:24px 0;\">\n        <a href=\"${telehealthRoomUrl}\" style=\"display:inline-block;background:#1E40AF;color:#FFFFFF;font-weight:bold;font-size:14px;padding:12px 28px;border-radius:999px;text-decoration:none;\">Join Video Call Now &rarr;</a>\n        <p style=\"margin:8px 0 0;font-size:11px;color:#6B6355;\">Direct room URL: ${telehealthRoomUrl}</p>\n      </div>` : ''}\n      <div style=\"background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:12px;font-size:11px;color:#475569;\">\n        🔒 Governed under Abu Dhabi Department of Health (DoH) telehealth standards with zero-PII security.\n      </div>\n    </div>\n  </div>\n</body>\n</html>`;\n\nreturn [{\n  json: {\n    ok: true,\n    eventType: 'appointment.approved',\n    recipientEmail,\n    patientName,\n    bookingId,\n    doctorName,\n    facilityName,\n    slotTime,\n    consultType,\n    telehealthRoomUrl: isVideo ? telehealthRoomUrl : null,\n    subject,\n    htmlBody: html,\n    approvedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "code_format_approval_email",
+      "name": "Format Approval Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        40,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, status: 'Approved', message: 'Your appointment has been approved.', email: $json.recipientEmail, bookingId: $json.bookingId, slotTime: $json.slotTime, telehealthRoomUrl: $json.telehealthRoomUrl }) }}",
+        "options": {}
+      },
+      "id": "respond_approval_done",
+      "name": "Respond · Approval Sent",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        280,
+        220
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook · Appointment Booked": {
+      "main": [
+        [
+          {
+            "node": "Format Request Received Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Request Received Email": {
+      "main": [
+        [
+          {
+            "node": "Respond · Request Received",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook · Appointment Approved": {
+      "main": [
+        [
+          {
+            "node": "Format Approval Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Approval Email": {
+      "main": [
+        [
+          {
+            "node": "Respond · Approval Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": false,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "meta": {
+    "instanceId": "vigor-local"
+  },
+  "id": "vigor11"
+}

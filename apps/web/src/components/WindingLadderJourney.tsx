@@ -37,7 +37,7 @@ interface WindingLadderJourneyProps {
   onOpenIntake: () => void;
   onOpenConsent: () => void;
   onOpenClinician: () => void;
-  onOpenArchitecture: () => void;
+  onOpenArchitecture?: () => void;
   onOpenAtHomeKit: () => void;
   onOpenBooking?: () => void;
   onSelectGoldenCase: (caseId: string) => void;
@@ -1392,15 +1392,6 @@ export default function WindingLadderJourney({
               >
                 <span>{isAr ? 'ابدأ الفحص المجهول الفوري' : 'Start Anonymous Assessment'}</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform" />
-              </button>
-
-              <button
-                type="button"
-                onClick={onOpenArchitecture}
-                className="inline-flex items-center gap-2 px-6 py-4 rounded-sm bg-[#EFECE3] dark:bg-stone-800 text-[#2E2922] dark:text-[#F5F2EB] text-xs font-bold tracking-[0.18em] uppercase hover:bg-[#DDD7C8] dark:hover:bg-stone-700 transition-colors"
-              >
-                <Layers className="w-4 h-4" />
-                <span>{isAr ? 'مخطط البنية التحتية والبيانات' : 'Inspect Architecture'}</span>
               </button>
             </div>
 

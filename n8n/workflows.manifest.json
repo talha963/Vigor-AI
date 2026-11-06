@@ -144,6 +144,22 @@
         "privacy",
         "consent"
       ]
+    },
+    {
+      "id": "vigor11",
+      "file": "w11-appointment-email-automation.json",
+      "name": "Vigor 11 · Appointment Booking & Approval Email Automation",
+      "nodes": 6,
+      "triggers": [
+        "POST /webhook/vigor/appointment-booked",
+        "POST /webhook/vigor/appointment-approved"
+      ],
+      "tags": [
+        "vigor",
+        "booking",
+        "email-automation",
+        "notifications"
+      ]
     }
   ]
 }

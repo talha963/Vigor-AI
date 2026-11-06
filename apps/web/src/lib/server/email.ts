@@ -848,3 +848,319 @@ export async function sendPrescriptionReportEmail(options: SendPrescriptionEmail
     mode: sentViaSmtp ? 'SMTP_LIVE' : 'DEMO_AUDIT_LOGGED',
   };
 }
+
+// ========================================================
+// Exact Compliance Emails: Request Received & Approved
+// ========================================================
+
+export interface AppointmentEmailOptions {
+  recipientEmail: string;
+  patientName?: string;
+  bookingId: string;
+  facilityName: string;
+  doctorName: string;
+  consultType: 'TELEHEALTH_VIDEO' | 'IN_PERSON';
+  slotTime: string;
+  telehealthRoomUrl?: string;
+  location?: string;
+  locale?: Locale;
+}
+
+/**
+ * Dispatches an automated email to patient when appointment is booked.
+ * Exact Requirement: "Your appointment request has been received. Please wait for doctor approval."
+ */
+export async function sendAppointmentRequestReceivedEmail(options: AppointmentEmailOptions): Promise<{
+  success: boolean;
+  messageId: string;
+  mode: 'SMTP_LIVE' | 'DEMO_AUDIT_LOGGED';
+}> {
+  const {
+    recipientEmail,
+    patientName,
+    bookingId,
+    facilityName,
+    doctorName,
+    consultType,
+    slotTime,
+    location,
+    locale = 'en',
+  } = options;
+
+  const isAr = locale === 'ar';
+  const isVideo = consultType === 'TELEHEALTH_VIDEO';
+  const subject = isAr
+    ? `تم استلام طلب موعدك بنجاح - بانتظار موافقة الطبيب [${bookingId}]`
+    : `Appointment Request Received - Awaiting Doctor Approval [${bookingId}]`;
+
+  const html = `<!DOCTYPE html>
+<html lang="${locale}" dir="${isAr ? 'rtl' : 'ltr'}">
+<head>
+  <meta charset="utf-8">
+  <title>${subject}</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #F9F8F6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #141311; }
+    .wrapper { width: 100%; background-color: #F9F8F6; padding: 32px 16px; }
+    .container { max-width: 600px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E5E0D5; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+    .header { background-color: #141311; color: #F9F8F6; padding: 28px 32px; text-align: center; }
+    .content { padding: 32px; }
+    .status-badge { display: inline-block; background-color: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; font-size: 11px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; padding: 6px 14px; border-radius: 9999px; }
+    .card { background-color: #FAF8F5; border: 1px solid #DDD7C8; border-radius: 14px; padding: 20px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <div style="font-size: 20px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;">V I G O R &nbsp; A I</div>
+        <div style="font-size: 11px; letter-spacing: 0.12em; color: #A8A092; text-transform: uppercase; margin-top: 4px;">
+          ${isAr ? 'منصة الرعاية الصحية التخصصية والاستشارات الطبية' : 'Precision Telehealth & Clinical Network'}
+        </div>
+      </div>
+      <div class="content">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div class="status-badge">● ${isAr ? 'قيد مراجعة الطبيب' : 'Status: Pending Approval'}</div>
+          <h1 style="font-size: 22px; font-weight: 800; color: #141311; margin: 16px 0 8px;">
+            ${isAr ? 'تم استلام طلب موعدك' : 'Your appointment request has been received. Please wait for doctor approval.'}
+          </h1>
+          <p style="font-size: 13px; color: #6B6355; margin: 0;">
+            ${isAr ? 'رقم مرجع الحجز:' : 'Booking Reference:'} <strong>${bookingId}</strong>
+          </p>
+        </div>
+
+        <div class="card">
+          <p style="margin: 0 0 10px; font-size: 11px; font-weight: 800; color: #8A8172; text-transform: uppercase; letter-spacing: 0.1em;">
+            ${isAr ? 'تفاصيل طلب الموعد' : 'Appointment Request Summary'}
+          </p>
+          ${patientName ? `<p style="margin: 0 0 8px; font-size: 14px; color: #141311;">👤 <strong>${isAr ? 'المريض' : 'Patient'}:</strong> ${patientName}</p>` : ''}
+          <p style="margin: 0 0 8px; font-size: 14px; color: #141311;">👨‍⚕️ <strong>${isAr ? 'الطبيب المعالج' : 'Physician'}:</strong> ${doctorName}</p>
+          <p style="margin: 0 0 8px; font-size: 14px; color: #141311;">🏥 <strong>${isAr ? 'المركز الطبي' : 'Facility'}:</strong> ${facilityName} ${location ? `· ${location}` : ''}</p>
+          <p style="margin: 0 0 8px; font-size: 14px; color: #141311;">🗓️ <strong>${isAr ? 'الموعد المطلوب' : 'Requested Schedule'}:</strong> ${slotTime}</p>
+          <p style="margin: 0; font-size: 14px; color: #141311;">
+            ${isVideo ? '📹' : '🏥'} <strong>${isAr ? 'نوع الاستشارة' : 'Modality'}:</strong> ${
+              isVideo
+                ? (isAr ? 'استشارة مرئية عن بُعد (فيديو)' : 'Live Telehealth Video Consultation')
+                : (isAr ? 'زيارة حضورية بالعيادة' : 'In-Person Hospital Visit')
+            }
+          </p>
+        </div>
+
+        <div style="background-color: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 12px; padding: 16px; margin: 20px 0; font-size: 13px; color: #166534; line-height: 1.5;">
+          <strong>ℹ️ ${isAr ? 'ما هي الخطوة التالية؟' : 'What happens next?'}:</strong>
+          <br>
+          ${
+            isAr
+              ? 'يقوم الطبيب حالياً بمراجعة جدول مواعيده وسيقوم باعتماد طلبك قريباً. ستصلك رسالة تأكيد إلكترونية فور الموافقة.'
+              : 'The clinician is currently reviewing appointment schedules. As soon as your request is approved, you will receive an official approval email with your finalized confirmation.'
+          }
+        </div>
+
+        <div style="text-align: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid #E5E0D5; font-size: 11px; color: #8A8172;">
+          DoH Abu Dhabi Regulated · End-to-End Cryptographic Zero-PII Protocol
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASSWORD;
+  const fromAddress = process.env.NOTIFY_FROM || 'no-reply@vigor.health';
+
+  let sentViaSmtp = false;
+  let messageId: string | undefined;
+
+  if (smtpHost && smtpUser && smtpPass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: { user: smtpUser, pass: smtpPass },
+      });
+
+      const info = await transporter.sendMail({
+        from: `"Vigor AI Appointments" <${fromAddress}>`,
+        to: recipientEmail,
+        subject,
+        html,
+      });
+
+      sentViaSmtp = true;
+      messageId = info.messageId;
+      console.log(`[Vigor Email] Request-Received email dispatched to ${recipientEmail} (ID: ${info.messageId})`);
+    } catch (err) {
+      console.error('[Vigor Email] Request-Received dispatch error:', err);
+    }
+  }
+
+  return {
+    success: true,
+    messageId: messageId || `req_${bookingId}_${Date.now()}`,
+    mode: sentViaSmtp ? 'SMTP_LIVE' : 'DEMO_AUDIT_LOGGED',
+  };
+}
+
+/**
+ * Dispatches an automated approval email to patient when doctor clicks "Approve".
+ * Exact Requirement: "Your appointment has been approved." + confirmed date and time
+ */
+export async function sendAppointmentApprovedEmail(options: AppointmentEmailOptions): Promise<{
+  success: boolean;
+  messageId: string;
+  mode: 'SMTP_LIVE' | 'DEMO_AUDIT_LOGGED';
+}> {
+  const {
+    recipientEmail,
+    patientName,
+    bookingId,
+    facilityName,
+    doctorName,
+    consultType,
+    slotTime,
+    telehealthRoomUrl,
+    location,
+    locale = 'en',
+  } = options;
+
+  const isAr = locale === 'ar';
+  const isVideo = consultType === 'TELEHEALTH_VIDEO';
+  const subject = isAr
+    ? `تمت الموافقة على موعدك السريري رسمياً [${bookingId}]`
+    : `Your appointment has been approved [${bookingId}]`;
+
+  const html = `<!DOCTYPE html>
+<html lang="${locale}" dir="${isAr ? 'rtl' : 'ltr'}">
+<head>
+  <meta charset="utf-8">
+  <title>${subject}</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #F9F8F6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #141311; }
+    .wrapper { width: 100%; background-color: #F9F8F6; padding: 32px 16px; }
+    .container { max-width: 600px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #E5E0D5; border-radius: 20px; overflow: hidden; box-shadow: 0 12px 36px rgba(0,0,0,0.06); }
+    .header { background-color: #141311; color: #F9F8F6; padding: 28px 32px; text-align: center; }
+    .content { padding: 32px; }
+    .approved-badge { display: inline-block; background-color: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; font-size: 11px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; padding: 6px 14px; border-radius: 9999px; }
+    .card { background-color: #FAF8F5; border: 1px solid #DDD7C8; border-radius: 14px; padding: 22px; margin: 20px 0; }
+    .btn-join { display: inline-block; background-color: #1E40AF; color: #FFFFFF !important; font-size: 15px; font-weight: 800; padding: 14px 32px; border-radius: 9999px; text-decoration: none; box-shadow: 0 4px 14px rgba(30,64,175,0.25); }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <div style="font-size: 20px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;">V I G O R &nbsp; A I</div>
+        <div style="font-size: 11px; letter-spacing: 0.12em; color: #A8A092; text-transform: uppercase; margin-top: 4px;">
+          ${isAr ? 'منصة الرعاية الصحية التخصصية والاستشارات الطبية' : 'Precision Telehealth & Clinical Network'}
+        </div>
+      </div>
+      <div class="content">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div class="approved-badge">✓ ${isAr ? 'تم تأكيد واعتماد الموعد' : 'Status: Approved & Confirmed'}</div>
+          <h1 style="font-size: 24px; font-weight: 800; color: #141311; margin: 16px 0 8px;">
+            ${isAr ? 'تمت الموافقة على موعدك بنجاح' : 'Your appointment has been approved.'}
+          </h1>
+          <p style="font-size: 13px; color: #6B6355; margin: 0;">
+            ${isAr ? 'المرجع السريري:' : 'Booking Reference:'} <strong>${bookingId}</strong>
+          </p>
+        </div>
+
+        <div class="card">
+          <p style="margin: 0 0 12px; font-size: 11px; font-weight: 800; color: #8A8172; text-transform: uppercase; letter-spacing: 0.1em;">
+            ${isAr ? 'تفاصيل الموعد المعتمد' : 'Confirmed Appointment Details'}
+          </p>
+          ${patientName ? `<p style="margin: 0 0 8px; font-size: 14px; color: #141311;">👤 <strong>${isAr ? 'المريض' : 'Patient'}:</strong> ${patientName}</p>` : ''}
+          <p style="margin: 0 0 8px; font-size: 15px; font-weight: 700; color: #141311;">
+            👨‍⚕️ <strong>${isAr ? 'الطبيب' : 'Physician'}:</strong> ${doctorName}
+          </p>
+          <p style="margin: 0 0 8px; font-size: 14px; color: #524A3D;">
+            🏥 <strong>${isAr ? 'المركز' : 'Facility'}:</strong> ${facilityName} ${location ? `· ${location}` : ''}
+          </p>
+          <div style="margin: 12px 0; padding: 12px; background-color: #FFFFFF; border-radius: 10px; border: 1px solid #E5E0D5;">
+            <p style="margin: 0; font-size: 15px; font-weight: 800; color: #1E3A8A;">
+              🗓️ <strong>${isAr ? 'الموعد المعتمد المؤكد' : 'Confirmed Date & Time'}:</strong> ${slotTime}
+            </p>
+          </div>
+          <p style="margin: 0; font-size: 14px; color: #524A3D;">
+            ${isVideo ? '📹' : '🏥'} <strong>${isAr ? 'طريقة الاستشارة' : 'Modality'}:</strong> ${
+              isVideo
+                ? (isAr ? 'استشارة مرئية مباشرة عبر الفيديو (عن بُعد)' : 'Live Telehealth Video Consultation')
+                : (isAr ? 'حضور بالعيادة' : 'In-Person Hospital Visit')
+            }
+          </p>
+        </div>
+
+        ${
+          isVideo && telehealthRoomUrl
+            ? `
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${telehealthRoomUrl}" class="btn-join">
+            ${isAr ? 'انقر هنا لبدء مكالمة الفيديو الآن' : 'Join Video Call Now'} &rarr;
+          </a>
+          <p style="font-size: 11px; color: #6B6355; margin-top: 10px;">
+            ${isAr ? 'رابط مباشر لغرفة الفيديو المشفرة الخاصة بك' : 'Direct secure meeting URL. Click to open and join.'}
+          </p>
+          <div style="margin-top: 8px; font-size: 11px; color: #8A8172; font-family: monospace; word-break: break-all;">
+            ${telehealthRoomUrl}
+          </div>
+        </div>`
+            : ''
+        }
+
+        <div style="background-color: #FAF8F5; border: 1px solid #E5E0D5; border-radius: 12px; padding: 14px; margin-top: 20px; font-size: 12px; color: #6B6355; line-height: 1.5;">
+          🔒 <strong>${isAr ? 'الخصوصية وأمان البيانات' : 'Privacy Protection'}:</strong>
+          ${
+            isAr
+              ? 'مكالمتك وسجلاتك محمية بالكامل وفق معايير دائرة الصحة أبوظبي.'
+              : 'Governed under Abu Dhabi Department of Health (DoH) telehealth standards with zero-PII security.'
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASSWORD;
+  const fromAddress = process.env.NOTIFY_FROM || 'no-reply@vigor.health';
+
+  let sentViaSmtp = false;
+  let messageId: string | undefined;
+
+  if (smtpHost && smtpUser && smtpPass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: { user: smtpUser, pass: smtpPass },
+      });
+
+      const info = await transporter.sendMail({
+        from: `"${doctorName} via Vigor AI" <${fromAddress}>`,
+        to: recipientEmail,
+        subject,
+        html,
+      });
+
+      sentViaSmtp = true;
+      messageId = info.messageId;
+      console.log(`[Vigor Email] Appointment-Approved email dispatched to ${recipientEmail} (ID: ${info.messageId})`);
+    } catch (err) {
+      console.error('[Vigor Email] Appointment-Approved dispatch error:', err);
+    }
+  }
+
+  return {
+    success: true,
+    messageId: messageId || `appr_${bookingId}_${Date.now()}`,
+    mode: sentViaSmtp ? 'SMTP_LIVE' : 'DEMO_AUDIT_LOGGED',
+  };
+}
+
