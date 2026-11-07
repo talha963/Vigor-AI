@@ -63,7 +63,7 @@ export default function PatientHistoryLadder({
   bookings = [],
   locale = 'en',
   onClose,
-  initialQuery = 'Give me the complete medical history of Mansoor',
+  initialQuery = '',
   onStartConsultation,
 }: PatientHistoryLadderProps) {
   const isAr = locale === 'ar';
@@ -158,7 +158,8 @@ export default function PatientHistoryLadder({
     const phase = (y - 170) * ((2 * Math.PI) / 620);
     const damp = Math.min(1, Math.max(0, y / 120));
     const endDamp = Math.min(1, Math.max(0, (H - y) / 120));
-    const x = 500 + damp * endDamp * 48 * Math.sin(phase);
+    // Reduced sinusoidal sway amplitude to 28 so there is always a generous gap between ladder and info cards
+    const x = 500 + damp * endDamp * 28 * Math.sin(phase);
     return { x, y };
   }
 
@@ -569,7 +570,7 @@ export default function PatientHistoryLadder({
                   const isLeft = idx % 2 === 0;
                   const isPointReached = revealedY >= ry - 40;
                   const centerPt = getCenter(ry);
-                  const cardEdgeX = isLeft ? 360 : 640;
+                  const cardEdgeX = isLeft ? 300 : 700;
                   const ladderRailX = isLeft ? centerPt.x - 27 : centerPt.x + 27;
 
                   return (
@@ -659,11 +660,11 @@ export default function PatientHistoryLadder({
                     }}
                     className={`flex items-center ${
                       isLeft
-                        ? 'justify-start md:pr-[60%] lg:pr-[62%] xl:pr-[64%]'
-                        : 'justify-end md:pl-[60%] lg:pl-[62%] xl:pl-[64%]'
+                        ? 'justify-start md:pr-[65%] lg:pr-[67%] xl:pr-[69%]'
+                        : 'justify-end md:pl-[65%] lg:pl-[67%] xl:pl-[69%]'
                     }`}
                   >
-                    <div className="w-full max-w-[390px] sm:max-w-[410px] bg-white/95 dark:bg-[#1E1C1A]/95 rounded-2xl p-4 sm:p-5 border border-stone-200 dark:border-stone-800 shadow-md backdrop-blur-md space-y-2.5">
+                    <div className="w-full max-w-[360px] sm:max-w-[380px] bg-white/95 dark:bg-[#1E1C1A]/95 rounded-2xl p-4 sm:p-5 border border-stone-200 dark:border-stone-800 shadow-md backdrop-blur-md space-y-2.5">
                       {/* Step Header */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
@@ -815,15 +816,17 @@ function buildPatientEvents(
       titleAr: 'بروتوكول الاستقبال وتحليل السائل المنوي المعتمد',
       date: createdDate,
       time: '09:30 AM',
-      facility: 'Abu Dhabi Fertility Diagnostics Laboratory',
+      facility: bookingDoc?.facility?.name?.split('·')[0] || 'Abu Dhabi Fertility Diagnostics Laboratory',
       clinician: 'Autonomous WHO 2021 Triage Engine',
-      summary: `Automated analysis against WHO 2021 lower reference limits: Volume: 2.4ml, Progressive Motility: 16.8% (Sub-optimal), Total Sperm: 38.4M. Tier: ANDROLOGY_UROLOGY.`,
-      statusBadge: 'Biomarkers Flagged',
+      summary: bookingDoc?.triageResult?.rationale
+        ? `Triage assessment: ${bookingDoc.triageResult.rationale}`
+        : `Autonomous triage protocol executed: Tier assigned as ${bookingDoc?.triageTier || 'ANDROLOGY_UROLOGY'} with clinical guidance loaded for attending clinician.`,
+      statusBadge: 'Triage Complete',
       badgeColor: 'blue',
       details: [
-        { label: 'Prog Motility', value: '16.8% (<30%)' },
-        { label: 'Concentration', value: '16.0 M/ml' },
         { label: 'Triage Tier', value: bookingDoc?.triageTier || 'ANDROLOGY_UROLOGY' },
+        { label: 'Intake Method', value: bookingDoc?.consultType === 'TELEHEALTH_VIDEO' ? 'Telehealth' : 'In-Clinic' },
+        { label: 'DoH Standard', value: 'WHO 2021 LRL' },
       ],
     },
     {
@@ -894,15 +897,17 @@ function buildPatientEvents(
       titleAr: 'تقرير الفحص المخبري وتخطيط الدوبلر للخصية',
       date: createdDate,
       time: '04:15 PM',
-      facility: 'Cleveland Clinic Diagnostic Imaging',
-      clinician: 'Dr. Ziad Al-Khafaji (Consultant Radiologist)',
-      summary: `High-resolution bilateral scrotal color Doppler demonstrated dilated pampiniform plexus veins measuring 3.8mm on left with retrograde Valsalva reflux (>2.4s).`,
-      statusBadge: 'Report Verified',
+      facility: bookingDoc?.facility?.name || 'Cleveland Clinic Diagnostic Imaging',
+      clinician: doctorName,
+      summary: bookingDoc?.clinicalNotes
+        ? `Diagnostic investigation record: ${bookingDoc.clinicalNotes}`
+        : `Diagnostic workup initiated for ${patientName}. Ultrasound and endocrine evaluation ordered.`,
+      statusBadge: bookingDoc?.labOrders?.length ? 'Orders Placed' : 'Diagnostic Workup',
       badgeColor: 'rose',
       details: [
-        { label: 'Vein Caliber', value: '3.8 mm (Reflux +)' },
-        { label: 'Testicular Vol', value: 'L: 14ml / R: 16ml' },
-        { label: 'Imaging Lab', value: 'Cleveland Clinic AUH' },
+        { label: 'Diagnostic Lab', value: bookingDoc?.facility?.name?.split('·')[0] || 'Cleveland Clinic' },
+        { label: 'Orders', value: labOrders.slice(0, 30) },
+        { label: 'Status', value: bookingDoc?.status || 'Active' },
       ],
     },
     {
@@ -911,17 +916,19 @@ function buildPatientEvents(
       category: 'FOLLOWUP',
       title: 'Follow-up Consultation & Milestone Care Plan',
       titleAr: 'استشارة المتابعة وخطة العلاج المستمر',
-      date: createdDate,
+      date: bookingDoc?.followUpDate || createdDate,
       time: '05:00 PM',
       facility: bookingDoc?.facility?.name || 'Cleveland Clinic Abu Dhabi · Andrology Hub',
       clinician: doctorName,
-      summary: `Reviewed diagnostic imaging and semen progress. Recommended subinguinal microsurgical varicocelectomy with intraoperative Doppler guidance. Patient scheduled for elective outpatient procedure.`,
-      statusBadge: 'Next Milestone Set',
+      summary: bookingDoc?.followUpNotes
+        ? `Follow-up plan formulated by ${doctorName}: ${bookingDoc.followUpNotes}`
+        : `Scheduled clinical follow-up review: Patient scheduled for clinical evaluation and repeat CASA analysis.`,
+      statusBadge: bookingDoc?.followUpDate ? 'Follow-Up Scheduled' : 'Care Plan Formulated',
       badgeColor: 'emerald',
       details: [
-        { label: 'Intervention', value: 'Microsurgical Repair' },
-        { label: 'Post-Op CASA', value: 'Scheduled in 3 Months' },
-        { label: 'Care Status', value: 'Continuous Follow-Up' },
+        { label: 'Attending', value: doctorName },
+        { label: 'Scheduled Date', value: bookingDoc?.followUpDate || 'In 4 Weeks' },
+        { label: 'Care Status', value: 'Active Care Path' },
       ],
     },
   ];

@@ -116,19 +116,37 @@ export async function loginDoctorWithFirebase(
     let doctor = doctors.find((d) => d.email === cleanEmail);
 
     if (!doctor) {
-      // Auto-register profile if logging in for first time
-      const isZiad = cleanEmail.includes('ziad');
+      // Auto-register profile with proper doctor name from input
+      let inferredName = '';
+      let inferredSpecialty = 'Consultant Andrologist & Urologist';
+      let inferredFacility = 'Cleveland Clinic Abu Dhabi · Andrology Hub';
+      let inferredLicense = 'DOH-AUH-2024-9102';
+
+      if (cleanEmail.includes('ziad')) {
+        inferredName = 'Dr. Ziad Al-Khafaji';
+        inferredSpecialty = 'Senior Specialist Urological Microsurgeon';
+        inferredFacility = 'Cleveland Clinic Abu Dhabi · Al Maryah Island';
+        inferredLicense = 'DOH-AUH-2015-8821';
+      } else if (cleanEmail.includes('ali')) {
+        inferredName = 'Dr. Ali Khan';
+        inferredSpecialty = 'Consultant Andrologist & Male Infertility Microsurgeon';
+        inferredFacility = 'Cleveland Clinic Abu Dhabi · Andrology Hub';
+        inferredLicense = 'DOH-AUH-2024-9102';
+      } else {
+        const prefix = cleanEmail.split('@')[0].replace(/[._0-9]+/g, ' ').trim();
+        const words = prefix.split(' ').filter(Boolean);
+        const capitalized = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        inferredName = capitalized ? `Dr. ${capitalized}` : 'Dr. Medical Practitioner';
+        inferredLicense = `DOH-AUH-2024-${Math.floor(1000 + Math.random() * 9000)}`;
+      }
+
       doctor = {
         uid: `doc_${Date.now().toString(36)}`,
         email: cleanEmail,
-        fullName: isZiad ? 'Dr. Ziad Al-Khafaji' : 'Dr. Ali Khan',
-        licenseNumber: isZiad ? 'DOH-AUH-2015-8821' : 'DOH-AUH-2024-9102',
-        specialty: isZiad
-          ? 'Senior Specialist Urological Microsurgeon'
-          : 'Consultant Andrologist & Male Infertility Microsurgeon',
-        facility: isZiad
-          ? 'Cleveland Clinic Abu Dhabi · Al Maryah Island'
-          : 'Cleveland Clinic Abu Dhabi · Andrology Hub',
+        fullName: inferredName,
+        licenseNumber: inferredLicense,
+        specialty: inferredSpecialty,
+        facility: inferredFacility,
         dohVerified: true,
         role: 'doctor',
         status: 'available',
@@ -164,7 +182,13 @@ export function getCurrentDoctor(): DoctorAccount | null {
   if (!raw) return null;
   try {
     const doc = JSON.parse(raw);
-    if (!doc || !doc.fullName || doc.fullName.includes('Certified') || doc.fullName.includes('Tariq')) {
+    if (
+      !doc ||
+      !doc.fullName ||
+      doc.fullName.includes('Certified') ||
+      doc.fullName.includes('Tariq') ||
+      doc.facility?.includes('HealthPlus')
+    ) {
       localStorage.removeItem(DOCTOR_AUTH_KEY);
       return null;
     }
