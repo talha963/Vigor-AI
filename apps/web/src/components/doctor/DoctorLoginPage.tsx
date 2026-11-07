@@ -57,22 +57,6 @@ export default function DoctorLoginPage({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Quick 1-click test doctors
-  const handleQuickLogin = async (presetEmail: string, presetName: string, presetFacility: string) => {
-    setLoading(true);
-    setErrorMsg(null);
-    setEmailInput(presetEmail);
-    setPasswordInput('demo123456');
-
-    const res = await loginDoctorWithFirebase(presetEmail, 'demo123456');
-    setLoading(false);
-    if (res.ok && res.doctor) {
-      onLoginSuccess(res.doctor);
-    } else {
-      setErrorMsg(res.error || 'Failed to authenticate doctor.');
-    }
-  };
-
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!emailInput.trim()) {
@@ -485,7 +469,7 @@ export default function DoctorLoginPage({
                       required
                       value={emailInput}
                       onChange={(e) => setEmailInput(e.target.value)}
-                      placeholder={authMode === 'login' ? 'Enter email or select profile below' : 'doctor@hospital.ae'}
+                      placeholder="doctor@hospital.ae"
                       className="w-full pl-9 rtl:pr-9 pr-3 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-stone-400"
                     />
                   </div>
@@ -523,60 +507,6 @@ export default function DoctorLoginPage({
                   )}
                 </button>
               </form>
-
-              {/* Quick 1-Click Clinician Profiles for Testing */}
-              {authMode === 'login' && (
-                <div className="pt-2 border-t border-stone-200 dark:border-stone-800 space-y-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block text-center">
-                    {isAr ? 'أو اختر حساب الطبيب المعتمد مباشرة للتحقق:' : 'Or Quick Sign In with Registered Clinician Profile:'}
-                  </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleQuickLogin(
-                          'ziad.alkhafaji@clevelandclinicabudhabi.ae',
-                          'Dr. Ziad Al-Khafaji',
-                          'Cleveland Clinic Abu Dhabi · Al Maryah Island'
-                        )
-                      }
-                      className="p-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50/70 dark:bg-stone-900/60 hover:border-emerald-500 text-left rtl:text-right transition-all group"
-                    >
-                      <p className="font-bold text-stone-900 dark:text-white text-xs flex items-center justify-between">
-                        <span>Dr. Ziad Al-Khafaji</span>
-                        <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold">
-                          Microsurgeon
-                        </span>
-                      </p>
-                      <p className="text-[10px] text-stone-500 dark:text-stone-400 truncate">
-                        Cleveland Clinic · Al Maryah
-                      </p>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleQuickLogin(
-                          'ali.khan@clevelandclinicabudhabi.ae',
-                          'Dr. Ali Khan',
-                          'Cleveland Clinic Abu Dhabi · Andrology Hub'
-                        )
-                      }
-                      className="p-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50/70 dark:bg-stone-900/60 hover:border-emerald-500 text-left rtl:text-right transition-all group"
-                    >
-                      <p className="font-bold text-stone-900 dark:text-white text-xs flex items-center justify-between">
-                        <span>Dr. Ali Khan</span>
-                        <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-sky-300 font-bold">
-                          Andrologist
-                        </span>
-                      </p>
-                      <p className="text-[10px] text-stone-500 dark:text-stone-400 truncate">
-                        Cleveland Clinic · Andrology Hub
-                      </p>
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
