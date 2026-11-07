@@ -370,6 +370,9 @@ export default function DoctorPortalPage() {
     } else if (bookingId) {
       setHistoryQuery(`Find ${bookingId.slice(-6)}`);
     }
+    if (bookingId) {
+      setActiveConsultationBookingId(bookingId);
+    }
     setActiveTab('history');
   };
 
@@ -1046,6 +1049,9 @@ export default function DoctorPortalPage() {
               bookings={bookings}
               locale={locale}
               initialQuery={historyQuery}
+              onSelectPatient={(bookingId) => {
+                setActiveConsultationBookingId(bookingId);
+              }}
               onStartConsultation={(bookingId) => {
                 setActiveConsultationBookingId(bookingId);
                 setActiveTab('consultation');

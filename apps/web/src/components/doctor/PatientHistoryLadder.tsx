@@ -52,11 +52,111 @@ interface PatientRecord {
   events: MedicalHistoryEvent[];
 }
 
+/**
+ * Natural Language Query Pre-Processor
+ * Strips conversational conversational prefixes, stop phrases and punctuation
+ * while extracting target patient name or identifier keyword.
+ */
+function cleanQueryToKeyword(raw: string): string {
+  let cleaned = raw.toLowerCase().trim();
+  if (!cleaned) return '';
+
+  // Remove punctuation
+  cleaned = cleaned.replace(/[?.,!;:"]/g, ' ');
+
+  // English conversational phrases
+  cleaned = cleaned
+    .replace(/\bgive\s+me(\s+the)?(\s+complete)?(\s+medical)?(\s+records?|\s+history|\s+dossier)?(\s+of|\s+for)?\b/gi, ' ')
+    .replace(/\bshow(\s+me)?(\s+all)?(\s+the)?(\s+previous)?(\s+appointments?|\s+diagnos(is|es)|\s+prescriptions?|\s+medications?|\s+records?|\s+events?|\s+history)?(\s+of|\s+for|\s+about)?\b/gi, ' ')
+    .replace(/\bwhat\s+(medications?|medicines?|prescriptions?|drugs?|treatments?)\s+(has|have|did|was|were)\b/gi, ' ')
+    .replace(/\bwhat\s+(is|was|are|were)\s+(the)?\s*(previous)?\s*(diagnos(is|es)|prescriptions?|medications?|history|appointments?|records?)(\s+of|\s+for)?\b/gi, ' ')
+    .replace(/\b(been\s+prescribed|prescribed|prescriptions?|medications?|diagnos(is|es)|appointments?)\b/gi, ' ')
+    .replace(/\b(has\s+been|have\s+been|has|have|been|was|were|did)\b/gi, ' ')
+    .replace(/\b(tell\s+me\s+about|details\s+(of|for|about)?|search\s+(for)?|find\s+(patient)?|lookup)\b/gi, ' ')
+    .replace(/\b(complete\s+medical\s+history\s+of|medical\s+history\s+of|history\s+of|record\s+of|records\s+of)\b/gi, ' ')
+    .replace(/\b(of\s+this\s+patient|this\s+patient|the\s+patient|patient)\b/gi, ' ')
+    // Arabic conversational phrases
+    .replace(/(أعطني|أرني|عرض|سجل|تاريخ|ملف|بيانات|المرضي|المريض|عن|لـ|للمريض|ابحث\s+عن|ما\s+هي\s+أدوية|الوصفات|التشخيص|التشخيصات|المواعيد)/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return cleaned;
+}
+
+/**
+ * Strict Patient Record Matcher
+ * Tests candidate patient against raw natural query and extracted keyword.
+ * Never allows spurious cross-patient email leaks or generic match-all bugs.
+ */
+function isPatientMatch(
+  p: PatientRecord,
+  rawQuery: string,
+  extractedKw: string
+): boolean {
+  const q = rawQuery.toLowerCase().trim();
+  const kw = extractedKw.toLowerCase().trim();
+  if (!q && !kw) return false;
+
+  const pName = (p.name || '').toLowerCase().trim();
+  const pBookingId = (p.bookingId || '').toLowerCase().trim();
+  const pPseudonymId = (p.pseudonymId || '').toLowerCase().trim();
+  const pEmail = (p.email || '').toLowerCase().trim();
+
+  // 1. Direct ID matches (Booking ID or Pseudonym ID)
+  if (kw && kw.length >= 3) {
+    if (pBookingId.includes(kw) || pPseudonymId.includes(kw)) return true;
+  }
+  if (pBookingId && q.includes(pBookingId)) return true;
+  if (pPseudonymId && q.includes(pPseudonymId)) return true;
+
+  // 2. Email matching: ONLY if the query explicitly contains '@'
+  if (q.includes('@') || kw.includes('@')) {
+    if (pEmail && (pEmail.includes(kw) || kw.includes(pEmail) || q.includes(pEmail))) {
+      return true;
+    }
+  }
+
+  // 3. Name matching
+  if (!pName) return false;
+
+  // Direct substring matches between kw and patient name
+  if (kw.length >= 2 && pName.includes(kw)) return true;
+  if (pName.length >= 3 && kw.includes(pName)) return true;
+
+  // Check patient name tokens (words with length >= 3)
+  const pTokens = pName
+    .split(/\s+/)
+    .map((s) => s.replace(/[^a-z0-9]/gi, ''))
+    .filter((s) => s.length >= 3 && !['patient', 'doctor', 'dr', 'mr'].includes(s.toLowerCase()));
+
+  for (const token of pTokens) {
+    const wordRegex = new RegExp(`(^|[^a-z0-9])${token}([^a-z0-9]|$)`, 'i');
+    if (wordRegex.test(q) || wordRegex.test(kw)) {
+      return true;
+    }
+  }
+
+  // Check tokens from extractedKw against pTokens
+  const kwTokens = kw
+    .split(/\s+/)
+    .map((s) => s.replace(/[^a-z0-9]/gi, ''))
+    .filter((s) => s.length >= 3 && !['patient', 'doctor', 'history', 'record', 'records'].includes(s.toLowerCase()));
+
+  for (const kwToken of kwTokens) {
+    if (pTokens.some((pt) => pt === kwToken || pt.includes(kwToken) || kwToken.includes(pt))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 interface PatientHistoryLadderProps {
   bookings: any[];
   locale?: 'en' | 'ar';
   onClose?: () => void;
   initialQuery?: string;
+  onSelectPatient?: (bookingId: string) => void;
   onStartConsultation?: (bookingId: string) => void;
 }
 
@@ -65,6 +165,7 @@ export default function PatientHistoryLadder({
   locale = 'en',
   onClose,
   initialQuery = '',
+  onSelectPatient,
   onStartConsultation,
 }: PatientHistoryLadderProps) {
   const isAr = locale === 'ar';
@@ -109,30 +210,22 @@ export default function PatientHistoryLadder({
 
   // Extract query keywords (e.g. "Give me the record of Usman" -> "usman")
   const extractedKeyword = useMemo(() => {
-    const raw = naturalQuery.toLowerCase().trim();
-    if (!raw) return '';
-    const cleaned = raw
-      .replace(/give\s+me(\s+the)?(\s+complete)?(\s+medical)?(\s+record|\s+history|\s+dossier)?(\s+of)?/g, '')
-      .replace(/show(\s+me)?(\s+all)?(\s+previous)?(\s+appointments|\s+diagnoses|\s+records)?(\s+of)?/g, '')
-      .replace(/what\s+medications\s+has/g, '')
-      .replace(/been\s+prescribed\??/g, '')
-      .replace(/show(\s+the)?(\s+previous)?(\s+diagnoses|\s+records)?(\s+of\s+this\s+patient)?/g, '')
-      .replace(/find(\s+patient)?/g, '')
-      .replace(/search(\s+for)?/g, '')
-      .replace(/patient/g, '')
-      .replace(/history(\s+of)?/g, '')
-      .replace(/(أعطني|عرض|أرني|سجل|تاريخ|ملف|بيانات|المرضي|المريض|عن|لـ|للمريض|ابحث\s+عن)/g, '')
-      .trim();
-    return cleaned || raw;
+    return cleanQueryToKeyword(naturalQuery);
   }, [naturalQuery]);
 
-  // Construct dynamic patient records from database bookings
+  // Construct dynamic patient records from database bookings (sorted newest first)
   const patientRecords = useMemo<PatientRecord[]>(() => {
     if (!bookings || bookings.length === 0) {
       return [];
     }
 
-    return bookings.map((b) => {
+    const sorted = [...bookings].sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+
+    return sorted.map((b) => {
       const pName =
         b.patientName ||
         b.contact?.name ||
@@ -156,35 +249,21 @@ export default function PatientHistoryLadder({
     });
   }, [bookings]);
 
-  // Filter patients based on natural language search (Only active when query has been made)
+  // Filter patients based on natural language search (Strict matching - only active when query has been made)
   const filteredPatients = useMemo<PatientRecord[]>(() => {
     if (!hasSearched || !naturalQuery.trim()) return [];
+    const raw = naturalQuery.trim();
     const kw = extractedKeyword.toLowerCase().trim();
-    if (!kw) return [];
 
-    const terms = kw.split(/\s+/).filter(Boolean);
+    // If query has no specific keyword but doctor asks about "this patient"
+    const isGeneric = !kw || kw === 'this' || kw === 'current' || kw === 'this patient';
+    if (isGeneric && selectedPatientId) {
+      const current = patientRecords.find((p) => p.id === selectedPatientId);
+      if (current) return [current];
+    }
 
-    return patientRecords.filter((p) => {
-      const pName = p.name.toLowerCase();
-      const pEmail = p.email.toLowerCase();
-      const pBookingId = p.bookingId.toLowerCase();
-      const pPseudonymId = p.pseudonymId.toLowerCase();
-
-      if (
-        pName.includes(kw) ||
-        kw.includes(pName) ||
-        pEmail.includes(kw) ||
-        pBookingId.includes(kw) ||
-        pPseudonymId.includes(kw)
-      ) {
-        return true;
-      }
-
-      return terms.some(
-        (t) => t.length > 2 && (pName.includes(t) || kw.includes(t) || pEmail.includes(t))
-      );
-    });
-  }, [patientRecords, hasSearched, naturalQuery, extractedKeyword]);
+    return patientRecords.filter((p) => isPatientMatch(p, raw, kw));
+  }, [patientRecords, hasSearched, naturalQuery, extractedKeyword, selectedPatientId]);
 
   // Synchronize selected patient
   useEffect(() => {
@@ -206,6 +285,13 @@ export default function PatientHistoryLadder({
     }
     return filteredPatients[0];
   }, [filteredPatients, selectedPatientId]);
+
+  // Auto-synchronize patient selection to Current Consultation tab
+  useEffect(() => {
+    if (activePatient?.bookingId && onSelectPatient) {
+      onSelectPatient(activePatient.bookingId);
+    }
+  }, [activePatient?.bookingId, onSelectPatient]);
 
   // =========================================================================
   // MATHEMATICAL PROCEDURAL 3D WINDING LADDER GENERATOR (Main Page Geometry)
@@ -354,36 +440,20 @@ export default function PatientHistoryLadder({
     setHasSearched(true);
 
     const qLower = trimmed.toLowerCase();
-    const kw = qLower
-      .replace(/give\s+me(\s+the)?(\s+complete)?(\s+medical)?(\s+record|\s+history|\s+dossier)?(\s+of)?/g, '')
-      .replace(/show(\s+me)?(\s+all)?(\s+previous)?(\s+appointments|\s+diagnoses|\s+records)?(\s+of)?/g, '')
-      .replace(/what\s+medications\s+has/g, '')
-      .replace(/been\s+prescribed\??/g, '')
-      .replace(/show(\s+the)?(\s+previous)?(\s+diagnoses|\s+records)?(\s+of\s+this\s+patient)?/g, '')
-      .replace(/find(\s+patient)?/g, '')
-      .replace(/search(\s+for)?/g, '')
-      .replace(/patient/g, '')
-      .replace(/history(\s+of)?/g, '')
-      .replace(/(أعطني|عرض|أرني|سجل|تاريخ|ملف|بيانات|المرضي|المريض|عن|لـ|للمريض|ابحث\s+عن)/g, '')
-      .trim() || qLower;
+    const kw = cleanQueryToKeyword(trimmed);
 
-    const terms = kw.split(/\s+/).filter(Boolean);
-    const hasMatch = patientRecords.some((p) => {
-      const pName = p.name.toLowerCase();
-      const pEmail = p.email.toLowerCase();
-      const pBookingId = p.bookingId.toLowerCase();
-      const pPseudonymId = p.pseudonymId.toLowerCase();
-      return (
-        pName.includes(kw) ||
-        kw.includes(pName) ||
-        pEmail.includes(kw) ||
-        pBookingId.includes(kw) ||
-        pPseudonymId.includes(kw) ||
-        terms.some((t) => t.length > 2 && (pName.includes(t) || kw.includes(t) || pEmail.includes(t)))
-      );
-    });
+    // If query has no specific keyword but doctor asks about "this patient"
+    const isGeneric = !kw || kw === 'this' || kw === 'current' || kw === 'this patient';
+    let matches: PatientRecord[] = [];
 
-    if (!hasMatch) {
+    if (isGeneric && selectedPatientId) {
+      const current = patientRecords.find((p) => p.id === selectedPatientId);
+      if (current) matches = [current];
+    } else {
+      matches = patientRecords.filter((p) => isPatientMatch(p, trimmed, kw));
+    }
+
+    if (matches.length === 0) {
       setQueryIntentFeedback(
         isAr
           ? `لم يتم العثور على أي ملف طبي يطابق "${trimmed}"`
@@ -393,18 +463,27 @@ export default function PatientHistoryLadder({
       return;
     }
 
-    if (qLower.includes('medication') || qLower.includes('prescrib') || qLower.includes('rx')) {
+    // Immediately select first matched patient and sync with consultation tab
+    setSelectedPatientId(matches[0].id);
+    if (onSelectPatient) {
+      onSelectPatient(matches[0].bookingId);
+    }
+
+    if (qLower.includes('medication') || qLower.includes('prescrib') || qLower.includes('rx') || qLower.includes('drug') || qLower.includes('medicine')) {
       setQueryIntentFeedback(isAr ? 'تصفية الأدوية والوصفات الطبية المعتمدة' : 'Filtering prescribed medications & dosages');
       setTimeout(() => scrollToStep(5), 100);
-    } else if (qLower.includes('diagnos') || qLower.includes('condition')) {
+    } else if (qLower.includes('diagnos') || qLower.includes('condition') || qLower.includes('etiology')) {
       setQueryIntentFeedback(isAr ? 'عرض التشخيص السريري وتقييم الحالة' : 'Retrieving clinical diagnoses & etiology');
       setTimeout(() => scrollToStep(4), 100);
-    } else if (qLower.includes('appointment') || qLower.includes('visit') || qLower.includes('slot')) {
+    } else if (qLower.includes('appointment') || qLower.includes('visit') || qLower.includes('slot') || qLower.includes('schedule')) {
       setQueryIntentFeedback(isAr ? 'عرض تفاصيل المواعيد والاستشارات' : 'Highlighting clinical appointment timeline');
       setTimeout(() => scrollToStep(3), 100);
-    } else if (qLower.includes('report') || qLower.includes('lab') || qLower.includes('ultrasound')) {
+    } else if (qLower.includes('report') || qLower.includes('lab') || qLower.includes('ultrasound') || qLower.includes('scan') || qLower.includes('blood')) {
       setQueryIntentFeedback(isAr ? 'عرض الفحوصات المخبرية وتخطيط الدوبلر' : 'Retrieving laboratory & diagnostic reports');
       setTimeout(() => scrollToStep(6), 100);
+    } else if (qLower.includes('follow') || qLower.includes('next') || qLower.includes('care plan')) {
+      setQueryIntentFeedback(isAr ? 'عرض موعد استشارة المتابعة وخطة العلاج' : 'Displaying follow-up schedule & ongoing care plan');
+      setTimeout(() => scrollToStep(7), 100);
     } else {
       setQueryIntentFeedback(isAr ? 'استرجاع ملف التاريخ السريري الكامل' : 'Retrieving complete chronological medical dossier');
       setTimeout(() => scrollToStep(1), 100);
@@ -413,10 +492,22 @@ export default function PatientHistoryLadder({
 
   // Dynamic sample queries based on real database records
   const sampleQueries = useMemo(() => {
-    const names = Array.from(new Set(patientRecords.map((p) => p.name).filter(Boolean)));
-    const nameA = names[0] || 'Usman';
-    const nameB = names[1] || 'Talha';
-    const nameC = names[2] || 'Mansoor';
+    const validNames = Array.from(
+      new Set(
+        patientRecords
+          .map((p) => p.name)
+          .filter(
+            (n) =>
+              Boolean(n) &&
+              !n.toLowerCase().includes('confidential') &&
+              !n.toLowerCase().startsWith('patient #')
+          )
+      )
+    );
+
+    const nameA = validNames[0] || 'Usman';
+    const nameB = validNames[1] || 'Talha';
+    const nameC = validNames[2] || 'Mansoor';
 
     return [
       `Give me the complete medical history of ${nameA}`,
@@ -557,7 +648,12 @@ export default function PatientHistoryLadder({
               <button
                 key={p.id}
                 type="button"
-                onClick={() => setSelectedPatientId(p.id)}
+                onClick={() => {
+                  setSelectedPatientId(p.id);
+                  if (onSelectPatient) {
+                    onSelectPatient(p.bookingId);
+                  }
+                }}
                 className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all ${
                   isSelected
                     ? 'bg-[#141311] dark:bg-white text-white dark:text-[#141311] shadow-xs'
@@ -599,7 +695,14 @@ export default function PatientHistoryLadder({
             {onStartConsultation && activePatient && (
               <button
                 type="button"
-                onClick={() => onStartConsultation(activePatient.bookingId)}
+                onClick={() => {
+                  if (onSelectPatient) {
+                    onSelectPatient(activePatient.bookingId);
+                  }
+                  if (onStartConsultation) {
+                    onStartConsultation(activePatient.bookingId);
+                  }
+                }}
                 className="px-3.5 py-1.5 rounded-full bg-[#141311] dark:bg-white text-white dark:text-[#141311] text-xs font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all flex items-center gap-1.5 shadow-2xs"
               >
                 <Stethoscope className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
