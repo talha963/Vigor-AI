@@ -503,7 +503,7 @@ export default function PatientHistoryLadder({
           <div className="absolute inset-0 pointer-events-none flex justify-center z-10">
             <svg
               viewBox={`0 0 1000 ${H}`}
-              className="w-full max-w-4xl h-full"
+              className="w-full max-w-6xl h-full"
               preserveAspectRatio="none"
             >
               <defs>
@@ -564,24 +564,35 @@ export default function PatientHistoryLadder({
                   </g>
                 ))}
 
-                {/* Milestone Connector Arms & Glowing Pins */}
+                {/* Milestone Connector Arms & Glowing Pins (with generous gap) */}
                 {RUNG_Y.map((ry, idx) => {
                   const isLeft = idx % 2 === 0;
                   const isPointReached = revealedY >= ry - 40;
                   const centerPt = getCenter(ry);
+                  const cardEdgeX = isLeft ? 360 : 640;
+                  const ladderRailX = isLeft ? centerPt.x - 27 : centerPt.x + 27;
 
                   return (
                     <g key={`milestone-${idx}`}>
-                      {/* Connector dashed line from ladder to card */}
+                      {/* Connector dashed line spanning the gap between ladder and info card */}
                       <line
-                        x1={isLeft ? centerPt.x - 220 : centerPt.x + 27}
+                        x1={isLeft ? cardEdgeX : ladderRailX}
                         y1={ry}
-                        x2={isLeft ? centerPt.x - 27 : centerPt.x + 220}
+                        x2={isLeft ? ladderRailX : cardEdgeX}
                         y2={ry}
                         stroke={isPointReached ? '#10B981' : '#8A8172'}
                         strokeWidth="1.5"
-                        strokeDasharray="3 3"
+                        strokeDasharray="4 4"
                         opacity={isPointReached ? 1 : 0.4}
+                        className="transition-colors duration-300"
+                      />
+                      {/* Terminal node dot at the card connector boundary */}
+                      <circle
+                        cx={cardEdgeX}
+                        cy={ry}
+                        r={3.5}
+                        fill={isPointReached ? '#10B981' : '#8A8172'}
+                        opacity={isPointReached ? 0.9 : 0.4}
                         className="transition-colors duration-300"
                       />
                       {/* Glowing Anchor Pin on Ladder Spine */}
@@ -627,9 +638,9 @@ export default function PatientHistoryLadder({
             </svg>
           </div>
 
-          {/* Medical Events Cards Along the Winding Ladder (Alternating Left & Right) */}
+          {/* Medical Events Cards Along the Winding Ladder (Alternating Left & Right with Generous Gap) */}
           {activePatient && (
-            <div className="relative z-20 max-w-5xl mx-auto px-4 space-y-16">
+            <div className="relative z-20 max-w-6xl mx-auto px-4 sm:px-8 space-y-16">
               {activePatient.events.map((evt, idx) => {
                 const ry = RUNG_Y[idx];
                 const isLeft = idx % 2 === 0;
@@ -647,10 +658,12 @@ export default function PatientHistoryLadder({
                       pointerEvents: isRevealed ? 'auto' : 'none',
                     }}
                     className={`flex items-center ${
-                      isLeft ? 'justify-start md:pr-[52%]' : 'justify-end md:pl-[52%]'
+                      isLeft
+                        ? 'justify-start md:pr-[60%] lg:pr-[62%] xl:pr-[64%]'
+                        : 'justify-end md:pl-[60%] lg:pl-[62%] xl:pl-[64%]'
                     }`}
                   >
-                    <div className="w-full max-w-md bg-white/95 dark:bg-[#1E1C1A]/95 rounded-2xl p-4 sm:p-5 border border-stone-200 dark:border-stone-800 shadow-md backdrop-blur-md space-y-2.5">
+                    <div className="w-full max-w-[390px] sm:max-w-[410px] bg-white/95 dark:bg-[#1E1C1A]/95 rounded-2xl p-4 sm:p-5 border border-stone-200 dark:border-stone-800 shadow-md backdrop-blur-md space-y-2.5">
                       {/* Step Header */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
