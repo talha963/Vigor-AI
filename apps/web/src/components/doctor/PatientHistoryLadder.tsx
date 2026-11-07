@@ -56,29 +56,36 @@ interface PatientHistoryLadderProps {
   locale?: 'en' | 'ar';
   onClose?: () => void;
   initialQuery?: string;
+  onStartConsultation?: (bookingId: string) => void;
 }
 
 export default function PatientHistoryLadder({
   bookings = [],
   locale = 'en',
   onClose,
-  initialQuery = 'Give me the record of ALI',
+  initialQuery = 'Give me the complete medical history of Mansoor',
+  onStartConsultation,
 }: PatientHistoryLadderProps) {
   const isAr = locale === 'ar';
   const [naturalQuery, setNaturalQuery] = useState(initialQuery);
+  const [inputVal, setInputVal] = useState(initialQuery);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const [queryIntentFeedback, setQueryIntentFeedback] = useState<string | null>(null);
 
   // Active ladder step tracker (1 to 7)
   const [activeStep, setActiveStep] = useState<number>(1);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const eventRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  // Extract query keywords (e.g. "Give me the record of ALI" -> "ali")
+  // Extract query keywords (e.g. "Give me the record of Mansoor" -> "mansoor")
   const extractedKeyword = useMemo(() => {
     const raw = naturalQuery.toLowerCase();
     const cleaned = raw
-      .replace(/give\s+me(\s+the)?(\s+record)?(\s+of)?/g, '')
-      .replace(/show(\s+me)?(\s+the)?(\s+record)?(\s+of)?/g, '')
+      .replace(/give\s+me(\s+the)?(\s+complete)?(\s+medical)?(\s+record|\s+history)?(\s+of)?/g, '')
+      .replace(/show(\s+me)?(\s+all)?(\s+previous)?(\s+appointments|\s+diagnoses)?(\s+of)?/g, '')
+      .replace(/what\s+medications\s+has/g, '')
+      .replace(/been\s+prescribed\??/g, '')
+      .replace(/show(\s+the)?(\s+previous)?(\s+diagnoses|\s+records)?(\s+of\s+this\s+patient)?/g, '')
       .replace(/find(\s+patient)?/g, '')
       .replace(/search(\s+for)?/g, '')
       .replace(/patient/g, '')
@@ -137,20 +144,43 @@ export default function PatientHistoryLadder({
     return patientRecords.find((p) => p.id === selectedPatientId) || patientRecords[0];
   }, [patientRecords, selectedPatientId]);
 
+  // Handle Query Submission and Intent Detection
+  const handleRunQuery = (queryText: string) => {
+    setNaturalQuery(queryText);
+    setInputVal(queryText);
+    const qLower = queryText.toLowerCase();
+
+    if (qLower.includes('medication') || qLower.includes('prescrib') || qLower.includes('rx')) {
+      setQueryIntentFeedback(isAr ? 'تصفية الأدوية والوصفات الطبية المعتمدة' : 'Filtering prescribed medications & dosages');
+      setTimeout(() => scrollToStep(5), 100);
+    } else if (qLower.includes('diagnos') || qLower.includes('condition')) {
+      setQueryIntentFeedback(isAr ? 'عرض التشخيص السريري وتقييم الحالة' : 'Retrieving clinical diagnoses & etiology');
+      setTimeout(() => scrollToStep(4), 100);
+    } else if (qLower.includes('appointment') || qLower.includes('visit') || qLower.includes('slot')) {
+      setQueryIntentFeedback(isAr ? 'عرض تفاصيل المواعيد والاستشارات' : 'Highlighting clinical appointment timeline');
+      setTimeout(() => scrollToStep(3), 100);
+    } else if (qLower.includes('report') || qLower.includes('lab') || qLower.includes('ultrasound')) {
+      setQueryIntentFeedback(isAr ? 'عرض الفحوصات المخبرية وتخطيط الدوبلر' : 'Retrieving laboratory & diagnostic reports');
+      setTimeout(() => scrollToStep(6), 100);
+    } else {
+      setQueryIntentFeedback(isAr ? 'استرجاع ملف التاريخ السريري الكامل' : 'Retrieving complete chronological medical dossier');
+      setTimeout(() => scrollToStep(1), 100);
+    }
+  };
+
   // Synchronized Vertical Scrolling Ladder Engine
   const handleScroll = () => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
     const containerTop = container.getBoundingClientRect().top;
-    const triggerOffset = 140; // Trigger line from container top
+    const triggerOffset = 140;
 
     let currentStep = 1;
     activePatient?.events.forEach((evt) => {
       const el = eventRefs.current.get(evt.stepNumber);
       if (el) {
         const rect = el.getBoundingClientRect();
-        // If element top reached or passed the trigger offset line
         if (rect.top - containerTop <= triggerOffset) {
           currentStep = evt.stepNumber;
         }
@@ -168,23 +198,30 @@ export default function PatientHistoryLadder({
     }
   };
 
+  const sampleQueries = [
+    'Give me the complete medical history of Mansoor',
+    'Show all previous appointments of Mansoor',
+    'What medications has Mansoor been prescribed?',
+    'Show the previous diagnoses of this patient',
+  ];
+
   return (
     <div className="bg-[#FAF8F5] dark:bg-[#181715] rounded-3xl border border-[#DDD7C8] dark:border-stone-800 shadow-xl overflow-hidden flex flex-col transition-all">
-      {/* 1. Header with Natural Language Search Box */}
-      <div className="p-4 sm:p-5 border-b border-[#E8E2D5] dark:border-stone-800 bg-[#F4EFE6]/80 dark:bg-[#1C1A17]">
-        <div className="flex items-center justify-between gap-3 mb-3">
+      {/* 1. ChatGPT / Claude Style Natural Language Query Interface */}
+      <div className="p-5 sm:p-6 border-b border-[#E8E2D5] dark:border-stone-800 bg-[#F4EFE6]/90 dark:bg-[#1C1A17] space-y-4">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#141311] dark:bg-white text-white dark:text-[#141311] flex items-center justify-center font-bold shadow-xs">
+            <div className="w-9 h-9 rounded-2xl bg-[#141311] dark:bg-white text-white dark:text-[#141311] flex items-center justify-center font-bold shadow-xs">
               <Sparkles className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-stone-900 dark:text-[#FAF7F2] font-editorial-serif tracking-tight">
-                {isAr ? 'سجل التاريخ السريري للمريض · سلم الأحداث التفاعلي' : 'Patient Medical History · Scrolling Ladder'}
+              <h3 className="text-base font-bold text-stone-900 dark:text-[#FAF7F2] font-editorial-serif tracking-tight">
+                {isAr ? 'سجل المريض السريري · بحث بالذكاء الاصطناعي' : 'Patient History · Natural Language AI Query'}
               </h3>
-              <p className="text-[10px] text-stone-500 dark:text-stone-400">
+              <p className="text-xs text-stone-500 dark:text-stone-400">
                 {isAr
-                  ? 'بحث باللغة الطبيعية مع تتبع متزامن لكامل المحطات السريرية'
-                  : 'Natural language search with scroll-synchronized clinical ladder events'}
+                  ? 'اكتب استفسارك بلغة طبيعية للوصول الفوري إلى تاريخ المريض، المواعيد، التشخيصات والوصفات'
+                  : 'Ask in everyday human language to retrieve patient appointments, diagnoses, prescriptions, and timeline.'}
               </p>
             </div>
           </div>
@@ -198,44 +235,71 @@ export default function PatientHistoryLadder({
           )}
         </div>
 
-        {/* Natural Language Query Input */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-emerald-600 dark:text-emerald-400 absolute left-3 rtl:right-3 top-2.5" />
-          <input
-            type="text"
-            value={naturalQuery}
-            onChange={(e) => setNaturalQuery(e.target.value)}
-            placeholder={isAr ? 'اكتب استفسارك مثلاً: Give me the record of ALI' : 'e.g. Give me the record of ALI'}
-            className="w-full pl-9 rtl:pr-9 pr-24 py-2 text-xs rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-[#141311] text-stone-900 dark:text-white placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-sans shadow-2xs"
-          />
-          {extractedKeyword && (
-            <div className="absolute right-2.5 rtl:left-2.5 top-1.5 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold text-emerald-800 dark:text-emerald-300">
-              Query: &quot;{extractedKeyword}&quot;
+        {/* ChatGPT / Claude Large Text Input Card */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (inputVal.trim()) handleRunQuery(inputVal.trim());
+          }}
+          className="relative bg-white dark:bg-[#141311] rounded-2xl border border-stone-300 dark:border-stone-700 p-2 sm:p-3 shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/60 focus-within:border-emerald-500 transition-all"
+        >
+          <div className="flex items-start gap-2.5">
+            <Search className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-2 shrink-0" />
+            <textarea
+              rows={2}
+              value={inputVal}
+              onChange={(e) => setInputVal(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (inputVal.trim()) handleRunQuery(inputVal.trim());
+                }
+              }}
+              placeholder={
+                isAr
+                  ? 'مثال: Give me the complete medical history of Mansoor...'
+                  : 'Ask in normal human language, e.g. "Give me the complete medical history of Mansoor" or "What medications has this patient been prescribed?"'
+              }
+              className="w-full bg-transparent text-xs sm:text-sm text-stone-900 dark:text-white placeholder:text-stone-400 focus:outline-none resize-none leading-relaxed"
+            />
+            <button
+              type="submit"
+              className="shrink-0 px-4 py-2 rounded-xl bg-[#141311] hover:bg-[#2C2925] dark:bg-white dark:hover:bg-stone-100 text-white dark:text-[#141311] text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 self-end"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
+              <span>{isAr ? 'بحث' : 'Search Dossier'}</span>
+            </button>
+          </div>
+
+          {/* Query Intent Badge & Feedback */}
+          {queryIntentFeedback && (
+            <div className="mt-2 pt-2 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between text-[11px] text-emerald-800 dark:text-emerald-300">
+              <span className="flex items-center gap-1.5 font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {queryIntentFeedback}
+              </span>
+              <span className="font-mono text-[10px] text-stone-400">Natural Language Match</span>
             </div>
           )}
-        </div>
+        </form>
 
-        {/* Quick Query Pills */}
-        <div className="flex items-center gap-1.5 mt-2.5 overflow-x-auto text-[10px] text-stone-500 dark:text-stone-400">
-          <span className="shrink-0 font-semibold">{isAr ? 'اقتراحات سريعة:' : 'Sample Queries:'}</span>
-          {(patientRecords.length > 0
-            ? [
-                `Give me the record of ${patientRecords[0].name}`,
-                `Record of ${patientRecords[0].name}`,
-                `Show patient ${patientRecords[0].name}`,
-                `Find ${patientRecords[0].bookingId.slice(-6)}`,
-              ]
-            : ['Give me the record of...', 'Find patient...', 'Show history']
-          ).map((sq) => (
-            <button
-              key={sq}
-              type="button"
-              onClick={() => setNaturalQuery(sq)}
-              className="shrink-0 px-2 py-0.5 rounded-full bg-white dark:bg-[#141311] border border-stone-200 dark:border-stone-800 hover:border-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
-            >
-              {sq}
-            </button>
-          ))}
+        {/* Example Query Pills */}
+        <div className="space-y-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 block">
+            {isAr ? 'أمثلة على الاستفسارات الشائعة:' : 'Example Queries (Click to Run):'}
+          </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {sampleQueries.map((sq) => (
+              <button
+                key={sq}
+                type="button"
+                onClick={() => handleRunQuery(sq)}
+                className="px-3 py-1 rounded-full text-xs bg-white dark:bg-[#141311] border border-stone-200 dark:border-stone-800 hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-300 text-stone-700 dark:text-stone-300 transition-all shadow-2xs font-medium"
+              >
+                &ldquo;{sq}&rdquo;
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -289,35 +353,48 @@ export default function PatientHistoryLadder({
             </div>
           </div>
 
-          {/* Quick Rung Jump Indicator */}
-          <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-900 p-1 rounded-full border border-stone-200 dark:border-stone-800">
-            {activePatient.events.map((evt) => {
-              const isActive = evt.stepNumber === activeStep;
-              return (
-                <button
-                  key={evt.id}
-                  type="button"
-                  onClick={() => scrollToStep(evt.stepNumber)}
-                  title={evt.title}
-                  className={`w-6 h-6 rounded-full text-[10px] font-bold flex items-center justify-center transition-all ${
-                    isActive
-                      ? 'bg-emerald-600 text-white shadow-xs scale-110 ring-2 ring-emerald-400/40'
-                      : 'text-stone-500 hover:bg-stone-200 dark:hover:bg-stone-800'
-                  }`}
-                >
-                  {evt.stepNumber}
-                </button>
-              );
-            })}
+          <div className="flex items-center gap-3">
+            {onStartConsultation && activePatient && (
+              <button
+                type="button"
+                onClick={() => onStartConsultation(activePatient.bookingId)}
+                className="px-3.5 py-1.5 rounded-full bg-[#141311] dark:bg-white text-white dark:text-[#141311] text-xs font-bold hover:bg-stone-800 dark:hover:bg-stone-100 transition-all flex items-center gap-1.5 shadow-2xs"
+              >
+                <Stethoscope className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
+                <span>{isAr ? 'بدء الاستشارة الحالية' : 'Open Current Consultation'}</span>
+              </button>
+            )}
+
+            {/* Quick Rung Jump Indicator */}
+            <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-900 p-1 rounded-full border border-stone-200 dark:border-stone-800">
+              {activePatient.events.map((evt) => {
+                const isActive = evt.stepNumber === activeStep;
+                return (
+                  <button
+                    key={evt.id}
+                    type="button"
+                    onClick={() => scrollToStep(evt.stepNumber)}
+                    title={evt.title}
+                    className={`w-6 h-6 rounded-full text-[10px] font-bold flex items-center justify-center transition-all ${
+                      isActive
+                        ? 'bg-emerald-600 text-white shadow-xs scale-110 ring-2 ring-emerald-400/40'
+                        : 'text-stone-500 hover:bg-stone-200 dark:hover:bg-stone-800'
+                    }`}
+                  >
+                    {evt.stepNumber}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
 
-      {/* 4. Interactive Vertical Scrolling Ladder Section (Dedicated Compact Viewport) */}
+      {/* 4. Interactive Vertical Scrolling Ladder Section (Dedicated Limited-Height Viewport) */}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="p-4 sm:p-6 overflow-y-auto max-h-[480px] space-y-6 relative scroll-smooth bg-gradient-to-b from-[#FAF8F5] via-[#F6F4ED] to-[#FAF8F5] dark:from-[#181715] dark:via-[#151412] dark:to-[#181715]"
+        className="p-4 sm:p-6 overflow-y-auto max-h-[500px] space-y-6 relative scroll-smooth bg-gradient-to-b from-[#FAF8F5] via-[#F6F4ED] to-[#FAF8F5] dark:from-[#181715] dark:via-[#151412] dark:to-[#181715]"
       >
         {activePatient ? (
           <div className="relative pl-6 sm:pl-8 rtl:pl-0 rtl:pr-6 rtl:sm:pr-8">

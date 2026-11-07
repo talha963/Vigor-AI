@@ -20,8 +20,11 @@ export async function POST(request: Request) {
       facilityLocation = 'Al Maryah Island, Abu Dhabi',
       diagnosis = 'Asthenozoospermia (WHO 2021) & Clinical Varicocele',
       prescriptionText = '1. L-Carnitine 2000mg + CoQ10 200mg Daily.\n2. Zinc 25mg + Selenium 200mcg.\n3. Repeat CASA Semen Analysis in 4 weeks.',
+      medications = [],
       labOrders = ['Bilateral Scrotal Doppler Ultrasound', 'Serum FSH, LH, Total Testosterone', 'Repeat CASA Semen Analysis'],
       clinicalNotes = 'Patient reviewed and prescribed comprehensive antioxidant and microcirculatory protocol. Follow-up CASA scheduled.',
+      followUpDate = null,
+      followUpNotes = '',
       locale = 'en',
     } = body;
 
@@ -60,9 +63,13 @@ export async function POST(request: Request) {
             prescribedBy: doctorName,
             diagnosis,
             prescription: prescriptionText,
+            medications,
             labOrders,
             clinicalNotes,
+            followUpDate,
+            followUpNotes,
             emailDispatchedTo: emailToSend,
+            updatedAt: new Date().toISOString(),
           },
         }
       );

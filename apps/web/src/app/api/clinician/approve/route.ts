@@ -23,12 +23,21 @@ export async function POST(request: Request) {
     }
 
     const nowIso = new Date().toISOString();
+    const isReject = status === 'Rejected' || status === 'REJECTED';
+    const finalStatus = isReject ? 'Rejected' : 'Approved';
+
     const updateFields: any = {
-      status: 'Approved',
-      approvedAt: nowIso,
-      approvedBy: doctorName,
+      status: finalStatus,
       updatedAt: nowIso,
     };
+    if (isReject) {
+      updateFields.rejectedAt = nowIso;
+      updateFields.rejectedBy = doctorName;
+    } else {
+      updateFields.approvedAt = nowIso;
+      updateFields.approvedBy = doctorName;
+    }
+
     if (doctorNotes) {
       updateFields.clinicalNotes = doctorNotes;
     }
@@ -38,7 +47,7 @@ export async function POST(request: Request) {
       { $set: updateFields }
     );
 
-    // Dispatch official appointment approved email to patient
+    // Dispatch official appointment approved email to patient (if approved)
     const patientEmail = existing.contact?.email;
     const patientName = existing.patientName || existing.contact?.name || 'Valued Patient';
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
@@ -46,7 +55,7 @@ export async function POST(request: Request) {
       existing.telehealthRoomUrl || `${baseUrl}/telehealth/${bookingId}`;
 
     let emailDispatched = false;
-    if (patientEmail && patientEmail.includes('@')) {
+    if (!isReject && patientEmail && patientEmail.includes('@')) {
       try {
         await sendAppointmentApprovedEmail({
           recipientEmail: patientEmail,
