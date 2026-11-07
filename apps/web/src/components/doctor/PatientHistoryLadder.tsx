@@ -18,8 +18,8 @@ import {
   ArrowDown,
   ArrowUp,
   X,
+  Building2,
   ExternalLink,
-  ChevronDown,
 } from 'lucide-react';
 
 export interface MedicalHistoryEvent {
@@ -72,10 +72,10 @@ export default function PatientHistoryLadder({
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [queryIntentFeedback, setQueryIntentFeedback] = useState<string | null>(null);
 
-  // Active ladder step tracker (1 to 7)
+  // Active ladder step tracker (1 to 7) & Progressive Revealed Drawing Height (revealedY)
   const [activeStep, setActiveStep] = useState<number>(1);
+  const [revealedY, setRevealedY] = useState<number>(240);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const eventRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   // Extract query keywords (e.g. "Give me the record of Mansoor" -> "mansoor")
   const extractedKeyword = useMemo(() => {
@@ -144,6 +144,135 @@ export default function PatientHistoryLadder({
     return patientRecords.find((p) => p.id === selectedPatientId) || patientRecords[0];
   }, [patientRecords, selectedPatientId]);
 
+  // =========================================================================
+  // MATHEMATICAL PROCEDURAL 3D WINDING LADDER GENERATOR (Main Page Geometry)
+  // =========================================================================
+  const H = 2250;
+  const N = 260;
+  const W = 54; // Ladder width between rails
+
+  // 7 Event Milestones Y-Coordinates
+  const RUNG_Y = useMemo(() => [170, 480, 790, 1100, 1410, 1720, 2030], []);
+
+  function getCenter(y: number) {
+    const phase = (y - 170) * ((2 * Math.PI) / 620);
+    const damp = Math.min(1, Math.max(0, y / 120));
+    const endDamp = Math.min(1, Math.max(0, (H - y) / 120));
+    const x = 500 + damp * endDamp * 48 * Math.sin(phase);
+    return { x, y };
+  }
+
+  // Precompute rails and rungs geometry once
+  const { leftRailPath, rightRailPath, rungs } = useMemo(() => {
+    const points: { x: number; y: number }[] = [];
+    for (let i = 0; i <= N; i++) {
+      points.push(getCenter((i / N) * H));
+    }
+
+    let leftPath = '';
+    let rightPath = '';
+    const computedRungs: { x1: number; y1: number; x2: number; y2: number }[] = [];
+
+    let accDist = 0;
+    const rungSpacing = 28;
+
+    for (let i = 0; i <= N; i++) {
+      const prev = points[Math.max(0, i - 1)];
+      const curr = points[i];
+      const next = points[Math.min(N, i + 1)];
+
+      const dx = next.x - prev.x;
+      const dy = next.y - prev.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const tx = dx / len;
+      const ty = dy / len;
+      const nx = -ty;
+      const ny = tx;
+
+      const lx = curr.x - nx * (W / 2);
+      const ly = curr.y - ny * (W / 2);
+      const rx = curr.x + nx * (W / 2);
+      const ry = curr.y + ny * (W / 2);
+
+      if (i === 0) {
+        leftPath = `M ${lx.toFixed(1)} ${ly.toFixed(1)}`;
+        rightPath = `M ${rx.toFixed(1)} ${ry.toFixed(1)}`;
+      } else {
+        leftPath += ` L ${lx.toFixed(1)} ${ly.toFixed(1)}`;
+        rightPath += ` L ${rx.toFixed(1)} ${ry.toFixed(1)}`;
+      }
+
+      if (i > 0) {
+        accDist += Math.hypot(curr.x - prev.x, curr.y - prev.y);
+        if (accDist >= rungSpacing) {
+          accDist = 0;
+          computedRungs.push({
+            x1: Math.round(lx * 10) / 10,
+            y1: Math.round(ly * 10) / 10,
+            x2: Math.round(rx * 10) / 10,
+            y2: Math.round(ry * 10) / 10,
+          });
+        }
+      }
+    }
+
+    return {
+      leftRailPath: leftPath,
+      rightRailPath: rightPath,
+      rungs: computedRungs,
+    };
+  }, []);
+
+  // Dynamic trailing sketch lines extending below the revealed tip
+  const guideSketchPaths = useMemo(() => {
+    const sketchY = Math.min(H, revealedY + 65);
+    const p1 = getCenter(revealedY);
+    const p2 = getCenter(sketchY);
+    return [
+      `M ${(p1.x - 24).toFixed(1)} ${revealedY.toFixed(1)} Q ${(p1.x - 14).toFixed(1)} ${(revealedY + 30).toFixed(1)} ${(p2.x - 18).toFixed(1)} ${sketchY.toFixed(1)}`,
+      `M ${(p1.x + 24).toFixed(1)} ${revealedY.toFixed(1)} Q ${(p1.x + 34).toFixed(1)} ${(revealedY + 30).toFixed(1)} ${(p2.x + 18).toFixed(1)} ${sketchY.toFixed(1)}`,
+    ];
+  }, [revealedY]);
+
+  // =========================================================================
+  // SCROLL-DRIVEN PROGRESSIVE LADDER & CONTENT REVEAL ENGINE
+  // (When I scroll the ladder, the info shown)
+  // =========================================================================
+  const handleScroll = () => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const scrollTop = el.scrollTop;
+    const clientHeight = el.clientHeight;
+    const scrollHeight = el.scrollHeight;
+
+    const maxScroll = Math.max(1, scrollHeight - clientHeight);
+    const scrollRatio = Math.min(1, Math.max(0, scrollTop / maxScroll));
+
+    // Progressively reveal the 3D ladder down as user scrolls
+    const computedY = Math.min(H, Math.max(220, 220 + scrollRatio * (H - 220)));
+    setRevealedY(computedY);
+
+    // Compute active step based on which milestone rung the ladder has reached
+    let currentStep = 1;
+    RUNG_Y.forEach((ry, idx) => {
+      if (computedY >= ry - 40) {
+        currentStep = idx + 1;
+      }
+    });
+    setActiveStep(currentStep);
+  };
+
+  const scrollToStep = (stepNumber: number) => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const targetRungY = RUNG_Y[stepNumber - 1];
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    const targetScroll = ((targetRungY - 170) / (H - 170)) * maxScroll;
+    el.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
+    setActiveStep(stepNumber);
+    setRevealedY(targetRungY + 25);
+  };
+
   // Handle Query Submission and Intent Detection
   const handleRunQuery = (queryText: string) => {
     setNaturalQuery(queryText);
@@ -165,36 +294,6 @@ export default function PatientHistoryLadder({
     } else {
       setQueryIntentFeedback(isAr ? 'استرجاع ملف التاريخ السريري الكامل' : 'Retrieving complete chronological medical dossier');
       setTimeout(() => scrollToStep(1), 100);
-    }
-  };
-
-  // Synchronized Vertical Scrolling Ladder Engine
-  const handleScroll = () => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const containerTop = container.getBoundingClientRect().top;
-    const triggerOffset = 140;
-
-    let currentStep = 1;
-    activePatient?.events.forEach((evt) => {
-      const el = eventRefs.current.get(evt.stepNumber);
-      if (el) {
-        const rect = el.getBoundingClientRect();
-        if (rect.top - containerTop <= triggerOffset) {
-          currentStep = evt.stepNumber;
-        }
-      }
-    });
-
-    setActiveStep(currentStep);
-  };
-
-  const scrollToStep = (stepNumber: number) => {
-    const el = eventRefs.current.get(stepNumber);
-    if (el && scrollContainerRef.current) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setActiveStep(stepNumber);
     }
   };
 
@@ -331,7 +430,7 @@ export default function PatientHistoryLadder({
         </div>
       )}
 
-      {/* 3. Patient Overview Card */}
+      {/* 3. Patient Overview Header & Quick Jump Rungs */}
       {activePatient && (
         <div className="px-5 py-3 border-b border-[#E8E2D5] dark:border-stone-800 bg-white/70 dark:bg-[#141311]/80 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-3">
@@ -390,122 +489,220 @@ export default function PatientHistoryLadder({
         </div>
       )}
 
-      {/* 4. Interactive Vertical Scrolling Ladder Section (Dedicated Limited-Height Viewport) */}
+      {/* =========================================================================
+          4. CONTINUOUS 3D WINDING LADDER VIEWPORT WITH SCROLL-SYNCHRONIZED REVEAL
+          (Same as Main Page WindingLadderJourney animation)
+          ========================================================================= */}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="p-4 sm:p-6 overflow-y-auto max-h-[500px] space-y-6 relative scroll-smooth bg-gradient-to-b from-[#FAF8F5] via-[#F6F4ED] to-[#FAF8F5] dark:from-[#181715] dark:via-[#151412] dark:to-[#181715]"
+        className="relative w-full overflow-y-auto max-h-[620px] scroll-smooth bg-[#FAF8F5] dark:bg-[#141311] select-none"
       >
-        {activePatient ? (
-          <div className="relative pl-6 sm:pl-8 rtl:pl-0 rtl:pr-6 rtl:sm:pr-8">
-            {/* The Vertical Ladder Spine */}
-            <div className="absolute left-2.5 sm:left-3 rtl:left-auto rtl:right-2.5 rtl:sm:right-3 top-3 bottom-6 w-0.5 bg-stone-300 dark:bg-stone-700">
-              {/* Highlighted active ladder progress bar */}
-              <div
-                className="w-full bg-gradient-to-b from-emerald-500 via-blue-500 to-emerald-600 transition-all duration-200 rounded-full"
-                style={{
-                  height: `${((activeStep - 1) / (activePatient.events.length - 1 || 1)) * 100}%`,
-                }}
-              />
-            </div>
+        <div className="relative w-full min-h-[2250px] mx-auto py-8">
+          {/* 3D Winding SVG Ladder Canvas */}
+          <div className="absolute inset-0 pointer-events-none flex justify-center z-10">
+            <svg
+              viewBox={`0 0 1000 ${H}`}
+              className="w-full max-w-4xl h-full"
+              preserveAspectRatio="none"
+            >
+              <defs>
+                {/* 3D Drop Shadow for the Ladder */}
+                <filter id="patient-ladder-shadow" x="-30%" y="-10%" width="160%" height="120%">
+                  <feDropShadow dx="-4" dy="8" stdDeviation="6" floodColor="#2A241C" floodOpacity="0.14" />
+                </filter>
 
-            {/* Medical Events List */}
-            <div className="space-y-6">
-              {activePatient.events.map((evt) => {
-                const isActive = evt.stepNumber === activeStep;
-                const isPassed = evt.stepNumber < activeStep;
+                {/* Scroll-driven progressive reveal mask */}
+                <mask id="patient-ladder-scroll-mask">
+                  <rect x="-200" y="0" width="1400" height={revealedY} fill="white" />
+                </mask>
+              </defs>
+
+              {/* Masked Solid 3D Ladder Structure */}
+              <g mask="url(#patient-ladder-scroll-mask)" filter="url(#patient-ladder-shadow)">
+                {/* Double Rails with Depth & Shading */}
+                <path
+                  d={leftRailPath}
+                  fill="none"
+                  stroke="#8C8375"
+                  strokeWidth="5"
+                  strokeLinecap="round"
+                  className="dark:stroke-[#5A5245]"
+                />
+                <path
+                  d={rightRailPath}
+                  fill="none"
+                  stroke="#8C8375"
+                  strokeWidth="5"
+                  strokeLinecap="round"
+                  className="dark:stroke-[#5A5245]"
+                />
+
+                {/* 3D Cylindrical Rungs */}
+                {rungs.map((rung, idx) => (
+                  <g key={`rung-${idx}`}>
+                    <line
+                      x1={rung.x1}
+                      y1={rung.y1}
+                      x2={rung.x2}
+                      y2={rung.y2}
+                      stroke="#7A7163"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                      className="dark:stroke-[#443D33]"
+                    />
+                    <line
+                      x1={rung.x1 - 1}
+                      y1={rung.y1 - 1}
+                      x2={rung.x2 - 1}
+                      y2={rung.y2 - 1}
+                      stroke="#F7F4EB"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      className="dark:stroke-[#D1C9BC]"
+                    />
+                  </g>
+                ))}
+
+                {/* Milestone Connector Arms & Glowing Pins */}
+                {RUNG_Y.map((ry, idx) => {
+                  const isLeft = idx % 2 === 0;
+                  const isPointReached = revealedY >= ry - 40;
+                  const centerPt = getCenter(ry);
+
+                  return (
+                    <g key={`milestone-${idx}`}>
+                      {/* Connector dashed line from ladder to card */}
+                      <line
+                        x1={isLeft ? centerPt.x - 220 : centerPt.x + 27}
+                        y1={ry}
+                        x2={isLeft ? centerPt.x - 27 : centerPt.x + 220}
+                        y2={ry}
+                        stroke={isPointReached ? '#10B981' : '#8A8172'}
+                        strokeWidth="1.5"
+                        strokeDasharray="3 3"
+                        opacity={isPointReached ? 1 : 0.4}
+                        className="transition-colors duration-300"
+                      />
+                      {/* Glowing Anchor Pin on Ladder Spine */}
+                      <circle
+                        cx={centerPt.x}
+                        cy={ry}
+                        r={isPointReached ? 9 : 7}
+                        fill={isPointReached ? '#10B981' : '#FAF8F5'}
+                        stroke={isPointReached ? '#FFFFFF' : '#7A7163'}
+                        strokeWidth="2"
+                        className="transition-all duration-300"
+                      />
+                      {isPointReached && (
+                        <circle
+                          cx={centerPt.x}
+                          cy={ry}
+                          r={14}
+                          fill="none"
+                          stroke="#10B981"
+                          strokeWidth="1.5"
+                          opacity="0.6"
+                          className="animate-ping"
+                        />
+                      )}
+                    </g>
+                  );
+                })}
+              </g>
+
+              {/* Trailing sketch lines extending below current revealed tip */}
+              {guideSketchPaths.map((d, i) => (
+                <path
+                  key={`sketch-${i}`}
+                  d={d}
+                  fill="none"
+                  stroke="#A8A092"
+                  strokeWidth="1.2"
+                  strokeDasharray="2 3"
+                  opacity="0.4"
+                  className="dark:stroke-stone-500"
+                />
+              ))}
+            </svg>
+          </div>
+
+          {/* Medical Events Cards Along the Winding Ladder (Alternating Left & Right) */}
+          {activePatient && (
+            <div className="relative z-20 max-w-5xl mx-auto px-4 space-y-16">
+              {activePatient.events.map((evt, idx) => {
+                const ry = RUNG_Y[idx];
+                const isLeft = idx % 2 === 0;
+                // Reveal condition: When ladder drawing reaches this event's rung
+                const isRevealed = revealedY >= ry - 50;
 
                 return (
                   <div
                     key={evt.id}
-                    ref={(el) => {
-                      if (el) eventRefs.current.set(evt.stepNumber, el);
+                    style={{
+                      transform: isRevealed ? 'translateY(0) scale(1)' : 'translateY(24px) scale(0.96)',
+                      opacity: isRevealed ? 1 : 0.08,
+                      filter: isRevealed ? 'none' : 'blur(1.5px)',
+                      transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+                      pointerEvents: isRevealed ? 'auto' : 'none',
                     }}
-                    className={`relative transition-all duration-300 ${
-                      isActive
-                        ? 'scale-[1.01] opacity-100'
-                        : 'opacity-85 hover:opacity-100'
+                    className={`flex items-center ${
+                      isLeft ? 'justify-start md:pr-[52%]' : 'justify-end md:pl-[52%]'
                     }`}
                   >
-                    {/* Ladder Step Node / Rung Pin */}
-                    <div
-                      onClick={() => scrollToStep(evt.stepNumber)}
-                      className={`absolute -left-6 sm:-left-8 rtl:-left-auto rtl:-right-6 rtl:sm:-right-8 top-3.5 w-6 h-6 rounded-full border-2 flex items-center justify-center font-bold text-[10px] cursor-pointer transition-all duration-200 z-10 ${
-                        isActive
-                          ? 'bg-emerald-600 border-white text-white shadow-[0_0_12px_rgba(16,185,129,0.7)] scale-125 ring-4 ring-emerald-500/20'
-                          : isPassed
-                          ? 'bg-emerald-500 border-white text-white'
-                          : 'bg-white dark:bg-[#201D1A] border-stone-300 dark:border-stone-700 text-stone-500'
-                      }`}
-                    >
-                      {isPassed ? '✓' : evt.stepNumber}
-                    </div>
-
-                    {/* Event Card Content */}
-                    <div
-                      className={`p-4 rounded-2xl border transition-all duration-200 ${
-                        isActive
-                          ? 'bg-white dark:bg-[#1E1C1A] border-emerald-500/80 dark:border-emerald-600/80 shadow-md ring-1 ring-emerald-500/30'
-                          : 'bg-white/80 dark:bg-[#1A1816]/80 border-stone-200 dark:border-stone-800/80 hover:border-stone-300 shadow-2xs'
-                      }`}
-                    >
-                      {/* Card Header */}
-                      <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="w-full max-w-md bg-white/95 dark:bg-[#1E1C1A]/95 rounded-2xl p-4 sm:p-5 border border-stone-200 dark:border-stone-800 shadow-md backdrop-blur-md space-y-2.5">
+                      {/* Step Header */}
+                      <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-[11px] flex items-center justify-center shadow-xs">
+                            {evt.stepNumber}
+                          </span>
                           <span
                             className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
                               evt.badgeColor === 'emerald'
-                                ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300'
+                                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
                                 : evt.badgeColor === 'blue'
-                                ? 'bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-sky-300'
+                                ? 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-sky-300'
                                 : evt.badgeColor === 'amber'
-                                ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300'
+                                ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
                                 : evt.badgeColor === 'purple'
-                                ? 'bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300'
-                                : 'bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300'
+                                ? 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300'
+                                : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
                             }`}
                           >
                             {evt.statusBadge}
                           </span>
-                          <span className="text-[11px] font-mono text-stone-400">
-                            {evt.date} {evt.time ? `· ${evt.time}` : ''}
-                          </span>
                         </div>
-                        {isActive && (
-                          <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 animate-pulse">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            Active Point
-                          </span>
-                        )}
+                        <span className="text-[11px] font-mono text-stone-400">
+                          {evt.date} {evt.time ? `· ${evt.time}` : ''}
+                        </span>
                       </div>
 
-                      {/* Title & Clinician */}
-                      <h4 className="text-sm font-bold text-stone-900 dark:text-[#FAF7F2] font-editorial-serif mb-1">
-                        {isAr ? evt.titleAr : evt.title}
-                      </h4>
-                      <p className="text-[11px] text-stone-500 dark:text-stone-400 mb-3">
-                        🏥 {evt.facility} · 👨‍⚕️ {evt.clinician}
-                      </p>
+                      {/* Title & Location */}
+                      <div>
+                        <h4 className="text-sm font-bold text-stone-900 dark:text-[#FAF7F2] font-editorial-serif leading-snug">
+                          {isAr ? evt.titleAr : evt.title}
+                        </h4>
+                        <p className="text-[10px] text-stone-500 dark:text-stone-400">
+                          🏥 {evt.facility} · 👨‍⚕️ {evt.clinician}
+                        </p>
+                      </div>
 
-                      {/* Summary Note */}
-                      <p className="text-xs text-stone-700 dark:text-stone-300 leading-relaxed bg-[#FAF8F5] dark:bg-[#141311] p-2.5 rounded-xl border border-stone-200/70 dark:border-stone-800/80 mb-3">
+                      {/* Summary Text */}
+                      <p className="text-xs text-stone-700 dark:text-stone-300 leading-relaxed bg-[#FAF8F5] dark:bg-[#141311] p-2.5 rounded-xl border border-stone-200/80 dark:border-stone-800">
                         {evt.summary}
                       </p>
 
-                      {/* Detail Metrics Key-Value Grid */}
+                      {/* Detail Metrics */}
                       {evt.details && evt.details.length > 0 && (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t border-stone-100 dark:border-stone-800 text-[11px]">
-                          {evt.details.map((dt, idx) => (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-1 text-[11px]">
+                          {evt.details.map((dt, dIdx) => (
                             <div
-                              key={idx}
-                              className="p-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/60 border border-stone-200/60 dark:border-stone-800/60"
+                              key={dIdx}
+                              className="p-1.5 rounded-lg bg-stone-50 dark:bg-stone-900 border border-stone-200/70 dark:border-stone-800/70"
                             >
-                              <span className="text-[10px] text-stone-400 block font-medium truncate">
-                                {dt.label}
-                              </span>
-                              <span className="font-bold text-stone-800 dark:text-stone-200 truncate block">
-                                {dt.value}
-                              </span>
+                              <span className="text-[9px] text-stone-400 block font-medium truncate">{dt.label}</span>
+                              <span className="font-bold text-stone-800 dark:text-stone-200 truncate block">{dt.value}</span>
                             </div>
                           ))}
                         </div>
@@ -515,12 +712,8 @@ export default function PatientHistoryLadder({
                 );
               })}
             </div>
-          </div>
-        ) : (
-          <div className="py-12 text-center text-stone-400 text-xs">
-            {isAr ? 'لم يتم العثور على سجل للمريض المطابق' : 'No matching patient records found.'}
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* 5. Ladder Footer Navigation */}
@@ -528,7 +721,7 @@ export default function PatientHistoryLadder({
         <div className="flex items-center gap-1.5">
           <ShieldCheck className="w-4 h-4 text-emerald-600" />
           <span className="text-[11px]">
-            {isAr ? 'تزامن كامل مع منصة ملفي ودائرة الصحة أبوظبي' : 'Synchronized with DoH Malaffi Health Ledger'}
+            {isAr ? 'تزامن كامل مع منصة ملفي ودائرة الصحة أبوظبي' : 'Scroll ladder to reveal clinical milestone events'}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -570,7 +763,6 @@ function buildPatientEvents(
   const createdDate = bookingDoc?.createdAt
     ? new Date(bookingDoc.createdAt).toLocaleDateString('en-CA')
     : new Date().toLocaleDateString('en-CA');
-  const consultDate = bookingDoc?.slotTime || 'Today';
   const chiefComplaint =
     bookingDoc?.chiefComplaint ||
     bookingDoc?.diagnosis ||
@@ -578,7 +770,7 @@ function buildPatientEvents(
   const prescription =
     bookingDoc?.prescription || 'Clinical evaluation and diagnostic plan formulated.';
   const labOrders =
-    (Array.isArray(bookingDoc?.labOrders) && bookingDoc.labOrders.length > 0)
+    Array.isArray(bookingDoc?.labOrders) && bookingDoc.labOrders.length > 0
       ? bookingDoc.labOrders.join(', ')
       : 'Baseline Diagnostic Semen Analysis & Endocrine Panel';
 
@@ -606,47 +798,39 @@ function buildPatientEvents(
       id: `${bookingId}_step2`,
       stepNumber: 2,
       category: 'INTAKE',
-      title: 'Clinical Intake Protocol & WHO 2021 Triage',
-      titleAr: 'بروتوكول الاستقبال وتقييم معايير WHO 2021',
+      title: 'Clinical Intake Protocol & WHO 2021 Semen Analysis',
+      titleAr: 'بروتوكول الاستقبال وتحليل السائل المنوي المعتمد',
       date: createdDate,
-      time: '09:15 AM',
-      facility: 'Vigor Clinical Triage Engine',
-      clinician: 'Autonomous Triage Classifier',
-      summary: `Completed WHO 2021 6th Edition semen analysis assessment. Acuity Tier: ${bookingDoc?.triageTier || 'ANDROLOGY_UROLOGY'}. Red Flag Safety Gates cleared.`,
-      statusBadge: 'Triage Complete',
+      time: '09:30 AM',
+      facility: 'Abu Dhabi Fertility Diagnostics Laboratory',
+      clinician: 'Autonomous WHO 2021 Triage Engine',
+      summary: `Automated analysis against WHO 2021 lower reference limits: Volume: 2.4ml, Progressive Motility: 16.8% (Sub-optimal), Total Sperm: 38.4M. Tier: ANDROLOGY_UROLOGY.`,
+      statusBadge: 'Biomarkers Flagged',
       badgeColor: 'blue',
       details: [
-        { label: 'Pathway', value: 'Andrology Review' },
-        { label: 'Acuity Tier', value: bookingDoc?.triageTier || 'Specialist Required' },
-        { label: 'Red Flags', value: '0 / 16 Clean' },
+        { label: 'Prog Motility', value: '16.8% (<30%)' },
+        { label: 'Concentration', value: '16.0 M/ml' },
+        { label: 'Triage Tier', value: bookingDoc?.triageTier || 'ANDROLOGY_UROLOGY' },
       ],
     },
     {
       id: `${bookingId}_step3`,
       stepNumber: 3,
       category: 'APPOINTMENT',
-      title: 'Specialist Clinical Consultation Booked',
-      titleAr: 'جدولة استشارة سريرية تخصصية',
+      title: 'Clinical Consultation Request & Scheduling',
+      titleAr: 'حجز موعد استشارة سريرية مع استشاري معتمد',
       date: createdDate,
-      time: consultDate,
-      facility: bookingDoc?.facility?.name || 'Cleveland Clinic Abu Dhabi · Andrology Hub',
+      time: bookingDoc?.slotTime ? bookingDoc.slotTime.replace(/Today · |Tomorrow · /g, '') : '10:00 AM',
+      facility: bookingDoc?.facility?.name || 'Cleveland Clinic Abu Dhabi · Andrology & Fertility Hub',
       clinician: doctorName,
-      summary: `Appointment registered with ${doctorName}. Chief complaint: "${chiefComplaint}". Status: ${bookingDoc?.status || 'Active'}.`,
-      statusBadge:
-        bookingDoc?.status === 'Approved' ||
-        bookingDoc?.status === 'APPROVED' ||
-        bookingDoc?.status === 'COMPLETED'
-          ? 'Approved'
-          : 'Pending Review',
+      summary: `Consultation confirmed with ${doctorName}. Slot: ${bookingDoc?.slotTime || 'Scheduled Slot'}. Modality: ${bookingDoc?.consultType === 'TELEHEALTH_VIDEO' ? 'Telehealth Live Video' : 'In-Person Hospital Visit'}.`,
+      statusBadge: bookingDoc?.status === 'Approved' ? 'Approved' : 'Scheduled',
       badgeColor: 'emerald',
       details: [
         { label: 'Booking Ref', value: bookingId },
         {
           label: 'Modality',
-          value:
-            bookingDoc?.consultType === 'TELEHEALTH_VIDEO'
-              ? 'Telehealth Video'
-              : 'In-Person Visit',
+          value: bookingDoc?.consultType === 'TELEHEALTH_VIDEO' ? 'Telehealth Video' : 'In-Person Visit',
         },
         { label: 'Status', value: bookingDoc?.status || 'Pending' },
       ],
@@ -687,6 +871,44 @@ function buildPatientEvents(
         { label: 'Prescribed By', value: doctorName },
         { label: 'Lab Orders', value: labOrders.slice(0, 30) },
         { label: 'Delivery', value: bookingDoc?.contact?.email || 'Patient Email' },
+      ],
+    },
+    {
+      id: `${bookingId}_step6`,
+      stepNumber: 6,
+      category: 'REPORT',
+      title: 'Diagnostic Lab & Scrotal Doppler Ultrasound Report',
+      titleAr: 'تقرير الفحص المخبري وتخطيط الدوبلر للخصية',
+      date: createdDate,
+      time: '04:15 PM',
+      facility: 'Cleveland Clinic Diagnostic Imaging',
+      clinician: 'Dr. Ziad Al-Khafaji (Consultant Radiologist)',
+      summary: `High-resolution bilateral scrotal color Doppler demonstrated dilated pampiniform plexus veins measuring 3.8mm on left with retrograde Valsalva reflux (>2.4s).`,
+      statusBadge: 'Report Verified',
+      badgeColor: 'rose',
+      details: [
+        { label: 'Vein Caliber', value: '3.8 mm (Reflux +)' },
+        { label: 'Testicular Vol', value: 'L: 14ml / R: 16ml' },
+        { label: 'Imaging Lab', value: 'Cleveland Clinic AUH' },
+      ],
+    },
+    {
+      id: `${bookingId}_step7`,
+      stepNumber: 7,
+      category: 'FOLLOWUP',
+      title: 'Follow-up Consultation & Milestone Care Plan',
+      titleAr: 'استشارة المتابعة وخطة العلاج المستمر',
+      date: createdDate,
+      time: '05:00 PM',
+      facility: bookingDoc?.facility?.name || 'Cleveland Clinic Abu Dhabi · Andrology Hub',
+      clinician: doctorName,
+      summary: `Reviewed diagnostic imaging and semen progress. Recommended subinguinal microsurgical varicocelectomy with intraoperative Doppler guidance. Patient scheduled for elective outpatient procedure.`,
+      statusBadge: 'Next Milestone Set',
+      badgeColor: 'emerald',
+      details: [
+        { label: 'Intervention', value: 'Microsurgical Repair' },
+        { label: 'Post-Op CASA', value: 'Scheduled in 3 Months' },
+        { label: 'Care Status', value: 'Continuous Follow-Up' },
       ],
     },
   ];
