@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const {
       patientName,
       facilityId = 'fac_001',
-      facilityName = 'HealthPlus Fertility & Andrology Center',
+      facilityName = 'Cleveland Clinic Abu Dhabi · Andrology & Fertility Hub',
       doctorName = 'Dr. Ali Khan',
       department = 'Andrology & Male Infertility',
       location = 'Al Maryah Island, Abu Dhabi',

@@ -39,12 +39,13 @@ interface DoctorSettingsModalProps {
   onClose: () => void;
   currentSettings: DoctorSettings;
   onSaveSettings: (settings: DoctorSettings) => void;
+  onLogout?: () => void;
   locale?: 'en' | 'ar';
 }
 
 const LOGO_PRESETS = [
   { id: 'ccad', label: 'Cleveland Clinic', icon: '🏥', color: 'from-blue-600 to-indigo-700' },
-  { id: 'healthplus', label: 'HealthPlus Hub', icon: '🏛️', color: 'from-emerald-600 to-teal-700' },
+  { id: 'ssmc', label: 'SSMC Abu Dhabi', icon: '🏛️', color: 'from-emerald-600 to-teal-700' },
   { id: 'vigor', label: 'Vigor Sovereign', icon: '🛡️', color: 'from-amber-600 to-stone-800' },
   { id: 'caduceus', label: 'UAE Malaffi', icon: '⚕️', color: 'from-red-600 to-rose-700' },
   { id: 'andrology', label: 'Micro-Andrology', icon: '🔬', color: 'from-cyan-600 to-blue-800' },
@@ -56,6 +57,7 @@ export default function DoctorSettingsModal({
   onClose,
   currentSettings,
   onSaveSettings,
+  onLogout,
   locale = 'en',
 }: DoctorSettingsModalProps) {
   const isAr = locale === 'ar';
@@ -226,17 +228,31 @@ export default function DoctorSettingsModal({
         </div>
 
         {/* Footer */}
-        <div className="p-5 border-t border-[#E8E2D5] dark:border-stone-800 bg-white dark:bg-[#1C1A17] flex items-center justify-between">
-          <span className="text-xs text-[#8A8172] dark:text-stone-400">
-            {savedSuccess ? (
-              <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1.5">
-                <Check className="w-4 h-4" />
-                {isAr ? 'تم حفظ وتفعيل الإعدادات بنجاح!' : 'Settings saved and applied!'}
-              </span>
-            ) : (
-              (isAr ? 'يتم حفظ التغييرات محلياً' : 'Changes take effect across the entire portal.')
+        <div className="p-5 border-t border-[#E8E2D5] dark:border-stone-800 bg-white dark:bg-[#1C1A17] flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            {onLogout && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onLogout();
+                }}
+                className="px-4 py-2 rounded-full border border-red-200 dark:border-red-900/60 bg-red-50/70 dark:bg-red-950/40 text-red-700 dark:text-rose-300 hover:bg-red-100 dark:hover:bg-red-900/60 text-xs font-bold transition-colors flex items-center gap-1.5"
+              >
+                <span>{isAr ? 'تسجيل الخروج' : 'Log Out'}</span>
+              </button>
             )}
-          </span>
+            <span className="text-xs text-[#8A8172] dark:text-stone-400 hidden sm:inline">
+              {savedSuccess ? (
+                <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1.5">
+                  <Check className="w-4 h-4" />
+                  {isAr ? 'تم حفظ وتفعيل الإعدادات بنجاح!' : 'Settings saved and applied!'}
+                </span>
+              ) : (
+                (isAr ? 'يتم حفظ التغييرات محلياً' : 'Changes take effect across portal.')
+              )}
+            </span>
+          </div>
 
           <div className="flex items-center gap-3">
             <button

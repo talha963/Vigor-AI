@@ -78,7 +78,7 @@ export async function registerDoctorWithFirebase(data: {
       fullName: data.fullName.trim(),
       licenseNumber: data.licenseNumber.trim() || 'DOH-AUH-2024-9182',
       specialty: data.specialty || 'Consultant Andrologist & Urologist',
-      facility: data.facility || 'HealthPlus Fertility & Andrology Center',
+      facility: data.facility || 'Cleveland Clinic Abu Dhabi · Andrology & Fertility Hub',
       dohVerified: true,
       role: 'doctor',
       status: 'available',
@@ -117,22 +117,18 @@ export async function loginDoctorWithFirebase(
 
     if (!doctor) {
       // Auto-register profile if logging in for first time
-      const isAli = cleanEmail.includes('ali');
+      const isZiad = cleanEmail.includes('ziad');
       doctor = {
         uid: `doc_${Date.now().toString(36)}`,
         email: cleanEmail,
-        fullName: isAli
-          ? 'Dr. Ali Khan'
-          : cleanEmail.includes('tariq')
-          ? 'Dr. Tariq Al-Hashimi'
-          : 'Dr. Ali Khan',
-        licenseNumber: isAli ? 'DOH-AUH-2024-9102' : 'DOH-AUH-2019-9481',
-        specialty: isAli
-          ? 'Consultant Andrologist & Male Infertility Microsurgeon'
-          : 'Consultant Andrologist & Reproductive Urologist',
-        facility: isAli
-          ? 'Cleveland Clinic Abu Dhabi · Andrology Hub'
-          : 'HealthPlus Fertility & Andrology Center · Al Bateen',
+        fullName: isZiad ? 'Dr. Ziad Al-Khafaji' : 'Dr. Ali Khan',
+        licenseNumber: isZiad ? 'DOH-AUH-2015-8821' : 'DOH-AUH-2024-9102',
+        specialty: isZiad
+          ? 'Senior Specialist Urological Microsurgeon'
+          : 'Consultant Andrologist & Male Infertility Microsurgeon',
+        facility: isZiad
+          ? 'Cleveland Clinic Abu Dhabi · Al Maryah Island'
+          : 'Cleveland Clinic Abu Dhabi · Andrology Hub',
         dohVerified: true,
         role: 'doctor',
         status: 'available',

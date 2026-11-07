@@ -30,25 +30,46 @@ import { PatientGraphData, GraphNode } from '@/lib/graphdb/ontology';
 
 interface GraphDbExplorerProps {
   currentDoctorName?: string;
+  bookings?: any[];
   locale?: 'en' | 'ar';
 }
 
-const DEMO_PATIENTS = [
-  { id: 'psd_9281a8b2', label: 'Patient #9281a8b2 (Varicocele II · Dr. Ali)', tag: 'Physical Visit' },
-  { id: 'psd_4402bbdd', label: 'Patient #4402bbdd (Rashid Al-Nuaimi)', tag: 'Outpatient' },
-  { id: 'psd_8831ccaa', label: 'Patient #8831ccaa (Emergency Detorsion)', tag: 'ED Surgical' },
-];
-
 export default function GraphDbExplorer({
   currentDoctorName = 'Dr. Ali Khan',
+  bookings = [],
   locale = 'en',
 }: GraphDbExplorerProps) {
   const isAr = locale === 'ar';
 
-  const [selectedPatientId, setSelectedPatientId] = useState('psd_9281a8b2');
-  const [searchInput, setSearchInput] = useState('psd_9281a8b2');
+  const patientChips = React.useMemo(() => {
+    if (bookings && bookings.length > 0) {
+      return bookings.map((b) => {
+        const pId = b.pseudonymId || `psd_${(b.bookingId || '').slice(-8)}`;
+        const name = b.patientName || b.contact?.name || `Patient #${pId.slice(-6)}`;
+        return {
+          id: pId,
+          label: `${name} (${b.facility?.doctor || currentDoctorName})`,
+          tag: b.consultType === 'TELEHEALTH_VIDEO' ? 'Telehealth' : 'Physical Visit',
+        };
+      });
+    }
+    return [
+      { id: 'psd_9281a8b2', label: 'Patient #9281a8b2 (Varicocele II · Dr. Ali)', tag: 'Physical Visit' },
+    ];
+  }, [bookings, currentDoctorName]);
+
+  const initialPatientId = patientChips[0]?.id || 'psd_9281a8b2';
+  const [selectedPatientId, setSelectedPatientId] = useState(initialPatientId);
+  const [searchInput, setSearchInput] = useState(initialPatientId);
   const [graphData, setGraphData] = useState<PatientGraphData | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+
+  useEffect(() => {
+    if (patientChips.length > 0 && !patientChips.some(p => p.id === selectedPatientId)) {
+      setSelectedPatientId(patientChips[0].id);
+      setSearchInput(patientChips[0].id);
+    }
+  }, [patientChips, selectedPatientId]);
 
   // SPARQL State
   const [selectedPresetId, setSelectedPresetId] = useState(CLINICAL_SPARQL_PRESETS[0].id);
@@ -195,9 +216,9 @@ export default function GraphDbExplorer({
             </button>
           </form>
 
-          {/* Demo Patient Chips */}
+          {/* Patient Chips */}
           <div className="flex flex-wrap items-center gap-1.5">
-            {DEMO_PATIENTS.map((p) => (
+            {patientChips.map((p) => (
               <button
                 key={p.id}
                 type="button"

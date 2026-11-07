@@ -197,7 +197,7 @@ export default function DoctorPortalPage() {
 
   // Interactive Medical History Ladder State
   const [ladderModalOpen, setLadderModalOpen] = useState(false);
-  const [ladderQuery, setLadderQuery] = useState('Give me the record of ALI');
+  const [ladderQuery, setLadderQuery] = useState('Give me the record of Mansoor');
 
   // Auth State
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -205,9 +205,9 @@ export default function DoctorPortalPage() {
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [fullNameInput, setFullNameInput] = useState('');
-  const [licenseInput, setLicenseInput] = useState('DOH-AUH-2018-0924');
-  const [specialtyInput, setSpecialtyInput] = useState('Consultant Andrologist & Male Infertility');
-  const [facilityInput, setFacilityInput] = useState('HealthPlus Fertility & Andrology Center · Al Bateen');
+  const [licenseInput, setLicenseInput] = useState('DOH-AUH-2024-9102');
+  const [specialtyInput, setSpecialtyInput] = useState('Consultant Andrologist & Male Infertility Microsurgeon');
+  const [facilityInput, setFacilityInput] = useState('Cleveland Clinic Abu Dhabi · Andrology Hub');
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState('');
 
@@ -236,7 +236,9 @@ export default function DoctorPortalPage() {
     const isLegacyDummy =
       !doc.fullName ||
       doc.fullName.includes('Certified') ||
-      doc.fullName.includes('Tariq');
+      doc.fullName.includes('Tariq') ||
+      doc.fullName.includes('Demo') ||
+      Boolean(doc.facility && doc.facility.includes('HealthPlus'));
 
     const cleanName = isLegacyDummy ? 'Dr. Ali Khan' : doc.fullName;
     const cleanFacility =
@@ -278,8 +280,18 @@ export default function DoctorPortalPage() {
 
   // Load existing session or default to Dr. Ali Khan as primary logged in doctor
   useEffect(() => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('vigor_doctor_logged_out') === 'true') {
+      setCurrentDoctor(null);
+      setAuthModalOpen(true);
+      return;
+    }
     const doc = getCurrentDoctor();
-    if (doc && !doc.fullName.includes('Certified') && !doc.fullName.includes('Tariq')) {
+    if (
+      doc &&
+      !doc.fullName.includes('Certified') &&
+      !doc.fullName.includes('Tariq') &&
+      !doc.facility?.includes('HealthPlus')
+    ) {
       applyDoctorSession(doc);
     } else {
       const defaultDoc: DoctorAccount = {
@@ -338,6 +350,9 @@ export default function DoctorPortalPage() {
     const res = await loginDoctorWithFirebase(emailInput, passwordInput || 'demo123456');
     setAuthLoading(false);
     if (res.ok && res.doctor) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('vigor_doctor_logged_out');
+      }
       applyDoctorSession(res.doctor);
       setAuthModalOpen(false);
       setEmailInput('');
@@ -365,6 +380,9 @@ export default function DoctorPortalPage() {
     });
     setAuthLoading(false);
     if (res.ok && res.doctor) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('vigor_doctor_logged_out');
+      }
       applyDoctorSession(res.doctor);
       setAuthModalOpen(false);
       setEmailInput('');
@@ -376,7 +394,15 @@ export default function DoctorPortalPage() {
   };
 
   const handleLogout = async () => {
-    await logoutDoctor();
+    try {
+      await logoutDoctor();
+    } catch (e) {
+      // ignore
+    }
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('vigor_doctor_logged_out', 'true');
+      localStorage.removeItem('vigor_doctor_auth_session');
+    }
     setCurrentDoctor(null);
     setAuthModalOpen(true);
   };
@@ -773,6 +799,17 @@ export default function DoctorPortalPage() {
                 <span className="hidden md:inline">{isAr ? 'الإعدادات' : 'Settings'}</span>
               </button>
 
+              {/* Logout Pill Button */}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="shrink-0 flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border border-red-200 dark:border-red-900/60 bg-red-50/80 dark:bg-red-950/40 text-[10px] font-bold uppercase tracking-wider text-red-700 dark:text-rose-300 hover:bg-red-100 dark:hover:bg-red-900/60 hover:border-red-300 transition-all shadow-2xs active:scale-95"
+                title={isAr ? 'تسجيل الخروج من البوابة' : 'Log Out Clinician Session'}
+              >
+                <LogOut className="w-3.5 h-3.5 text-red-600 dark:text-rose-400" />
+                <span>{isAr ? 'خروج' : 'Logout'}</span>
+              </button>
+
               {/* Clinician Profile Avatar & Name */}
               <div
                 onClick={() => setSettingsModalOpen(true)}
@@ -1063,6 +1100,14 @@ export default function DoctorPortalPage() {
             <p className="text-[10px] text-[#8A8172] dark:text-stone-400">
               {doctorSettings.facility}
             </p>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="mt-2 w-full py-1.5 px-3 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50/70 dark:bg-red-950/40 text-red-700 dark:text-rose-300 hover:bg-red-100 dark:hover:bg-red-900/60 text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs"
+            >
+              <LogOut className="w-3.5 h-3.5 text-red-600 dark:text-rose-400" />
+              <span>{isAr ? 'تسجيل الخروج' : 'Log Out Clinician'}</span>
+            </button>
           </div>
         </aside>
 
@@ -1179,7 +1224,7 @@ export default function DoctorPortalPage() {
           </div>
 
           {activeSidebarTab === 'graphdb' ? (
-            <GraphDbExplorer currentDoctorName={doctorSettings.fullName} locale={locale} />
+            <GraphDbExplorer currentDoctorName={doctorSettings.fullName} bookings={bookings} locale={locale} />
           ) : activeSidebarTab === 'ladder' ? (
             <PatientHistoryLadder bookings={bookings} locale={locale} initialQuery={ladderQuery} />
           ) : activeSidebarTab === 'workflows' ? (
@@ -2308,6 +2353,7 @@ export default function DoctorPortalPage() {
         onClose={() => setSettingsModalOpen(false)}
         currentSettings={doctorSettings}
         onSaveSettings={handleSaveDoctorSettings}
+        onLogout={handleLogout}
         locale={locale}
       />
 

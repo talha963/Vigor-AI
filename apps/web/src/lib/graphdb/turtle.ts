@@ -16,11 +16,11 @@ vigor:Doctor_Ali a vigor:Practitioner ;
     vigor:dohLicense "DOH-AUH-2024-9102" ;
     vigor:facility vigor:Facility_CCAD .
 
-vigor:Doctor_Tariq a vigor:Practitioner ;
-    rdfs:label "Dr. Tariq Al-Hashimi" ;
-    vigor:title "Consultant Andrologist & Reproductive Urologist" ;
-    vigor:dohLicense "DOH-AUH-2018-0924" ;
-    vigor:facility vigor:Facility_HealthPlus .
+vigor:Doctor_Ziad a vigor:Practitioner ;
+    rdfs:label "Dr. Ziad Al-Khafaji" ;
+    vigor:title "Senior Specialist Urological Microsurgeon" ;
+    vigor:dohLicense "DOH-AUH-2015-8821" ;
+    vigor:facility vigor:Facility_CCAD .
 
 # -------------------------------------------------------------
 # Facilities
@@ -29,9 +29,9 @@ vigor:Facility_CCAD a vigor:Facility ;
     rdfs:label "Cleveland Clinic Abu Dhabi" ;
     vigor:location "Al Maryah Island, Abu Dhabi" .
 
-vigor:Facility_HealthPlus a vigor:Facility ;
-    rdfs:label "HealthPlus Fertility & Andrology Center" ;
-    vigor:location "Al Bateen, Abu Dhabi" .
+vigor:Facility_SSMC a vigor:Facility ;
+    rdfs:label "Sheikh Shakhbout Medical City" ;
+    vigor:location "Al Mafraq, Abu Dhabi" .
 
 # -------------------------------------------------------------
 # Patient 1: psd_9281a8b2 (Physical Visit Follow-up with Dr. Ali)

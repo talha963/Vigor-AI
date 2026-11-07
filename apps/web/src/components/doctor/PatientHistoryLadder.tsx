@@ -90,21 +90,7 @@ export default function PatientHistoryLadder({
   // Construct dynamic patient records from database bookings
   const patientRecords = useMemo<PatientRecord[]>(() => {
     if (!bookings || bookings.length === 0) {
-      // Default demonstrable clinical record if DB is brand new
-      return [
-        {
-          id: 'rec_ali_demo',
-          name: 'Ali Al-Mansoori',
-          email: 'ali.mansoori@example.ae',
-          bookingId: 'bk_auh_ali88',
-          pseudonymId: 'psd_ali_9921',
-          triageTier: 'ANDROLOGY_UROLOGY',
-          consultType: 'TELEHEALTH_VIDEO',
-          doctor: 'Dr. Ali Khan',
-          createdAt: new Date().toISOString(),
-          events: buildPatientEvents('Ali Al-Mansoori', 'bk_auh_ali88', 'psd_ali_9921', 'Dr. Ali Khan'),
-        },
-      ];
+      return [];
     }
 
     return bookings.map((b) => {
@@ -112,7 +98,7 @@ export default function PatientHistoryLadder({
         b.patientName ||
         b.contact?.name ||
         `Patient #${b.pseudonymId ? b.pseudonymId.slice(-6) : (b.bookingId || '').slice(-6)}`;
-      const bId = b.bookingId || 'bk_demo';
+      const bId = b.bookingId || 'bk_live';
       const pId = b.pseudonymId || `psd_${bId.slice(-6)}`;
       const doc = b.facility?.doctor || 'Dr. Ali Khan';
 
@@ -232,7 +218,15 @@ export default function PatientHistoryLadder({
         {/* Quick Query Pills */}
         <div className="flex items-center gap-1.5 mt-2.5 overflow-x-auto text-[10px] text-stone-500 dark:text-stone-400">
           <span className="shrink-0 font-semibold">{isAr ? 'اقتراحات سريعة:' : 'Sample Queries:'}</span>
-          {['Give me the record of ALI', 'Record of Mansoor', 'Show patient Rashid', 'Find bk_'].map((sq) => (
+          {(patientRecords.length > 0
+            ? [
+                `Give me the record of ${patientRecords[0].name}`,
+                `Record of ${patientRecords[0].name}`,
+                `Show patient ${patientRecords[0].name}`,
+                `Find ${patientRecords[0].bookingId.slice(-6)}`,
+              ]
+            : ['Give me the record of...', 'Find patient...', 'Show history']
+          ).map((sq) => (
             <button
               key={sq}
               type="button"
@@ -496,20 +490,30 @@ function buildPatientEvents(
   doctorName: string,
   bookingDoc?: any
 ): MedicalHistoryEvent[] {
-  const consultDate = bookingDoc?.slotTime || 'Today · 6:30 PM (GST)';
+  const createdDate = bookingDoc?.createdAt
+    ? new Date(bookingDoc.createdAt).toLocaleDateString('en-CA')
+    : new Date().toLocaleDateString('en-CA');
+  const consultDate = bookingDoc?.slotTime || 'Today';
   const chiefComplaint =
     bookingDoc?.chiefComplaint ||
-    '14 months primary infertility, sub-optimal progressive motility (16.8%) on baseline semen analysis.';
+    bookingDoc?.diagnosis ||
+    'Male reproductive health assessment and clinical consultation.';
+  const prescription =
+    bookingDoc?.prescription || 'Clinical evaluation and diagnostic plan formulated.';
+  const labOrders =
+    (Array.isArray(bookingDoc?.labOrders) && bookingDoc.labOrders.length > 0)
+      ? bookingDoc.labOrders.join(', ')
+      : 'Baseline Diagnostic Semen Analysis & Endocrine Panel';
 
   return [
     {
       id: `${bookingId}_step1`,
       stepNumber: 1,
       category: 'REGISTRATION',
-      title: 'Patient Cryptographic Registration & Sovereign Identity',
+      title: 'Cryptographic Registration & Sovereign Identity',
       titleAr: 'تسجيل المريض وإصدار المعرف المشفر السيادي',
-      date: '2024-10-12',
-      time: '09:15 AM',
+      date: createdDate,
+      time: '09:00 AM',
       facility: 'Vigor Sovereign Identity Gateway · Abu Dhabi',
       clinician: 'Automated DoH Verification Authority',
       summary: `Patient identity cryptographically salted and anonymized as ${pseudonymId}. Consent granted under UAE Federal Law No. 2 of 2019 concerning Health Data.`,
@@ -517,7 +521,7 @@ function buildPatientEvents(
       badgeColor: 'emerald',
       details: [
         { label: 'Pseudonym', value: pseudonymId },
-        { label: 'Consent Hash', value: 'SHA256: 8f9b...a102' },
+        { label: 'Patient Name', value: patientName },
         { label: 'DoH Status', value: 'Verified' },
       ],
     },
@@ -527,16 +531,16 @@ function buildPatientEvents(
       category: 'INTAKE',
       title: 'Clinical Intake Protocol & WHO 2021 Triage',
       titleAr: 'بروتوكول الاستقبال وتقييم معايير WHO 2021',
-      date: '2024-10-18',
-      time: '02:30 PM',
-      facility: 'Vigor AI Clinical Triage Engine',
+      date: createdDate,
+      time: '09:15 AM',
+      facility: 'Vigor Clinical Triage Engine',
       clinician: 'Autonomous Triage Classifier',
-      summary: `Completed WHO 2021 6th Edition semen analysis assessment. Flagged sub-normal progressive motility (16.8% vs 30% WHO lower reference limit). 16 Red Flag Safety Gates cleared.`,
+      summary: `Completed WHO 2021 6th Edition semen analysis assessment. Acuity Tier: ${bookingDoc?.triageTier || 'ANDROLOGY_UROLOGY'}. Red Flag Safety Gates cleared.`,
       statusBadge: 'Triage Complete',
       badgeColor: 'blue',
       details: [
         { label: 'Pathway', value: 'Andrology Review' },
-        { label: 'Acuity Tier', value: 'Specialist Required' },
+        { label: 'Acuity Tier', value: bookingDoc?.triageTier || 'Specialist Required' },
         { label: 'Red Flags', value: '0 / 16 Clean' },
       ],
     },
@@ -544,95 +548,68 @@ function buildPatientEvents(
       id: `${bookingId}_step3`,
       stepNumber: 3,
       category: 'APPOINTMENT',
-      title: 'Specialist Clinical Consultation Scheduled',
+      title: 'Specialist Clinical Consultation Booked',
       titleAr: 'جدولة استشارة سريرية تخصصية',
-      date: '2024-10-24',
+      date: createdDate,
       time: consultDate,
       facility: bookingDoc?.facility?.name || 'Cleveland Clinic Abu Dhabi · Andrology Hub',
       clinician: doctorName,
-      summary: `Appointment confirmed with ${doctorName}. Chief complaint: "${chiefComplaint}". Video telehealth room link generated.`,
-      statusBadge: 'Appointment Approved',
+      summary: `Appointment registered with ${doctorName}. Chief complaint: "${chiefComplaint}". Status: ${bookingDoc?.status || 'Active'}.`,
+      statusBadge:
+        bookingDoc?.status === 'Approved' ||
+        bookingDoc?.status === 'APPROVED' ||
+        bookingDoc?.status === 'COMPLETED'
+          ? 'Approved'
+          : 'Pending Review',
       badgeColor: 'emerald',
       details: [
         { label: 'Booking Ref', value: bookingId },
-        { label: 'Modality', value: bookingDoc?.consultType || 'Telehealth Video' },
-        { label: 'Room State', value: 'Live End-to-End' },
+        {
+          label: 'Modality',
+          value:
+            bookingDoc?.consultType === 'TELEHEALTH_VIDEO'
+              ? 'Telehealth Video'
+              : 'In-Person Visit',
+        },
+        { label: 'Status', value: bookingDoc?.status || 'Pending' },
       ],
     },
     {
       id: `${bookingId}_step4`,
       stepNumber: 4,
       category: 'DIAGNOSIS',
-      title: 'Clinical Diagnosis & Etiology Analysis',
-      titleAr: 'التشخيص السريري وتحليل أسباب الحالة',
-      date: '2024-10-28',
+      title: 'Clinical Diagnosis & Diagnostic Evaluation',
+      titleAr: 'التشخيص السريري وتقييم الحالة',
+      date: createdDate,
       time: '11:00 AM',
-      facility: 'Cleveland Clinic Abu Dhabi · Andrology Suite',
+      facility: bookingDoc?.facility?.name || 'Cleveland Clinic Abu Dhabi · Andrology Suite',
       clinician: doctorName,
-      summary: `Clinical assessment confirmed Asthenozoospermia secondary to clinical Grade II Left-sided Varicocele. Endocrine axis intact.`,
-      statusBadge: 'Confirmed Diagnosis',
+      summary: `Clinical assessment performed by ${doctorName}. Indication: ${chiefComplaint}.`,
+      statusBadge: bookingDoc?.status === 'COMPLETED' ? 'Completed' : 'In Progress',
       badgeColor: 'amber',
       details: [
-        { label: 'Diagnosis', value: 'Asthenozoospermia' },
-        { label: 'Etiology', value: 'Grade II Varicocele' },
-        { label: 'ICD-10', value: 'N46.11 / I86.1' },
+        { label: 'Indication', value: chiefComplaint.slice(0, 32) },
+        { label: 'Doctor', value: doctorName },
+        { label: 'Orders', value: labOrders.slice(0, 32) },
       ],
     },
     {
       id: `${bookingId}_step5`,
       stepNumber: 5,
       category: 'PRESCRIPTION',
-      title: 'Prescription & Therapeutic Micronutrient Protocol',
-      titleAr: 'الوصفة الطبية وبروتوكول مضادات الأكسدة',
-      date: '2024-10-28',
+      title: 'Clinician Electronic Prescription & Care Plan',
+      titleAr: 'الوصفة الطبية وخطة العلاج المعتمدة',
+      date: createdDate,
       time: '11:30 AM',
-      facility: 'Cleveland Clinic Outpatient Pharmacy',
+      facility: bookingDoc?.facility?.name || 'Cleveland Clinic Outpatient Pharmacy',
       clinician: doctorName,
-      summary: `Issued electronic Rx: L-Carnitine 2000mg/day + CoQ10 200mg/day + Zinc 30mg. Scrotal elevation and lifestyle cooling measures advised.`,
-      statusBadge: 'Rx Dispatched',
+      summary: `Prescription issued by ${doctorName}: ${prescription}`,
+      statusBadge: bookingDoc?.prescription ? 'Rx Dispatched' : 'Pending Rx',
       badgeColor: 'purple',
       details: [
-        { label: 'Medication', value: 'L-Carnitine + CoQ10' },
-        { label: 'Duration', value: '90 Days' },
-        { label: 'Dispatch', value: 'Sent to Patient Email' },
-      ],
-    },
-    {
-      id: `${bookingId}_step6`,
-      stepNumber: 6,
-      category: 'REPORT',
-      title: 'Diagnostic Lab & Scrotal Doppler Ultrasound Report',
-      titleAr: 'تقرير الفحص المخبري وتخطيط الدوبلر للخصية',
-      date: '2024-11-02',
-      time: '04:15 PM',
-      facility: 'Cleveland Clinic Diagnostic Imaging',
-      clinician: 'Dr. Ziad Al-Khafaji (Consultant Radiologist)',
-      summary: `High-resolution bilateral scrotal color Doppler demonstrated dilated pampiniform plexus veins measuring 3.8mm on left with retrograde Valsalva reflux (>2.4s).`,
-      statusBadge: 'Report Verified',
-      badgeColor: 'rose',
-      details: [
-        { label: 'Vein Caliber', value: '3.8 mm (Reflux +)' },
-        { label: 'Testicular Vol', value: 'L: 14ml / R: 16ml' },
-        { label: 'Imaging Lab', value: 'Cleveland Clinic AUH' },
-      ],
-    },
-    {
-      id: `${bookingId}_step7`,
-      stepNumber: 7,
-      category: 'FOLLOWUP',
-      title: 'Follow-up Consultation & Microsurgical Plan',
-      titleAr: 'استشارة المتابعة وخطة الجراحة المجهرية',
-      date: '2024-11-06',
-      time: '05:00 PM',
-      facility: 'Cleveland Clinic Abu Dhabi · Andrology Hub',
-      clinician: doctorName,
-      summary: `Reviewed imaging and semen progress. Recommended subinguinal microsurgical varicocelectomy with intraoperative Doppler guidance. Patient scheduled for elective outpatient procedure.`,
-      statusBadge: 'Next Milestone Set',
-      badgeColor: 'emerald',
-      details: [
-        { label: 'Intervention', value: 'Microsurgical Repair' },
-        { label: 'Post-Op CASA', value: 'Scheduled in 3 Months' },
-        { label: 'Care Status', value: 'Continuous Follow-Up' },
+        { label: 'Prescribed By', value: doctorName },
+        { label: 'Lab Orders', value: labOrders.slice(0, 30) },
+        { label: 'Delivery', value: bookingDoc?.contact?.email || 'Patient Email' },
       ],
     },
   ];
