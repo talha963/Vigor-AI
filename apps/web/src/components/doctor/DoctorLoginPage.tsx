@@ -616,20 +616,10 @@ export default function DoctorLoginPage({
                             <circle
                               cx={ms.centerPt.x}
                               cy={ms.y}
-                              r={8}
+                              r={7}
                               fill="#10B981"
                               stroke="#FFFFFF"
                               strokeWidth="2"
-                            />
-                            <circle
-                              cx={ms.centerPt.x}
-                              cy={ms.y}
-                              r={14}
-                              fill="none"
-                              stroke="#10B981"
-                              strokeWidth="1.5"
-                              opacity="0.5"
-                              className="animate-ping"
                             />
                             {/* Terminal anchor dot at card border */}
                             <circle

@@ -743,24 +743,12 @@ export default function PatientHistoryLadder({
                       <circle
                         cx={centerPt.x}
                         cy={ry}
-                        r={isPointReached ? 9 : 7}
+                        r={isPointReached ? 8 : 6}
                         fill={isPointReached ? '#10B981' : '#FAF8F5'}
                         stroke={isPointReached ? '#FFFFFF' : '#7A7163'}
                         strokeWidth="2"
                         className="transition-all duration-300"
                       />
-                      {isPointReached && (
-                        <circle
-                          cx={centerPt.x}
-                          cy={ry}
-                          r={14}
-                          fill="none"
-                          stroke="#10B981"
-                          strokeWidth="1.5"
-                          opacity="0.6"
-                          className="animate-ping"
-                        />
-                      )}
                     </g>
                   );
                 })}
