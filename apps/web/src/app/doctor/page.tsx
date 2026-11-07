@@ -274,16 +274,10 @@ export default function DoctorPortalPage() {
     return () => clearInterval(pollInterval);
   }, []);
 
-  // Set default active consultation patient when bookings load
-  useEffect(() => {
-    if (bookings.length > 0 && !activeConsultationBookingId) {
-      setActiveConsultationBookingId(bookings[0].bookingId);
-    }
-  }, [bookings, activeConsultationBookingId]);
-
-  // Synchronize consultation form when active patient changes
+  // Synchronize consultation form when active patient changes (Strictly null until a patient is explicitly selected)
   const activeConsultationPatient = useMemo(() => {
-    return bookings.find((b) => b.bookingId === activeConsultationBookingId) || bookings[0] || null;
+    if (!activeConsultationBookingId) return null;
+    return bookings.find((b) => b.bookingId === activeConsultationBookingId) || null;
   }, [bookings, activeConsultationBookingId]);
 
   useEffect(() => {
@@ -1066,7 +1060,7 @@ export default function DoctorPortalPage() {
         {activeTab === 'consultation' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {/* Active Patient Switcher Ribbon */}
-            <div className="bg-white/80 dark:bg-[#1C1A17]/80 backdrop-blur-md rounded-2xl p-3 border border-[#E8E2D5] dark:border-stone-800 flex items-center justify-between gap-3 shadow-2xs">
+            <div className="bg-white/80 dark:bg-[#1C1A17]/80 backdrop-blur-md rounded-2xl p-3 border border-[#E8E2D5] dark:border-stone-800 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
               <div className="flex items-center gap-2 overflow-x-auto">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 shrink-0">
                   {isAr ? 'اختيار المريض للاستشارة:' : 'Select Consultation Patient:'}
@@ -1082,7 +1076,7 @@ export default function DoctorPortalPage() {
                       className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
                         isSelected
                           ? 'bg-[#1A1816] text-white dark:bg-white dark:text-[#181614] shadow-xs'
-                          : 'bg-stone-100 dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:bg-stone-200'
+                          : 'bg-stone-100 dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800'
                       }`}
                     >
                       <User className="w-3 h-3" />
@@ -1091,29 +1085,43 @@ export default function DoctorPortalPage() {
                     </button>
                   );
                 })}
+
+                {activeConsultationPatient && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveConsultationBookingId(null)}
+                    className="shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900 transition-all flex items-center gap-1 ml-1"
+                    title="Clear current patient selection"
+                  >
+                    <X className="w-3 h-3" />
+                    <span>{isAr ? 'إلغاء التحديد' : 'Deselect'}</span>
+                  </button>
+                )}
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleSaveConsultation}
-                  disabled={savingConsultation}
-                  className="px-4 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-bold hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors flex items-center gap-1.5 shadow-2xs"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>{savingConsultation ? 'Saving...' : 'Save Notes'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleFinalizeAndEmailRx}
-                  disabled={finalizingPrescription}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>{finalizingPrescription ? 'Finalizing...' : 'Finalize & Email Rx'}</span>
-                </button>
-              </div>
+              {/* Action Buttons (Only active when a patient is selected) */}
+              {activeConsultationPatient && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleSaveConsultation}
+                    disabled={savingConsultation}
+                    className="px-4 py-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-800 dark:text-stone-200 text-xs font-bold hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{savingConsultation ? 'Saving...' : 'Save Notes'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleFinalizeAndEmailRx}
+                    disabled={finalizingPrescription}
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>{finalizingPrescription ? 'Finalizing...' : 'Finalize & Email Rx'}</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {activeConsultationPatient ? (
@@ -1443,8 +1451,59 @@ export default function DoctorPortalPage() {
                 </div>
               </div>
             ) : (
-              <div className="p-12 text-center text-stone-400">
-                {isAr ? 'لم يتم العثور على مريض محدد للاستشارة' : 'No patient selected for consultation. Please select a patient above.'}
+              <div className="bg-white/80 dark:bg-[#181715]/80 backdrop-blur-md rounded-3xl border border-[#E8E2D5] dark:border-stone-800 p-8 sm:p-12 text-center max-w-2xl mx-auto space-y-6 shadow-sm animate-in fade-in duration-200">
+                <div className="w-16 h-16 mx-auto rounded-3xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
+                  <Stethoscope className="w-8 h-8" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold font-editorial-serif text-stone-900 dark:text-[#FAF7F2]">
+                    {isAr ? 'لم يتم تحديد مريض للاستشارة الحالية' : 'No Patient Selected for Active Consultation'}
+                  </h3>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 max-w-md mx-auto leading-relaxed">
+                    {isAr
+                      ? 'يرجى اختيار مريض من قائمة المواعيد أعلاه أو النقر على أحد المرضى أدناه لبدء الاستشارة السريرية وكتابة التشخيص والوصفة الطبية.'
+                      : 'Please select an appointment from the Appointments tab, or choose a patient below to start their active consultation, enter diagnosis, prescribe medications, and record clinical notes.'}
+                  </p>
+                </div>
+
+                {bookings.length > 0 && (
+                  <div className="pt-4 border-t border-stone-200 dark:border-stone-800 space-y-3">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 block">
+                      {isAr ? 'اختر مريضاً لبدء الجلسة السريرية:' : 'Choose a Patient to Start Consultation:'}
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto text-left rtl:text-right">
+                      {bookings.map((b) => {
+                        const pName = b.patientName || b.contact?.name || `Patient #${b.bookingId.slice(-6)}`;
+                        const isVideo = b.consultType === 'TELEHEALTH_VIDEO';
+                        return (
+                          <button
+                            key={b.bookingId}
+                            type="button"
+                            onClick={() => setActiveConsultationBookingId(b.bookingId)}
+                            className="p-3.5 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-900/60 hover:border-emerald-500 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 transition-all flex items-center justify-between gap-3 group text-xs"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center font-bold text-stone-700 dark:text-stone-300">
+                                {pName.charAt(0)}
+                              </div>
+                              <div>
+                                <p className="font-bold text-stone-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">
+                                  {pName}
+                                </p>
+                                <p className="text-[10px] text-stone-500 font-mono">
+                                  {b.slotTime || 'Scheduled'}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-200/70 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
+                              {isVideo ? 'Video' : 'In-Person'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
