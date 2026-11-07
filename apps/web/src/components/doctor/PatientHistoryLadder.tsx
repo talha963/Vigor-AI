@@ -88,6 +88,25 @@ export default function PatientHistoryLadder({
   const [revealedY, setRevealedY] = useState<number>(240);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Debounce search as user types, and clear results immediately if input is empty
+  useEffect(() => {
+    if (!inputVal.trim()) {
+      setHasSearched(false);
+      setNaturalQuery('');
+      setQueryIntentFeedback(null);
+      setSelectedPatientId(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      if (inputVal.trim()) {
+        handleRunQuery(inputVal.trim());
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [inputVal]);
+
   // Extract query keywords (e.g. "Give me the record of Usman" -> "usman")
   const extractedKeyword = useMemo(() => {
     const raw = naturalQuery.toLowerCase().trim();
@@ -153,6 +172,7 @@ export default function PatientHistoryLadder({
 
       if (
         pName.includes(kw) ||
+        kw.includes(pName) ||
         pEmail.includes(kw) ||
         pBookingId.includes(kw) ||
         pPseudonymId.includes(kw)
@@ -161,7 +181,7 @@ export default function PatientHistoryLadder({
       }
 
       return terms.some(
-        (t) => t.length > 2 && (pName.includes(t) || pEmail.includes(t))
+        (t) => t.length > 2 && (pName.includes(t) || kw.includes(t) || pEmail.includes(t))
       );
     });
   }, [patientRecords, hasSearched, naturalQuery, extractedKeyword]);
@@ -355,10 +375,11 @@ export default function PatientHistoryLadder({
       const pPseudonymId = p.pseudonymId.toLowerCase();
       return (
         pName.includes(kw) ||
+        kw.includes(pName) ||
         pEmail.includes(kw) ||
         pBookingId.includes(kw) ||
         pPseudonymId.includes(kw) ||
-        terms.some((t) => t.length > 2 && (pName.includes(t) || pEmail.includes(t)))
+        terms.some((t) => t.length > 2 && (pName.includes(t) || kw.includes(t) || pEmail.includes(t)))
       );
     });
 
@@ -368,6 +389,7 @@ export default function PatientHistoryLadder({
           ? `لم يتم العثور على أي ملف طبي يطابق "${trimmed}"`
           : `No patient records found matching "${trimmed}"`
       );
+      setSelectedPatientId(null);
       return;
     }
 
@@ -392,14 +414,15 @@ export default function PatientHistoryLadder({
   // Dynamic sample queries based on real database records
   const sampleQueries = useMemo(() => {
     const names = Array.from(new Set(patientRecords.map((p) => p.name).filter(Boolean)));
-    const nameA = names[0] || 'Talha';
-    const nameB = names[1] || 'Mansoor';
+    const nameA = names[0] || 'Usman';
+    const nameB = names[1] || 'Talha';
+    const nameC = names[2] || 'Mansoor';
 
     return [
       `Give me the complete medical history of ${nameA}`,
       `Show all previous appointments of ${nameB}`,
-      `What medications has ${nameA} been prescribed?`,
-      `Show previous diagnoses of ${nameB}`,
+      `What medications has ${nameC} been prescribed?`,
+      `Show previous diagnoses of ${nameA}`,
     ];
   }, [patientRecords]);
 
