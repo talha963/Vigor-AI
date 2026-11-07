@@ -18,6 +18,7 @@ import {
   ArrowDown,
   ArrowUp,
   X,
+  UserX,
   Building2,
   ExternalLink,
 } from 'lucide-react';
@@ -69,20 +70,31 @@ export default function PatientHistoryLadder({
   const isAr = locale === 'ar';
   const [naturalQuery, setNaturalQuery] = useState(initialQuery);
   const [inputVal, setInputVal] = useState(initialQuery);
+  const [hasSearched, setHasSearched] = useState(Boolean(initialQuery && initialQuery.trim()));
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [queryIntentFeedback, setQueryIntentFeedback] = useState<string | null>(null);
+
+  // Sync initialQuery prop changes
+  useEffect(() => {
+    if (initialQuery && initialQuery.trim()) {
+      setNaturalQuery(initialQuery);
+      setInputVal(initialQuery);
+      setHasSearched(true);
+    }
+  }, [initialQuery]);
 
   // Active ladder step tracker (1 to 7) & Progressive Revealed Drawing Height (revealedY)
   const [activeStep, setActiveStep] = useState<number>(1);
   const [revealedY, setRevealedY] = useState<number>(240);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Extract query keywords (e.g. "Give me the record of Mansoor" -> "mansoor")
+  // Extract query keywords (e.g. "Give me the record of Usman" -> "usman")
   const extractedKeyword = useMemo(() => {
-    const raw = naturalQuery.toLowerCase();
+    const raw = naturalQuery.toLowerCase().trim();
+    if (!raw) return '';
     const cleaned = raw
-      .replace(/give\s+me(\s+the)?(\s+complete)?(\s+medical)?(\s+record|\s+history)?(\s+of)?/g, '')
-      .replace(/show(\s+me)?(\s+all)?(\s+previous)?(\s+appointments|\s+diagnoses)?(\s+of)?/g, '')
+      .replace(/give\s+me(\s+the)?(\s+complete)?(\s+medical)?(\s+record|\s+history|\s+dossier)?(\s+of)?/g, '')
+      .replace(/show(\s+me)?(\s+all)?(\s+previous)?(\s+appointments|\s+diagnoses|\s+records)?(\s+of)?/g, '')
       .replace(/what\s+medications\s+has/g, '')
       .replace(/been\s+prescribed\??/g, '')
       .replace(/show(\s+the)?(\s+previous)?(\s+diagnoses|\s+records)?(\s+of\s+this\s+patient)?/g, '')
@@ -90,8 +102,9 @@ export default function PatientHistoryLadder({
       .replace(/search(\s+for)?/g, '')
       .replace(/patient/g, '')
       .replace(/history(\s+of)?/g, '')
+      .replace(/(أعطني|عرض|أرني|سجل|تاريخ|ملف|بيانات|المرضي|المريض|عن|لـ|للمريض|ابحث\s+عن)/g, '')
       .trim();
-    return cleaned || raw.trim();
+    return cleaned || raw;
   }, [naturalQuery]);
 
   // Construct dynamic patient records from database bookings
@@ -124,25 +137,55 @@ export default function PatientHistoryLadder({
     });
   }, [bookings]);
 
-  // Filter patients based on natural language search
-  const filteredPatients = useMemo(() => {
-    if (!extractedKeyword) return patientRecords;
-    return patientRecords.filter((p) => {
-      const target = `${p.name} ${p.email} ${p.bookingId} ${p.pseudonymId} ${p.doctor}`.toLowerCase();
-      return target.includes(extractedKeyword.toLowerCase());
-    });
-  }, [patientRecords, extractedKeyword]);
+  // Filter patients based on natural language search (Only active when query has been made)
+  const filteredPatients = useMemo<PatientRecord[]>(() => {
+    if (!hasSearched || !naturalQuery.trim()) return [];
+    const kw = extractedKeyword.toLowerCase().trim();
+    if (!kw) return [];
 
-  // Auto-select first matching patient
+    const terms = kw.split(/\s+/).filter(Boolean);
+
+    return patientRecords.filter((p) => {
+      const pName = p.name.toLowerCase();
+      const pEmail = p.email.toLowerCase();
+      const pBookingId = p.bookingId.toLowerCase();
+      const pPseudonymId = p.pseudonymId.toLowerCase();
+
+      if (
+        pName.includes(kw) ||
+        pEmail.includes(kw) ||
+        pBookingId.includes(kw) ||
+        pPseudonymId.includes(kw)
+      ) {
+        return true;
+      }
+
+      return terms.some(
+        (t) => t.length > 2 && (pName.includes(t) || pEmail.includes(t))
+      );
+    });
+  }, [patientRecords, hasSearched, naturalQuery, extractedKeyword]);
+
+  // Synchronize selected patient
   useEffect(() => {
-    if (filteredPatients.length > 0 && (!selectedPatientId || !filteredPatients.some((p) => p.id === selectedPatientId))) {
-      setSelectedPatientId(filteredPatients[0].id);
+    if (filteredPatients.length > 0) {
+      if (!selectedPatientId || !filteredPatients.some((p) => p.id === selectedPatientId)) {
+        setSelectedPatientId(filteredPatients[0].id);
+      }
+    } else {
+      setSelectedPatientId(null);
     }
   }, [filteredPatients, selectedPatientId]);
 
+  // Active patient (Strictly null before query or when no match is found - No unwanted fallbacks!)
   const activePatient = useMemo(() => {
-    return patientRecords.find((p) => p.id === selectedPatientId) || patientRecords[0];
-  }, [patientRecords, selectedPatientId]);
+    if (filteredPatients.length === 0) return null;
+    if (selectedPatientId) {
+      const match = filteredPatients.find((p) => p.id === selectedPatientId);
+      if (match) return match;
+    }
+    return filteredPatients[0];
+  }, [filteredPatients, selectedPatientId]);
 
   // =========================================================================
   // MATHEMATICAL PROCEDURAL 3D WINDING LADDER GENERATOR (Main Page Geometry)
@@ -276,9 +319,57 @@ export default function PatientHistoryLadder({
 
   // Handle Query Submission and Intent Detection
   const handleRunQuery = (queryText: string) => {
-    setNaturalQuery(queryText);
-    setInputVal(queryText);
-    const qLower = queryText.toLowerCase();
+    const trimmed = queryText.trim();
+    if (!trimmed) {
+      setHasSearched(false);
+      setNaturalQuery('');
+      setInputVal('');
+      setQueryIntentFeedback(null);
+      setSelectedPatientId(null);
+      return;
+    }
+
+    setNaturalQuery(trimmed);
+    setInputVal(trimmed);
+    setHasSearched(true);
+
+    const qLower = trimmed.toLowerCase();
+    const kw = qLower
+      .replace(/give\s+me(\s+the)?(\s+complete)?(\s+medical)?(\s+record|\s+history|\s+dossier)?(\s+of)?/g, '')
+      .replace(/show(\s+me)?(\s+all)?(\s+previous)?(\s+appointments|\s+diagnoses|\s+records)?(\s+of)?/g, '')
+      .replace(/what\s+medications\s+has/g, '')
+      .replace(/been\s+prescribed\??/g, '')
+      .replace(/show(\s+the)?(\s+previous)?(\s+diagnoses|\s+records)?(\s+of\s+this\s+patient)?/g, '')
+      .replace(/find(\s+patient)?/g, '')
+      .replace(/search(\s+for)?/g, '')
+      .replace(/patient/g, '')
+      .replace(/history(\s+of)?/g, '')
+      .replace(/(أعطني|عرض|أرني|سجل|تاريخ|ملف|بيانات|المرضي|المريض|عن|لـ|للمريض|ابحث\s+عن)/g, '')
+      .trim() || qLower;
+
+    const terms = kw.split(/\s+/).filter(Boolean);
+    const hasMatch = patientRecords.some((p) => {
+      const pName = p.name.toLowerCase();
+      const pEmail = p.email.toLowerCase();
+      const pBookingId = p.bookingId.toLowerCase();
+      const pPseudonymId = p.pseudonymId.toLowerCase();
+      return (
+        pName.includes(kw) ||
+        pEmail.includes(kw) ||
+        pBookingId.includes(kw) ||
+        pPseudonymId.includes(kw) ||
+        terms.some((t) => t.length > 2 && (pName.includes(t) || pEmail.includes(t)))
+      );
+    });
+
+    if (!hasMatch) {
+      setQueryIntentFeedback(
+        isAr
+          ? `لم يتم العثور على أي ملف طبي يطابق "${trimmed}"`
+          : `No patient records found matching "${trimmed}"`
+      );
+      return;
+    }
 
     if (qLower.includes('medication') || qLower.includes('prescrib') || qLower.includes('rx')) {
       setQueryIntentFeedback(isAr ? 'تصفية الأدوية والوصفات الطبية المعتمدة' : 'Filtering prescribed medications & dosages');
@@ -298,12 +389,19 @@ export default function PatientHistoryLadder({
     }
   };
 
-  const sampleQueries = [
-    'Give me the complete medical history of Mansoor',
-    'Show all previous appointments of Mansoor',
-    'What medications has Mansoor been prescribed?',
-    'Show the previous diagnoses of this patient',
-  ];
+  // Dynamic sample queries based on real database records
+  const sampleQueries = useMemo(() => {
+    const names = Array.from(new Set(patientRecords.map((p) => p.name).filter(Boolean)));
+    const nameA = names[0] || 'Talha';
+    const nameB = names[1] || 'Mansoor';
+
+    return [
+      `Give me the complete medical history of ${nameA}`,
+      `Show all previous appointments of ${nameB}`,
+      `What medications has ${nameA} been prescribed?`,
+      `Show previous diagnoses of ${nameB}`,
+    ];
+  }, [patientRecords]);
 
   return (
     <div className="bg-[#FAF8F5] dark:bg-[#181715] rounded-3xl border border-[#DDD7C8] dark:border-stone-800 shadow-xl overflow-hidden flex flex-col transition-all">
@@ -362,6 +460,23 @@ export default function PatientHistoryLadder({
               }
               className="w-full bg-transparent text-xs sm:text-sm text-stone-900 dark:text-white placeholder:text-stone-400 focus:outline-none resize-none leading-relaxed"
             />
+            {inputVal && (
+              <button
+                type="button"
+                onClick={() => {
+                  setInputVal('');
+                  setNaturalQuery('');
+                  setHasSearched(false);
+                  setQueryIntentFeedback(null);
+                  setSelectedPatientId(null);
+                }}
+                className="shrink-0 px-2.5 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 text-xs font-bold transition-all shadow-xs flex items-center gap-1 self-end"
+                title="Clear query"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{isAr ? 'مسح' : 'Clear'}</span>
+              </button>
+            )}
             <button
               type="submit"
               className="shrink-0 px-4 py-2 rounded-xl bg-[#141311] hover:bg-[#2C2925] dark:bg-white dark:hover:bg-stone-100 text-white dark:text-[#141311] text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 self-end"
@@ -373,12 +488,16 @@ export default function PatientHistoryLadder({
 
           {/* Query Intent Badge & Feedback */}
           {queryIntentFeedback && (
-            <div className="mt-2 pt-2 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between text-[11px] text-emerald-800 dark:text-emerald-300">
+            <div className="mt-2 pt-2 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between text-[11px]">
               <span className="flex items-center gap-1.5 font-semibold">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                {queryIntentFeedback}
+                <span className={`w-1.5 h-1.5 rounded-full ${activePatient ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                <span className={activePatient ? 'text-emerald-800 dark:text-emerald-300' : 'text-amber-800 dark:text-amber-300'}>
+                  {queryIntentFeedback}
+                </span>
               </span>
-              <span className="font-mono text-[10px] text-stone-400">Natural Language Match</span>
+              <span className="font-mono text-[10px] text-stone-400">
+                {activePatient ? 'Natural Language Match' : 'Query Processed'}
+              </span>
             </div>
           )}
         </form>
@@ -491,14 +610,15 @@ export default function PatientHistoryLadder({
       )}
 
       {/* =========================================================================
-          4. CONTINUOUS 3D WINDING LADDER VIEWPORT WITH SCROLL-SYNCHRONIZED REVEAL
-          (Same as Main Page WindingLadderJourney animation)
+          4. MAIN VIEWPORT: ACTIVE LADDER OR EMPTY / NO RESULTS STATE
           ========================================================================= */}
-      <div
-        ref={scrollContainerRef}
-        onScroll={handleScroll}
-        className="relative w-full overflow-y-auto max-h-[620px] scroll-smooth bg-[#FAF8F5] dark:bg-[#141311] select-none"
-      >
+      {activePatient ? (
+        <>
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleScroll}
+            className="relative w-full overflow-y-auto max-h-[620px] scroll-smooth bg-[#FAF8F5] dark:bg-[#141311] select-none"
+          >
         <div className="relative w-full min-h-[2250px] mx-auto py-8">
           {/* 3D Winding SVG Ladder Canvas */}
           <div className="absolute inset-0 pointer-events-none flex justify-center z-10">
@@ -762,8 +882,79 @@ export default function PatientHistoryLadder({
           </button>
         </div>
       </div>
+    </>
+  ) : hasSearched ? (
+    /* NO RECORDS FOUND FOR QUERY */
+    <div className="py-20 px-4 text-center max-w-md mx-auto space-y-4 animate-in fade-in duration-200">
+      <div className="w-14 h-14 mx-auto rounded-3xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-900/60 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-sm">
+        <UserX className="w-7 h-7" />
+      </div>
+      <div className="space-y-1.5">
+        <h3 className="font-bold text-base text-stone-900 dark:text-[#FAF7F2]">
+          {isAr ? 'لم يتم العثور على سجل للمريض' : 'No Patient Records Found'}
+        </h3>
+        <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+          {isAr
+            ? `لم يتم العثور على أي ملف طبي في النظام يطابق "${naturalQuery}". يرجى التأكد من كتابة الاسم بالشكل الصحيح.`
+            : `No patient in the database matches "${naturalQuery}". Please check the spelling or search by another patient name.`}
+        </p>
+      </div>
+      <div className="flex items-center justify-center gap-2 pt-2">
+        <button
+          type="button"
+          onClick={() => {
+            setNaturalQuery('');
+            setInputVal('');
+            setHasSearched(false);
+            setQueryIntentFeedback(null);
+          }}
+          className="px-4 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-xs font-bold text-stone-700 dark:text-stone-300 transition-colors"
+        >
+          {isAr ? 'مسح البحث' : 'Clear Search'}
+        </button>
+      </div>
     </div>
-  );
+  ) : (
+    /* BEFORE QUERY: NOTHING SHOWN BEFORE QUERY, AS REQUESTED */
+    <div className="py-20 px-4 text-center max-w-lg mx-auto space-y-4 animate-in fade-in duration-200">
+      <div className="w-14 h-14 mx-auto rounded-3xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
+        <Sparkles className="w-7 h-7" />
+      </div>
+      <div className="space-y-1.5">
+        <h3 className="font-bold text-base text-stone-900 dark:text-[#FAF7F2] font-editorial-serif">
+          {isAr ? 'البحث باللغة الطبيعية في التاريخ الطبي للمريض' : 'Search Patient Medical Dossier'}
+        </h3>
+        <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+          {isAr
+            ? 'أدخل استفسارك أو اسم المريض أعلاه لعرض السجل الطبي الكامل ومخطط السلم الزمني التفاعلي.'
+            : 'Enter a natural-language query or patient name above to retrieve their complete clinical dossier and interactive timeline ladder.'}
+        </p>
+      </div>
+
+      {patientRecords.length > 0 && (
+        <div className="pt-4 border-t border-stone-200 dark:border-stone-800 space-y-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+            {isAr ? 'المرضى المتاحون في السجل:' : 'Available Patients in Clinic Database:'}
+          </span>
+          <div className="flex flex-wrap justify-center gap-2">
+            {Array.from(new Set(patientRecords.map((p) => p.name).filter(Boolean))).map((pName) => (
+              <button
+                key={pName}
+                type="button"
+                onClick={() => handleRunQuery(`Give me the complete medical history of ${pName}`)}
+                className="px-3 py-1.5 rounded-full text-xs font-semibold bg-white dark:bg-[#1C1A17] border border-stone-200 dark:border-stone-800 hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-300 text-stone-700 dark:text-stone-300 transition-all shadow-2xs flex items-center gap-1.5"
+              >
+                <User className="w-3 h-3 text-emerald-600" />
+                <span>{pName}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )}
+</div>
+);
 }
 
 // Helper builder to synthesize genuine clinical timeline events
