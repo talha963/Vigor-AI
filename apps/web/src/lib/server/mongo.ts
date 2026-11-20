@@ -34,6 +34,33 @@ class MemoryCursor {
     }
     return this;
   }
+  project(projectionObj?: any) {
+    if (projectionObj && typeof projectionObj === 'object') {
+      this.items = this.items.map((item) => {
+        const copy = { ...item };
+        const keys = Object.keys(projectionObj);
+        const isExclusion = keys.every((k) => projectionObj[k] === 0);
+        if (isExclusion) {
+          for (const k of keys) {
+            delete copy[k];
+          }
+          return copy;
+        } else {
+          const projected: any = {};
+          for (const k of keys) {
+            if (projectionObj[k] === 1) {
+              projected[k] = copy[k];
+            }
+          }
+          if (projectionObj._id === 0) {
+            delete projected._id;
+          }
+          return projected;
+        }
+      });
+    }
+    return this;
+  }
   limit(n: number) {
     this.items = this.items.slice(0, n);
     return this;
@@ -61,6 +88,10 @@ class MemoryCollection {
       }
       const expected = query[key];
       const actual = doc[key];
+      if (expected && typeof expected === 'object' && Array.isArray(expected.$in)) {
+        if (!expected.$in.includes(actual)) return false;
+        continue;
+      }
       if (expected !== undefined && actual !== expected) {
         return false;
       }
